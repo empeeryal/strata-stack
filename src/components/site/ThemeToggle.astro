@@ -14,8 +14,8 @@ const { class: className } = Astro.props;
   <button
     type="button"
     class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), className)}
-    aria-label="Toggle dark mode"
-    title="Toggle dark mode"
+    aria-label="Switch theme"
+    title="Switch theme"
   >
     <Icon name="lucide:sun" class="theme-icon-light size-5" aria-hidden="true" />
     <Icon name="lucide:moon" class="theme-icon-dark size-5" aria-hidden="true" />
@@ -50,11 +50,23 @@ const { class: className } = Astro.props;
     }
   });
 
+  /** Names the action the button will perform, not the current state. */
+  function label(button: HTMLButtonElement) {
+    const text = root.dataset.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+    button.setAttribute('aria-label', text);
+    button.title = text;
+  }
+
   class ThemeToggle extends HTMLElement {
     connectedCallback() {
-      this.querySelector('button')?.addEventListener('click', () => {
+      const button = this.querySelector('button');
+      if (!button) return;
+      label(button);
+      media.addEventListener('change', () => label(button));
+      button.addEventListener('click', () => {
         const next: Theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
         apply(next, next);
+        label(button);
         try {
           localStorage.setItem(THEME_STORAGE_KEY, next);
         } catch {

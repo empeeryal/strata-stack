@@ -1,6 +1,7 @@
 ---
 title: Scripts
 description: Every pnpm script in package.json, grouped by purpose.
+publishedDate: 2026-09-18
 sidebar:
   order: 2
 ---
@@ -35,15 +36,17 @@ sidebar:
 
 ## Database and auth
 
-| Script               | Description                                                    |
-| -------------------- | -------------------------------------------------------------- |
-| `pnpm db:generate`   | Create a migration from schema changes                         |
-| `pnpm db:migrate`    | Apply migrations                                               |
-| `pnpm db:push`       | Push schema without a migration (prototyping)                  |
-| `pnpm db:studio`     | Drizzle Studio                                                 |
-| `pnpm db:seed`       | Create a demo user                                             |
-| `pnpm db:reset`      | Delete the local database and re-migrate                       |
-| `pnpm auth:generate` | Regenerate `src/db/schema/auth.ts` from the Better Auth config |
+| Script               | Description                                                                   |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `pnpm db:generate`   | Create a migration from schema changes                                        |
+| `pnpm db:migrate`    | Apply migrations                                                              |
+| `pnpm db:push`       | Push schema without a migration (prototyping)                                 |
+| `pnpm db:studio`     | Drizzle Studio                                                                |
+| `pnpm db:seed`       | Create demo accounts (`demo@example.com`, `admin@example.com`)                |
+| `pnpm db:reset`      | Delete the local database and re-migrate                                      |
+| `pnpm db:prune`      | Delete archived contact messages past retention and expired throttle counters |
+| `pnpm admin:promote` | Grant (or `--revoke`) the admin role for an existing account                  |
+| `pnpm auth:generate` | Regenerate `src/db/schema/auth.ts` from the Better Auth config                |
 
 ## Releases
 

@@ -20,6 +20,10 @@ export const serverEnv = {
   DATABASE_URL: 'file:./.data/e2e.db',
   BETTER_AUTH_SECRET: 'e2e-only-secret-never-use-in-production-0123456789',
   BETTER_AUTH_URL: baseURL,
+  // Accounts created with this address get the admin role (see tests/e2e/admin.spec.ts).
+  ADMIN_EMAILS: 'admin-e2e@example.com',
+  // Notifications are "sent" to the console in test mode, so delivery shows as sent.
+  CONTACT_TO_EMAIL: 'owner@example.com',
 };
 
 export default defineConfig({

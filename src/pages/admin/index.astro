@@ -1,0 +1,148 @@
+---
+import { count, desc, eq } from 'drizzle-orm';
+
+import Badge from '@/components/ui/Badge.astro';
+import Card from '@/components/ui/Card.astro';
+import { db } from '@/db/client';
+import { auditLog, contactMessages, user as userTable } from '@/db/schema';
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { guardAdminPage } from '@/lib/admin-page';
+import { isEmailConfigured } from '@/lib/email';
+import { getEnv } from '@/lib/env';
+import { formatDate, toISODate } from '@/lib/utils';
+
+export const prerender = false;
+
+const denied = await guardAdminPage(Astro);
+if (denied) return denied;
+
+const [[users], [admins], messageCounts, [failedDeliveries], recentMessages, recentAudit] =
+  await Promise.all([
+    db.select({ value: count() }).from(userTable),
+    db.select({ value: count() }).from(userTable).where(eq(userTable.role, 'admin')),
+    db
+      .select({ status: contactMessages.status, value: count() })
+      .from(contactMessages)
+      .groupBy(contactMessages.status),
+    db
+      .select({ value: count() })
+      .from(contactMessages)
+      .where(eq(contactMessages.deliveryStatus, 'failed')),
+    db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)).limit(5),
+    db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(5),
+  ]);
+
+const messagesByStatus = Object.fromEntries(messageCounts.map((row) => [row.status, row.value]));
+const stats = [
+  { label: 'Users', value: users?.value ?? 0, href: '/admin/users' },
+  { label: 'Administrators', value: admins?.value ?? 0, href: '/admin/users' },
+  { label: 'New messages', value: messagesByStatus.new ?? 0, href: '/admin/messages?status=new' },
+  {
+    label: 'Failed notifications',
+    value: failedDeliveries?.value ?? 0,
+    href: '/admin/messages?status=all',
+  },
+];
+
+const health = [
+  {
+    label: 'Email delivery',
+    ok: isEmailConfigured(),
+    detail: isEmailConfigured()
+      ? 'Resend is configured: magic links, verification and password resets work.'
+      : 'RESEND_API_KEY is not set. Magic links, verification and password resets are unavailable.',
+  },
+  {
+    label: 'Contact notifications',
+    ok: Boolean(getEnv('CONTACT_TO_EMAIL')),
+    detail: getEnv('CONTACT_TO_EMAIL')
+      ? `New messages are forwarded to ${getEnv('CONTACT_TO_EMAIL')}.`
+      : 'CONTACT_TO_EMAIL is not set. Messages are only visible in this inbox.',
+  },
+];
+---
+
+<AdminLayout title="Overview" description="Site administration overview.">
+  <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {stats.map((stat) => (
+      <a
+        href={stat.href}
+        class="rounded-xl border bg-card p-5 shadow-soft transition-colors hover:bg-muted/50"
+      >
+        <dt class="text-sm text-muted-foreground">{stat.label}</dt>
+        <dd class="mt-1 text-3xl font-bold tracking-tight">{stat.value}</dd>
+      </a>
+    ))}
+  </dl>
+
+  <div class="mt-8 grid gap-6 lg:grid-cols-2">
+    <Card>
+      <h2 class="font-semibold">Configuration</h2>
+      <ul class="mt-4 space-y-3 text-sm">
+        {health.map((item) => (
+          <li class="flex items-start gap-3">
+            <Badge variant={item.ok ? 'success' : 'muted'}>{item.ok ? 'OK' : 'Off'}</Badge>
+            <div>
+              <p class="font-medium">{item.label}</p>
+              <p class="text-muted-foreground">{item.detail}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Card>
+
+    <Card>
+      <h2 class="font-semibold">Latest messages</h2>
+      {recentMessages.length === 0 ? (
+        <p class="mt-4 text-sm text-muted-foreground">No messages yet.</p>
+      ) : (
+        <ul class="mt-4 divide-y text-sm">
+          {recentMessages.map((message) => (
+            <li class="flex items-center justify-between gap-3 py-2">
+              <a
+                href={`/admin/messages/${message.id}`}
+                class="min-w-0 truncate font-medium hover:underline"
+              >
+                {message.name}
+                <span class="font-normal text-muted-foreground"> · {message.email}</span>
+              </a>
+              <time
+                datetime={toISODate(message.createdAt)}
+                class="shrink-0 text-xs text-muted-foreground"
+              >
+                {formatDate(message.createdAt)}
+              </time>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  </div>
+
+  <Card class="mt-6">
+    <h2 class="font-semibold">Recent activity</h2>
+    {recentAudit.length === 0 ? (
+      <p class="mt-4 text-sm text-muted-foreground">Nothing recorded yet.</p>
+    ) : (
+      <ul class="mt-4 divide-y text-sm">
+        {recentAudit.map((entry) => (
+          <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+            <span>
+              <code class="font-mono text-xs">{entry.action}</code>
+              <span class="text-muted-foreground"> by {entry.actorEmail ?? 'system'}</span>
+            </span>
+            <time datetime={toISODate(entry.createdAt)} class="text-xs text-muted-foreground">
+              {formatDate(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+            </time>
+          </li>
+        ))}
+      </ul>
+    )}
+    <a
+      href="/admin/audit"
+      class="mt-4 inline-block text-sm font-medium underline underline-offset-4"
+    >
+      View the audit log
+    </a>
+  </Card>
+</AdminLayout>

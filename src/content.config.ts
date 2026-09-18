@@ -51,6 +51,10 @@ const docs = defineCollection({
         badge: z.enum(['new', 'updated', 'experimental']).optional(),
       })
       .default({ order: 100 }),
+    /** First publication, used for structured data. */
+    publishedDate: z.coerce.date().optional(),
+    /** Last substantive revision; set it when you change a page. */
+    updatedDate: z.coerce.date().optional(),
     draft: z.boolean().default(false),
   }),
 });

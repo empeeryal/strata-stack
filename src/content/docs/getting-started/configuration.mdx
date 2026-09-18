@@ -1,6 +1,7 @@
 ---
 title: Configuration
 description: The three places you configure the template - site config, Astro config and environment variables.
+publishedDate: 2026-09-18
 sidebar:
   order: 4
 ---
@@ -74,9 +75,10 @@ behaves identically on Node, Vercel, Netlify and Cloudflare Workers with `nodejs
 | `BETTER_AUTH_TRUSTED_ORIGINS`               | No       | Extra allowed origins, comma separated, wildcards allowed.                                    |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | No       | Enables "Continue with GitHub".                                                               |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No       | Enables "Continue with Google".                                                               |
-| `RESEND_API_KEY`                            | No       | Sends magic links and contact messages. Logged to the console when unset.                     |
+| `RESEND_API_KEY`                            | No       | Magic links, verification, resets, notifications. Console in dev, disabled in production.     |
 | `EMAIL_FROM`                                | No       | Sender shown on outgoing email.                                                               |
-| `CONTACT_TO_EMAIL`                          | No       | Recipient of the contact form.                                                                |
+| `CONTACT_TO_EMAIL`                          | No       | Recipient of contact notifications; messages are always visible in `/admin/messages`.         |
+| `ADMIN_EMAILS`                              | No       | Comma-separated addresses that get the `admin` role on sign-up.                               |
 | `PUBLIC_ANALYTICS`                          | No       | `none` (default) or `vercel`.                                                                 |
 
 See [Environment variables](/docs/guides/environment-variables) for platform-specific notes.

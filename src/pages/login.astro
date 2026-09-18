@@ -3,7 +3,7 @@ import AuthForm from '@/components/react/auth/AuthForm';
 import MagicLinkForm from '@/components/react/auth/MagicLinkForm';
 import SocialButtons from '@/components/react/auth/SocialButtons';
 import AuthLayout from '@/layouts/AuthLayout.astro';
-import { enabledSocialProviders } from '@/lib/auth';
+import { enabledAuthMethods } from '@/lib/auth';
 import { safeRedirectPath } from '@/lib/redirect';
 
 export const prerender = false;
@@ -14,29 +14,64 @@ if (Astro.locals.user) {
   return Astro.redirect(redirectTo);
 }
 
-const providers = enabledSocialProviders();
+const methods = enabledAuthMethods();
+// Verification and magic-link callbacks land here with `?error=` when a link is bad.
+const linkError = Astro.url.searchParams.get('error');
+
+const ways = ['your email and password'];
+if (methods.magicLink) ways.push('a magic link');
+if (methods.social.length > 0) ways.push('a connected account');
+const subheading =
+  ways.length === 1
+    ? `Sign in with ${ways[0]}.`
+    : `Sign in with ${ways.slice(0, -1).join(', ')} or ${ways.at(-1)}.`;
+const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redirectTo)}` : '';
 ---
 
 <AuthLayout
   title="Sign in"
   description="Sign in to your account."
   heading="Welcome back"
-  subheading="Sign in with your email and password, a magic link, or a connected account."
+  subheading={subheading}
 >
   <div class="space-y-6">
-    <AuthForm client:load mode="login" redirectTo={redirectTo} />
-    <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
-      <span class="relative bg-card px-3">or</span>
-    </div>
-    <MagicLinkForm client:load redirectTo={redirectTo} />
-    {providers.length > 0 && (
-      <SocialButtons client:load providers={providers} redirectTo={redirectTo} />
+    {linkError && (
+      <div
+        role="alert"
+        class="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+      >
+        That link is invalid or has expired. Sign in again or request a new one.
+      </div>
+    )}
+    <AuthForm
+      client:load
+      mode="login"
+      redirectTo={redirectTo}
+      passwordReset={methods.passwordReset}
+    />
+    {methods.magicLink && (
+      <>
+        <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
+          <span class="relative bg-card px-3">or</span>
+        </div>
+        <MagicLinkForm client:load redirectTo={redirectTo} />
+      </>
+    )}
+    {methods.social.length > 0 && (
+      <>
+        {!methods.magicLink && (
+          <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
+            <span class="relative bg-card px-3">or</span>
+          </div>
+        )}
+        <SocialButtons client:load providers={methods.social} redirectTo={redirectTo} />
+      </>
     )}
   </div>
   <Fragment slot="footer">
     New here?{' '}
     <a
-      href={`/signup${redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redirectTo)}` : ''}`}
+      href={`/signup${nextQuery}`}
       class="font-medium text-foreground underline underline-offset-4"
     >
       Create an account

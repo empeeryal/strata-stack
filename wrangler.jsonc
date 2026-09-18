@@ -5,6 +5,11 @@
   // `process.env` read Worker variables/secrets at runtime.
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Marks deployed Workers as production so email never falls back to console logging
+  // (see src/lib/email.ts). Override locally in .dev.vars.
+  "vars": {
+    "NODE_ENV": "production",
+  },
   "observability": {
     "enabled": true,
   },

@@ -55,7 +55,7 @@ test.describe('home page', () => {
     const html = page.locator('html');
     await expect(html).toHaveAttribute('data-theme', 'light');
 
-    await page.getByRole('button', { name: 'Toggle dark mode' }).first().click();
+    await page.getByRole('button', { name: 'Switch to dark theme' }).first().click();
     await expect(html).toHaveAttribute('data-theme', 'dark');
 
     await page.reload();

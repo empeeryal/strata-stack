@@ -87,7 +87,8 @@ export interface ArticleJsonLdInput {
   title: string;
   description: string;
   image: string;
-  datePublished: Date;
+  /** Omitted when the source has no reliable date (better than a made-up one). */
+  datePublished?: Date;
   dateModified?: Date;
   author: { name: string; url?: string };
   tags?: readonly string[];
@@ -117,8 +118,10 @@ function articleFields(input: ArticleJsonLdInput) {
     image: absolute(input.image, input.site),
     url: absolute(input.url, input.site),
     mainEntityOfPage: absolute(input.url, input.site),
-    datePublished: input.datePublished.toISOString(),
-    dateModified: (input.dateModified ?? input.datePublished).toISOString(),
+    ...(input.datePublished ? { datePublished: input.datePublished.toISOString() } : {}),
+    ...((input.dateModified ?? input.datePublished)
+      ? { dateModified: (input.dateModified ?? input.datePublished)!.toISOString() }
+      : {}),
     inLanguage: siteConfig.locale,
     ...(input.tags && input.tags.length > 0 ? { keywords: input.tags.join(', ') } : {}),
     author: {

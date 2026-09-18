@@ -1,0 +1,74 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Error message from a failed admin action, rendered as an alert. */
+  error?: string | null;
+}
+
+const { title, description = 'Administration', error = null } = Astro.props;
+const pathname = Astro.url.pathname;
+
+const links = [
+  { href: '/admin', label: 'Overview', icon: 'lucide:layout-dashboard' },
+  { href: '/admin/messages', label: 'Messages', icon: 'lucide:inbox' },
+  { href: '/admin/users', label: 'Users', icon: 'lucide:users' },
+  { href: '/admin/audit', label: 'Audit log', icon: 'lucide:scroll-text' },
+];
+const isActive = (href: string) =>
+  href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`);
+---
+
+<BaseLayout
+  title={`${title} · Admin`}
+  description={description}
+  noindex
+  searchable={false}
+  class="container py-10"
+>
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold text-primary">Admin</p>
+      <h1 class="mt-1 text-3xl font-bold tracking-tight">{title}</h1>
+    </div>
+    <nav aria-label="Admin sections" class="flex flex-wrap gap-1">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          aria-current={isActive(link.href) ? 'page' : undefined}
+          class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
+        >
+          <Icon name={link.icon} class="size-4" aria-hidden="true" />
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  </div>
+
+  {error && (
+    <div
+      role="alert"
+      class="mt-6 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+    >
+      {error}
+    </div>
+  )}
+
+  <div class="mt-8">
+    <slot />
+  </div>
+</BaseLayout>
+
+<script>
+  // Confirmation prompts for destructive forms. Inline `onsubmit` handlers are blocked by
+  // the CSP, so the behaviour is attached here from a processed script.
+  document.querySelectorAll<HTMLFormElement>('form[data-confirm]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      if (!window.confirm(form.dataset.confirm ?? 'Are you sure?')) event.preventDefault();
+    });
+  });
+</script>

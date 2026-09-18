@@ -1,18 +1,35 @@
 ---
 import { Icon } from 'astro-icon/components';
 
+import ChangePasswordForm from '@/components/react/account/ChangePasswordForm';
+import DeleteAccountForm from '@/components/react/account/DeleteAccountForm';
+import VerifyEmailButton from '@/components/react/account/VerifyEmailButton';
 import SignOutButton from '@/components/react/auth/SignOutButton';
 import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
 import Card from '@/components/ui/Card.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { isAdmin } from '@/lib/admin';
+import { auth } from '@/lib/auth';
+import { isEmailConfigured } from '@/lib/email';
 import { formatDate, toISODate } from '@/lib/utils';
 
 export const prerender = false;
 
 const { user, session } = Astro.locals;
 if (!user || !session) {
-  return Astro.redirect('/login?next=/dashboard');
+  // Verification and magic-link callbacks target this page; forward their error state.
+  const error = Astro.url.searchParams.get('error');
+  return Astro.redirect(
+    `/login?next=/dashboard${error ? `&error=${encodeURIComponent(error)}` : ''}`,
+  );
 }
+
+const accounts = await auth.api.listUserAccounts({ headers: Astro.request.headers });
+const hasPassword = accounts.some((account) => account.providerId === 'credential');
+const providers = accounts.map((account) => account.providerId).filter((id) => id !== 'credential');
+const emailConfigured = isEmailConfigured();
+const admin = isAdmin(user);
 ---
 
 <BaseLayout
@@ -30,7 +47,15 @@ if (!user || !session) {
         This page is rendered on the server for every request and only for signed-in users.
       </p>
     </div>
-    <SignOutButton client:load />
+    <div class="flex flex-wrap gap-2">
+      {admin && (
+        <Button href="/admin" variant="secondary">
+          <Icon name="lucide:shield" aria-hidden="true" />
+          Admin
+        </Button>
+      )}
+      <SignOutButton client:load />
+    </div>
   </header>
 
   <div class="mt-10 grid gap-6 md:grid-cols-2">
@@ -59,12 +84,30 @@ if (!user || !session) {
           </dd>
         </div>
         <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Sign-in methods</dt>
+          <dd class="font-medium">
+            {[hasPassword ? 'password' : null, ...providers].filter(Boolean).join(', ') ||
+              'magic link'}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
           <dt class="text-muted-foreground">Member since</dt>
           <dd>
             <time datetime={toISODate(user.createdAt)}>{formatDate(user.createdAt)}</time>
           </dd>
         </div>
       </dl>
+      {!user.emailVerified && (
+        <div class="mt-4 border-t pt-4 text-sm">
+          {emailConfigured ? (
+            <VerifyEmailButton client:load email={user.email} />
+          ) : (
+            <p class="text-muted-foreground">
+              Email verification is unavailable until the site owner configures email delivery.
+            </p>
+          )}
+        </div>
+      )}
     </Card>
 
     <Card>
@@ -92,6 +135,37 @@ if (!user || !session) {
       </p>
     </Card>
   </div>
+
+  {hasPassword && (
+    <Card class="mt-6">
+      <h2 class="flex items-center gap-2 font-semibold">
+        <Icon name="lucide:lock" class="size-4 text-primary" aria-hidden="true" />
+        Password
+      </h2>
+      <p class="mt-2 mb-4 text-sm text-muted-foreground">
+        Changing your password signs out every other session.
+      </p>
+      <ChangePasswordForm client:visible />
+    </Card>
+  )}
+
+  <Card class="mt-6">
+    <h2 class="flex items-center gap-2 font-semibold">
+      <Icon name="lucide:database" class="size-4 text-primary" aria-hidden="true" />
+      Your data
+    </h2>
+    <p class="mt-2 text-sm text-pretty text-muted-foreground">
+      Download everything stored about you as JSON, or delete your account. Contact messages sent
+      from a verified address are included in the export and removed with the account.
+    </p>
+    <div class="mt-4 flex flex-wrap items-start gap-3">
+      <Button href="/api/account/export" variant="outline">
+        <Icon name="lucide:download" aria-hidden="true" />
+        Download my data
+      </Button>
+      <DeleteAccountForm client:visible hasPassword={hasPassword} />
+    </div>
+  </Card>
 
   <Card class="mt-6">
     <h2 class="font-semibold">How this route is protected</h2>

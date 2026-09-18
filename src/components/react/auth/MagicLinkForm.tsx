@@ -2,7 +2,7 @@ import { type SubmitEvent, useState } from 'react';
 
 import { authClient } from '@/lib/auth-client';
 
-import { Alert, Button, Field, Input, Label } from '../primitives';
+import { Alert, Button, Field, Input, Label, UNEXPECTED_ERROR } from '../primitives';
 
 interface MagicLinkFormProps {
   redirectTo?: string;
@@ -18,13 +18,18 @@ export default function MagicLinkForm({ redirectTo = '/dashboard' }: MagicLinkFo
     setError(null);
     setStatus('sending');
     const email = String(new FormData(event.currentTarget).get('email') ?? '').trim();
-    const result = await authClient.signIn.magicLink({ email, callbackURL: redirectTo });
-    if (result.error) {
-      setError(result.error.message ?? 'Could not send the link. Please try again.');
+    try {
+      const result = await authClient.signIn.magicLink({ email, callbackURL: redirectTo });
+      if (result.error) {
+        setError(result.error.message ?? 'Could not send the link. Please try again.');
+        setStatus('idle');
+        return;
+      }
+      setStatus('sent');
+    } catch {
+      setError(UNEXPECTED_ERROR);
       setStatus('idle');
-      return;
     }
-    setStatus('sent');
   }
 
   if (status === 'sent') {

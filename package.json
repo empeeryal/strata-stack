@@ -38,6 +38,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "db:reset": "node scripts/reset-db.ts",
+    "db:prune": "node --env-file-if-exists=.env scripts/prune-messages.ts",
+    "admin:promote": "node --env-file-if-exists=.env scripts/promote-admin.ts",
     "auth:generate": "auth generate --adapter drizzle --dialect sqlite --output src/db/schema/auth.ts -y",
     "changeset": "changeset",
     "changeset:version": "changeset version",

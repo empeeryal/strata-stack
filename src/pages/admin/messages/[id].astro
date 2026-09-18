@@ -1,0 +1,159 @@
+---
+import { actions } from 'astro:actions';
+import { eq } from 'drizzle-orm';
+
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import { db } from '@/db/client';
+import { contactMessages } from '@/db/schema';
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { guardAdminPage, summarizeActionResults } from '@/lib/admin-page';
+import { formatDate, toISODate } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+export const prerender = false;
+
+const denied = await guardAdminPage(Astro);
+if (denied) return denied;
+
+const id = Astro.params.id ?? '';
+const outcome = summarizeActionResults([
+  Astro.getActionResult(actions.admin.setMessageStatus),
+  Astro.getActionResult(actions.admin.retryMessageDelivery),
+]);
+if (outcome.completed) return Astro.redirect(Astro.url.pathname);
+
+const deleteResult = Astro.getActionResult(actions.admin.deleteMessage);
+if (deleteResult && !deleteResult.error) return Astro.redirect('/admin/messages');
+
+const [message] = await db
+  .select()
+  .from(contactMessages)
+  .where(eq(contactMessages.id, id))
+  .limit(1);
+if (!message) return new Response(null, { status: 404 });
+
+// Opening a new message marks it as read.
+if (message.status === 'new') {
+  await db
+    .update(contactMessages)
+    .set({ status: 'read', readAt: new Date() })
+    .where(eq(contactMessages.id, id));
+  message.status = 'read';
+}
+
+const replySubject = encodeURIComponent(`Re: your message to ${siteConfig.name}`);
+const replyBody = encodeURIComponent(`\n\n> ${message.message.split('\n').join('\n> ')}`);
+const deliveryVariant = {
+  sent: 'success',
+  failed: 'danger',
+  pending: 'muted',
+  skipped: 'muted',
+} as const;
+---
+
+<AdminLayout
+  title={`Message from ${message.name}`}
+  description="Contact message details."
+  error={outcome.error ?? deleteResult?.error?.message ?? null}
+>
+  <a href="/admin/messages" class="text-sm font-medium text-muted-foreground hover:text-foreground">
+    ← Back to messages
+  </a>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <Card as="article">
+      <header class="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
+        <div>
+          <h2 class="text-lg font-semibold">{message.name}</h2>
+          <a href={`mailto:${message.email}`} class="text-sm text-muted-foreground hover:underline">
+            {message.email}
+          </a>
+        </div>
+        <time datetime={toISODate(message.createdAt)} class="text-sm text-muted-foreground">
+          {formatDate(message.createdAt, { dateStyle: 'long', timeStyle: 'short' })}
+        </time>
+      </header>
+      <p class="mt-4 text-sm leading-relaxed whitespace-pre-wrap">{message.message}</p>
+    </Card>
+
+    <div class="space-y-4">
+      <Card>
+        <h2 class="font-semibold">Status</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div class="flex justify-between gap-2">
+            <dt class="text-muted-foreground">Workflow</dt>
+            <dd>
+              <Badge variant="outline">{message.status}</Badge>
+            </dd>
+          </div>
+          <div class="flex justify-between gap-2">
+            <dt class="text-muted-foreground">Notification</dt>
+            <dd>
+              <Badge variant={deliveryVariant[message.deliveryStatus]}>
+                {message.deliveryStatus}
+              </Badge>
+            </dd>
+          </div>
+          {message.deliveryError && (
+            <div>
+              <dt class="text-muted-foreground">Last error</dt>
+              <dd class="mt-1 font-mono text-xs break-words text-danger">
+                {message.deliveryError}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </Card>
+
+      <Card>
+        <h2 class="font-semibold">Actions</h2>
+        <div class="mt-3 flex flex-col gap-2">
+          <Button
+            href={`mailto:${message.email}?subject=${replySubject}&body=${replyBody}`}
+            variant="primary"
+            size="sm"
+          >
+            Reply by email
+          </Button>
+          {message.status !== 'archived' ? (
+            <form method="POST" action={actions.admin.setMessageStatus}>
+              <input type="hidden" name="id" value={message.id} />
+              <input type="hidden" name="status" value="archived" />
+              <Button type="submit" variant="outline" size="sm" class="w-full">
+                Archive
+              </Button>
+            </form>
+          ) : (
+            <form method="POST" action={actions.admin.setMessageStatus}>
+              <input type="hidden" name="id" value={message.id} />
+              <input type="hidden" name="status" value="read" />
+              <Button type="submit" variant="outline" size="sm" class="w-full">
+                Restore
+              </Button>
+            </form>
+          )}
+          {message.deliveryStatus !== 'sent' && (
+            <form method="POST" action={actions.admin.retryMessageDelivery}>
+              <input type="hidden" name="id" value={message.id} />
+              <Button type="submit" variant="outline" size="sm" class="w-full">
+                Resend notification
+              </Button>
+            </form>
+          )}
+          <form
+            method="POST"
+            action={actions.admin.deleteMessage}
+            data-confirm="Delete this message permanently?"
+          >
+            <input type="hidden" name="id" value={message.id} />
+            <Button type="submit" variant="danger" size="sm" class="w-full">
+              Delete
+            </Button>
+          </form>
+        </div>
+      </Card>
+    </div>
+  </div>
+</AdminLayout>

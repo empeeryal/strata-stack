@@ -23,7 +23,19 @@ const { url: site, source: siteSource } = resolveSiteUrl(process.env, siteConfig
 console.info(`[site] ${site} (from ${siteSource})`);
 
 /** Routes that must never appear in the sitemap. */
-const SITEMAP_EXCLUDE = [/\/dashboard(\/|$)/, /\/api(\/|$)/, /\/login$/, /\/signup$/, /\/500$/];
+// Anchored to the start of the pathname so e.g. /docs/guides/admin stays indexable; the
+// trailing group accepts the trailing slash the sitemap integration emits.
+const SITEMAP_EXCLUDE = [
+  /^\/dashboard(\/|$)/,
+  /^\/admin(\/|$)/,
+  /^\/api(\/|$)/,
+  /^\/login(\/|$)/,
+  /^\/signup(\/|$)/,
+  /^\/forgot-password(\/|$)/,
+  /^\/reset-password(\/|$)/,
+  /^\/account-deleted(\/|$)/,
+  /^\/500(\/|$)/,
+];
 
 // https://docs.astro.build/en/reference/configuration-reference/
 export default defineConfig({

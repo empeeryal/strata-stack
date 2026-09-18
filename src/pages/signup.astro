@@ -2,7 +2,7 @@
 import AuthForm from '@/components/react/auth/AuthForm';
 import SocialButtons from '@/components/react/auth/SocialButtons';
 import AuthLayout from '@/layouts/AuthLayout.astro';
-import { enabledSocialProviders } from '@/lib/auth';
+import { enabledAuthMethods } from '@/lib/auth';
 import { safeRedirectPath } from '@/lib/redirect';
 
 export const prerender = false;
@@ -13,7 +13,8 @@ if (Astro.locals.user) {
   return Astro.redirect(redirectTo);
 }
 
-const providers = enabledSocialProviders();
+const methods = enabledAuthMethods();
+const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redirectTo)}` : '';
 ---
 
 <AuthLayout
@@ -24,18 +25,18 @@ const providers = enabledSocialProviders();
 >
   <div class="space-y-6">
     <AuthForm client:load mode="signup" redirectTo={redirectTo} />
-    {providers.length > 0 && (
+    {methods.social.length > 0 && (
       <>
         <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
           <span class="relative bg-card px-3">or</span>
         </div>
-        <SocialButtons client:load providers={providers} redirectTo={redirectTo} />
+        <SocialButtons client:load providers={methods.social} redirectTo={redirectTo} />
       </>
     )}
   </div>
   <Fragment slot="footer">
     Already have an account?{' '}
-    <a href="/login" class="font-medium text-foreground underline underline-offset-4">
+    <a href={`/login${nextQuery}`} class="font-medium text-foreground underline underline-offset-4">
       Sign in
     </a>
   </Fragment>

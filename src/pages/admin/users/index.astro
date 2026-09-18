@@ -1,0 +1,181 @@
+---
+import { actions } from 'astro:actions';
+
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { isAdmin } from '@/lib/admin';
+import { guardAdminPage, summarizeActionResults } from '@/lib/admin-page';
+import { auth } from '@/lib/auth';
+import { formatDate, toISODate } from '@/lib/utils';
+
+export const prerender = false;
+
+const denied = await guardAdminPage(Astro);
+if (denied) return denied;
+const me = Astro.locals.user!;
+
+const PAGE_SIZE = 25;
+const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? 1) || 1);
+const pageUrl = `/admin/users?page=${page}`;
+
+const outcome = summarizeActionResults([
+  Astro.getActionResult(actions.admin.setUserRole),
+  Astro.getActionResult(actions.admin.banUser),
+  Astro.getActionResult(actions.admin.unbanUser),
+  Astro.getActionResult(actions.admin.revokeUserSessions),
+  Astro.getActionResult(actions.admin.removeUser),
+]);
+if (outcome.completed) return Astro.redirect(pageUrl);
+
+// Better Auth's admin plugin enforces the role again on this call.
+const { users, total } = await auth.api.listUsers({
+  query: {
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+    sortBy: 'createdAt',
+    sortDirection: 'desc',
+  },
+  headers: Astro.request.headers,
+});
+const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+---
+
+<AdminLayout title="Users" description="Manage accounts, roles and bans." error={outcome.error}>
+  <p class="text-sm text-muted-foreground">
+    {total} {total === 1 ? 'account' : 'accounts'}. Administrators are bootstrapped from
+    <code class="font-mono">ADMIN_EMAILS</code> and can be changed here.
+  </p>
+
+  <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
+    <table class="w-full text-sm">
+      <caption class="sr-only">User accounts</caption>
+      <thead class="bg-muted/60 text-left">
+        <tr>
+          <th scope="col" class="px-4 py-3 font-semibold">
+            User
+          </th>
+          <th scope="col" class="px-4 py-3 font-semibold">
+            Role
+          </th>
+          <th scope="col" class="px-4 py-3 font-semibold">
+            Status
+          </th>
+          <th scope="col" class="px-4 py-3 font-semibold">
+            Joined
+          </th>
+          <th scope="col" class="px-4 py-3 text-right font-semibold">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        {users.map((account) => {
+          const admin = isAdmin(account);
+          const self = account.id === me.id;
+          return (
+            <tr>
+              <td class="px-4 py-3 align-top">
+                <p class="font-medium">
+                  {account.name}
+                  {self && <span class="text-xs text-muted-foreground"> (you)</span>}
+                </p>
+                <p class="text-xs text-muted-foreground">{account.email}</p>
+              </td>
+              <td class="px-4 py-3 align-top">
+                <Badge variant={admin ? 'default' : 'outline'}>{admin ? 'admin' : 'user'}</Badge>
+              </td>
+              <td class="px-4 py-3 align-top">
+                <div class="flex flex-wrap gap-1">
+                  {account.emailVerified ? (
+                    <Badge variant="success">verified</Badge>
+                  ) : (
+                    <Badge variant="muted">unverified</Badge>
+                  )}
+                  {account.banned && (
+                    <Badge variant="danger" title={account.banReason ?? undefined}>
+                      banned
+                    </Badge>
+                  )}
+                </div>
+              </td>
+              <td class="px-4 py-3 align-top whitespace-nowrap">
+                <time datetime={toISODate(account.createdAt)}>{formatDate(account.createdAt)}</time>
+              </td>
+              <td class="px-4 py-3 align-top">
+                {!self && (
+                  <div class="flex flex-wrap justify-end gap-1">
+                    <form method="POST" action={actions.admin.setUserRole}>
+                      <input type="hidden" name="userId" value={account.id} />
+                      <input type="hidden" name="role" value={admin ? 'user' : 'admin'} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        {admin ? 'Remove admin' : 'Make admin'}
+                      </Button>
+                    </form>
+                    {account.banned ? (
+                      <form method="POST" action={actions.admin.unbanUser}>
+                        <input type="hidden" name="userId" value={account.id} />
+                        <Button type="submit" variant="ghost" size="sm">
+                          Unban
+                        </Button>
+                      </form>
+                    ) : (
+                      <form
+                        method="POST"
+                        action={actions.admin.banUser}
+                        data-confirm="Ban this user and revoke their sessions?"
+                      >
+                        <input type="hidden" name="userId" value={account.id} />
+                        <Button type="submit" variant="ghost" size="sm">
+                          Ban
+                        </Button>
+                      </form>
+                    )}
+                    <form method="POST" action={actions.admin.revokeUserSessions}>
+                      <input type="hidden" name="userId" value={account.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Sign out everywhere
+                      </Button>
+                    </form>
+                    <form
+                      method="POST"
+                      action={actions.admin.removeUser}
+                      data-confirm="Permanently delete this account and all of its data?"
+                    >
+                      <input type="hidden" name="userId" value={account.id} />
+                      <Button type="submit" variant="ghost" size="sm" class="text-danger">
+                        Delete
+                      </Button>
+                    </form>
+                  </div>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  {pages > 1 && (
+    <nav aria-label="Pagination" class="mt-4 flex items-center justify-between text-sm">
+      {page > 1 ? (
+        <a href={`/admin/users?page=${page - 1}`} class="font-medium underline underline-offset-4">
+          Previous
+        </a>
+      ) : (
+        <span />
+      )}
+      <span class="text-muted-foreground">
+        Page {page} of {pages}
+      </span>
+      {page < pages ? (
+        <a href={`/admin/users?page=${page + 1}`} class="font-medium underline underline-offset-4">
+          Next
+        </a>
+      ) : (
+        <span />
+      )}
+    </nav>
+  )}
+</AdminLayout>
