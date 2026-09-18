@@ -27,16 +27,16 @@ Open Graph tags, JSON-LD and the web manifest in one go.
 
 The Astro configuration is annotated inline. The parts you are most likely to touch:
 
-| Key                    | Purpose                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------- |
-| `site`                 | Canonical URL. Reads `SITE_URL` first so preview deployments can override it.                       |
-| `adapter`              | Resolved by `config/adapter.ts` from `DEPLOY_TARGET`. See [Deploy](/docs/deploy/choosing-a-target). |
-| `fonts`                | Self-hosted Inter and JetBrains Mono through Astro's Fonts API.                                     |
-| `image`                | Responsive images enabled with the `constrained` layout by default.                                 |
-| `markdown.shikiConfig` | Light and dark Shiki themes.                                                                        |
-| `security.csp`         | Content Security Policy directives. See [Security](/docs/guides/security).                          |
-| `env.schema`           | Type-safe public environment variables.                                                             |
-| `session`              | Disabled; Better Auth stores sessions in the database.                                              |
+| Key                    | Purpose                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `site`                 | Canonical URL: `SITE_URL`, else the platform's production URL, else `siteConfig.url` (`config/site-url.ts`). |
+| `adapter`              | Resolved by `config/adapter.ts` from `DEPLOY_TARGET`. See [Deploy](/docs/deploy/choosing-a-target).          |
+| `fonts`                | Self-hosted Inter and JetBrains Mono through Astro's Fonts API.                                              |
+| `image`                | Responsive images enabled with the `constrained` layout by default.                                          |
+| `markdown.shikiConfig` | Light and dark Shiki themes.                                                                                 |
+| `security.csp`         | Content Security Policy directives. See [Security](/docs/guides/security).                                   |
+| `env.schema`           | Type-safe public environment variables.                                                                      |
+| `session`              | Disabled; Better Auth stores sessions in the database.                                                       |
 
 <Callout type="warning" title="Rust compiler strictness">
   Astro 7 no longer auto-closes tags or repairs invalid nesting. Close every non-void element and
@@ -63,20 +63,20 @@ Database URLs, auth secrets and API keys are read through `process.env` with a s
 helper. This keeps the Better Auth CLI (which loads `src/lib/auth.ts` outside Astro) working and
 behaves identically on Node, Vercel, Netlify and Cloudflare Workers with `nodejs_compat`.
 
-| Variable                                    | Required | Description                                                                  |
-| ------------------------------------------- | -------- | ---------------------------------------------------------------------------- |
-| `DEPLOY_TARGET`                             | No       | `node`, `vercel`, `cloudflare` or `netlify`. Auto-detected on each platform. |
-| `SITE_URL`                                  | No       | Overrides `siteConfig.url`, useful for previews.                             |
-| `DATABASE_URL`                              | Yes      | `file:./.data/local.db` locally, `libsql://…` for Turso.                     |
-| `DATABASE_AUTH_TOKEN`                       | Prod     | Turso auth token.                                                            |
-| `BETTER_AUTH_SECRET`                        | Yes      | 32+ random bytes. Generate with `openssl rand -base64 32`.                   |
-| `BETTER_AUTH_URL`                           | Yes      | The URL visitors use, e.g. `https://example.com`.                            |
-| `BETTER_AUTH_TRUSTED_ORIGINS`               | No       | Extra allowed origins, comma separated, wildcards allowed.                   |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | No       | Enables "Continue with GitHub".                                              |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No       | Enables "Continue with Google".                                              |
-| `RESEND_API_KEY`                            | No       | Sends magic links and contact messages. Logged to the console when unset.    |
-| `EMAIL_FROM`                                | No       | Sender shown on outgoing email.                                              |
-| `CONTACT_TO_EMAIL`                          | No       | Recipient of the contact form.                                               |
-| `PUBLIC_ANALYTICS`                          | No       | `none` (default) or `vercel`.                                                |
+| Variable                                    | Required | Description                                                                                   |
+| ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `DEPLOY_TARGET`                             | No       | `node`, `vercel`, `cloudflare` or `netlify`. Auto-detected on each platform.                  |
+| `SITE_URL`                                  | No       | Overrides the canonical URL; otherwise the Vercel/Netlify production URL or `siteConfig.url`. |
+| `DATABASE_URL`                              | Yes      | `file:./.data/local.db` locally, `libsql://…` for Turso.                                      |
+| `DATABASE_AUTH_TOKEN`                       | Prod     | Turso auth token.                                                                             |
+| `BETTER_AUTH_SECRET`                        | Yes      | 32+ random bytes. Generate with `openssl rand -base64 32`.                                    |
+| `BETTER_AUTH_URL`                           | Yes      | The URL visitors use, e.g. `https://example.com`.                                             |
+| `BETTER_AUTH_TRUSTED_ORIGINS`               | No       | Extra allowed origins, comma separated, wildcards allowed.                                    |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | No       | Enables "Continue with GitHub".                                                               |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No       | Enables "Continue with Google".                                                               |
+| `RESEND_API_KEY`                            | No       | Sends magic links and contact messages. Logged to the console when unset.                     |
+| `EMAIL_FROM`                                | No       | Sender shown on outgoing email.                                                               |
+| `CONTACT_TO_EMAIL`                          | No       | Recipient of the contact form.                                                                |
+| `PUBLIC_ANALYTICS`                          | No       | `none` (default) or `vercel`.                                                                 |
 
 See [Environment variables](/docs/guides/environment-variables) for platform-specific notes.

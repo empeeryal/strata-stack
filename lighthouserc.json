@@ -1,8 +1,9 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "node ./dist/server/entry.mjs",
+      "startServerCommand": "pnpm exec cross-env HOST=127.0.0.1 PORT=4321 node ./dist/server/entry.mjs",
       "startServerReadyPattern": "Server listening",
+      "startServerReadyTimeout": 30000,
       "url": [
         "http://127.0.0.1:4321/",
         "http://127.0.0.1:4321/docs/getting-started/introduction",
