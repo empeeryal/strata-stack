@@ -1,0 +1,141 @@
+---
+import { cn } from '@/lib/utils';
+
+/**
+ * Accessible tabs. Children must be <TabItem label="…"> components.
+ * Pass `syncKey` to keep the same tab selected across every <Tabs> with that key
+ * (e.g. package manager choice), persisted in localStorage.
+ */
+interface Props {
+  syncKey?: string;
+  class?: string;
+}
+
+const { syncKey, class: className } = Astro.props;
+
+const html = await Astro.slots.render('default');
+const panelPattern = /<section data-tab-item data-label="([^"]*)"[^>]*>([\s\S]*?)<\/section>/g;
+const panels = [...html.matchAll(panelPattern)].map((match) => ({
+  label: match[1]!.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+  content: match[2]!,
+}));
+
+if (panels.length === 0) {
+  throw new Error('<Tabs> requires at least one <TabItem label="…"> child.');
+}
+
+const id = `tabs-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<tab-group class={cn('tabs my-6 not-prose', className)} data-sync-key={syncKey}>
+  <div role="tablist" class="flex flex-wrap gap-1 border-b">
+    {panels.map((panel, index) => (
+      <button
+        type="button"
+        role="tab"
+        id={`${id}-tab-${index}`}
+        aria-controls={`${id}-panel-${index}`}
+        aria-selected={index === 0 ? 'true' : 'false'}
+        tabindex={index === 0 ? 0 : -1}
+        data-label={panel.label}
+        class="-mb-px rounded-t-md border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-selected:border-primary aria-selected:text-foreground"
+      >
+        {panel.label}
+      </button>
+    ))}
+  </div>
+  {panels.map((panel, index) => (
+    <section
+      role="tabpanel"
+      id={`${id}-panel-${index}`}
+      aria-labelledby={`${id}-tab-${index}`}
+      tabindex="0"
+      hidden={index !== 0}
+      class="prose pt-4 [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+      set:html={panel.content}
+    />
+  ))}
+</tab-group>
+
+<script>
+  class TabGroup extends HTMLElement {
+    static registry = new Set<TabGroup>();
+
+    connectedCallback() {
+      TabGroup.registry.add(this);
+      this.tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => this.select(index, true));
+        tab.addEventListener('keydown', (event) => this.onKeydown(event, index));
+      });
+
+      const syncKey = this.dataset.syncKey;
+      if (syncKey) {
+        const stored = safeStorage(() => localStorage.getItem(`tabs:${syncKey}`));
+        const index = this.tabs.findIndex((tab) => tab.dataset.label === stored);
+        if (index >= 0) this.select(index, false);
+      }
+    }
+
+    disconnectedCallback() {
+      TabGroup.registry.delete(this);
+    }
+
+    get tabs(): HTMLButtonElement[] {
+      return Array.from(
+        this.querySelectorAll<HTMLButtonElement>(':scope > [role=tablist] > [role=tab]'),
+      );
+    }
+
+    get panels(): HTMLElement[] {
+      return Array.from(this.querySelectorAll<HTMLElement>(':scope > [role=tabpanel]'));
+    }
+
+    select(index: number, sync: boolean) {
+      this.tabs.forEach((tab, i) => {
+        const selected = i === index;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      this.panels.forEach((panel, i) => {
+        panel.hidden = i !== index;
+      });
+
+      const syncKey = this.dataset.syncKey;
+      const label = this.tabs[index]?.dataset.label;
+      if (sync && syncKey && label) {
+        safeStorage(() => localStorage.setItem(`tabs:${syncKey}`, label));
+        for (const group of TabGroup.registry) {
+          if (group !== this && group.dataset.syncKey === syncKey) {
+            const target = group.tabs.findIndex((tab) => tab.dataset.label === label);
+            if (target >= 0) group.select(target, false);
+          }
+        }
+      }
+    }
+
+    onKeydown(event: KeyboardEvent, index: number) {
+      const count = this.tabs.length;
+      let next: number | null = null;
+      if (event.key === 'ArrowRight') next = (index + 1) % count;
+      if (event.key === 'ArrowLeft') next = (index - 1 + count) % count;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = count - 1;
+      if (next === null) return;
+      event.preventDefault();
+      this.select(next, true);
+      this.tabs[next]?.focus();
+    }
+  }
+
+  function safeStorage<T>(fn: () => T): T | null {
+    try {
+      return fn();
+    } catch {
+      return null;
+    }
+  }
+
+  if (!customElements.get('tab-group')) {
+    customElements.define('tab-group', TabGroup);
+  }
+</script>

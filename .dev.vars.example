@@ -1,0 +1,10 @@
+# Cloudflare local secrets for `pnpm dev:cloudflare` (copy to `.dev.vars`).
+# workerd cannot open `file:` databases; run `turso dev --db-file .data/local.db`
+# and point DATABASE_URL at the local libSQL server.
+DATABASE_URL=http://127.0.0.1:8080
+DATABASE_AUTH_TOKEN=
+BETTER_AUTH_SECRET=change-me-to-a-random-32-byte-secret
+BETTER_AUTH_URL=http://localhost:4321
+RESEND_API_KEY=
+EMAIL_FROM="Astro Framework <noreply@example.com>"
+CONTACT_TO_EMAIL=you@example.com

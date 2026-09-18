@@ -1,0 +1,71 @@
+---
+title: CI and releases
+description: The GitHub Actions workflows, the build matrix for every deploy target, Dependabot and Changesets releases.
+sidebar:
+  order: 9
+---
+
+## Pull request checks
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+| Job          | What it runs                                                                    |
+| ------------ | ------------------------------------------------------------------------------- |
+| `quality`    | `pnpm lint`, `pnpm format:check`, `pnpm check`, `pnpm audit --audit-level=high` |
+| `unit`       | `pnpm test`                                                                     |
+| `build`      | `pnpm build` for each of `node`, `vercel`, `netlify` and `cloudflare` (matrix)  |
+| `e2e`        | `pnpm build:node` then `pnpm test:e2e` with Playwright's browsers               |
+| `lighthouse` | `pnpm lhci` against the Node build                                              |
+
+The matrix is the guarantee behind "deploy anywhere": a dependency that only works on one
+runtime fails the pull request instead of a production deploy.
+
+### Audit exceptions
+
+`pnpm audit --audit-level=high` fails the `quality` job on new high or critical advisories.
+Transitive advisories with no upstream fix (currently `extract-zip` inside the Netlify adapter's
+development tooling, which never runs in production) are listed in `pnpm.auditConfig.ignoreGhsas`
+in `package.json`. Patchable transitive packages are pinned through `pnpm.overrides`. Review both
+lists when upgrading dependencies.
+
+## Dependency updates
+
+`.github/dependabot.yml` groups updates weekly: Astro packages, React, tooling and GitHub
+Actions each get one pull request. Because the CI matrix builds every target, merging an update
+is safe when the checks are green.
+
+TypeScript is pinned to the 6.x line (`~6.0.3`) because `@astrojs/check` and `typescript-eslint`
+do not yet support TypeScript 7. Dependabot will keep proposing it; upgrade when both tools do.
+
+## Releases with Changesets
+
+<Steps>
+
+1. When a change is user-facing, add a changeset with the pull request:
+
+   ```bash
+   pnpm changeset
+   ```
+
+2. Merge the pull request. `.github/workflows/release.yml` opens (or updates) a
+   "Version Packages" pull request that bumps `package.json`, rewrites `CHANGELOG.md` and deletes
+   the consumed changesets.
+
+3. Merge the version pull request. The workflow tags the release, and the next deploy renders
+   the new entry on `/changelog`.
+
+</Steps>
+
+The site is a private package, so nothing is published to npm; `privatePackages.tag` in
+`.changeset/config.json` still creates Git tags.
+
+## Deploy previews
+
+Vercel and Netlify build every pull request automatically. Preview URLs are added to Better
+Auth's trusted origins at runtime (see `src/lib/env.ts`), so sign-in works on previews without
+extra configuration.
+
+## Local pre-commit hook
+
+Husky runs `lint-staged` before every commit: ESLint with autofix and Prettier on staged files.
+Skip it in an emergency with `git commit --no-verify`.

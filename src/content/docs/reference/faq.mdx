@@ -1,0 +1,51 @@
+---
+title: FAQ
+description: Answers to common questions about the template.
+sidebar:
+  order: 4
+---
+
+## Can I remove authentication?
+
+Yes. Delete `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/pages/api/auth`,
+`src/pages/login.astro`, `src/pages/signup.astro`, `src/pages/dashboard.astro`,
+`src/components/react/auth`, the session lookup in `src/middleware.ts` and the `App.Locals` types
+in `src/env.d.ts`. Remove `better-auth` and `@better-auth/drizzle-adapter` from `package.json`.
+If you also drop the contact action, the site becomes fully static and no adapter is needed.
+
+## Can I use PostgreSQL instead of libSQL?
+
+Yes. Swap `@libsql/client` for a serverless-friendly Postgres driver, change the Drizzle dialect
+in `drizzle.config.ts` and `src/db/client.ts`, regenerate the Better Auth schema with
+`pnpm exec auth generate --adapter drizzle --dialect postgresql`, and generate a fresh migration.
+
+## Why does `astro dev` not send the Content Security Policy?
+
+Astro only generates the CSP for builds. Test CSP changes with `pnpm build && pnpm preview` or
+the e2e suite, which asserts that no page logs a violation.
+
+## Why is TypeScript pinned to 6.x?
+
+TypeScript 7 ships a new native compiler that `@astrojs/check` and `typescript-eslint` do not yet
+accept. The pin keeps `pnpm check` and `pnpm lint` working; raise it once both support TS 7.
+
+## Search returns nothing in development
+
+The Pagefind index is generated during `pnpm build`. Run a build once; the dev server then
+serves the last generated index.
+
+## The Rust compiler rejects my template
+
+Astro 7 no longer repairs invalid HTML. Close every non-void tag, avoid block elements inside
+`<p>`, and write `{' '}` where whitespace between inline elements matters.
+
+## How do I add another deploy target?
+
+Add a case to `resolveAdapter()` in `config/adapter.ts`, extend `DEPLOY_TARGETS`, add a matrix
+entry in `.github/workflows/ci.yml`, and document platform specifics under `docs/deploy`.
+
+## Where do I change the fonts?
+
+Replace the files in `src/assets/fonts`, update the `fonts` array in `astro.config.ts` and the
+`@theme inline` block in `src/styles/global.css`. OG images read the static WOFF files directly
+in `src/pages/og/[...slug].png.ts`.

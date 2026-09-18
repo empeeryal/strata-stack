@@ -1,0 +1,100 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+interface Props {
+  /** Display name of the signed-in user, if any. */
+  userName?: string | null;
+}
+
+const { userName = null } = Astro.props;
+const pathname = Astro.url.pathname;
+const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+---
+
+<mobile-nav class="contents md:hidden">
+  <button
+    type="button"
+    class={buttonVariants({ variant: 'ghost', size: 'icon' })}
+    aria-label="Open menu"
+    aria-haspopup="dialog"
+    data-open
+  >
+    <Icon name="lucide:menu" class="size-5" aria-hidden="true" />
+  </button>
+
+  <dialog
+    class="m-0 h-dvh max-h-none w-full max-w-none bg-background p-0 text-foreground backdrop:bg-black/40 open:flex open:flex-col"
+    aria-label="Site navigation"
+  >
+    <div class="flex h-16 items-center justify-between border-b px-4">
+      <span class="font-semibold">{siteConfig.name}</span>
+      <button
+        type="button"
+        class={buttonVariants({ variant: 'ghost', size: 'icon' })}
+        aria-label="Close menu"
+        data-close
+      >
+        <Icon name="lucide:x" class="size-5" aria-hidden="true" />
+      </button>
+    </div>
+    <nav aria-label="Mobile" class="flex flex-1 flex-col gap-1 p-4">
+      {siteConfig.nav.map((item) => (
+        <a
+          href={item.href}
+          aria-current={isActive(item.href) ? 'page' : undefined}
+          class="rounded-md px-3 py-3 text-base font-medium hover:bg-muted aria-[current=page]:bg-muted"
+        >
+          {item.label}
+        </a>
+      ))}
+      <a href="/search" class="rounded-md px-3 py-3 text-base font-medium hover:bg-muted">
+        Search
+      </a>
+      <div class="mt-auto flex flex-col gap-2 border-t pt-4">
+        {userName ? (
+          <a href="/dashboard" class={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
+            {userName}
+          </a>
+        ) : (
+          <a href="/login" class={cn(buttonVariants({ variant: 'primary' }), 'w-full')}>
+            Sign in
+          </a>
+        )}
+        <a
+          href={siteConfig.social.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          class={cn(buttonVariants({ variant: 'ghost' }), 'w-full')}
+        >
+          <Icon name="simple-icons:github" aria-hidden="true" />
+          GitHub
+        </a>
+      </div>
+    </nav>
+  </dialog>
+</mobile-nav>
+
+<script>
+  class MobileNav extends HTMLElement {
+    connectedCallback() {
+      const dialog = this.querySelector('dialog');
+      if (!dialog) return;
+      this.querySelector('[data-open]')?.addEventListener('click', () => dialog.showModal());
+      this.querySelector('[data-close]')?.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog
+        .querySelectorAll('a')
+        .forEach((link) => link.addEventListener('click', () => dialog.close()));
+    }
+  }
+
+  if (!customElements.get('mobile-nav')) {
+    customElements.define('mobile-nav', MobileNav);
+  }
+</script>

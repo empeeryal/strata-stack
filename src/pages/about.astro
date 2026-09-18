@@ -1,0 +1,74 @@
+---
+import Prose from '@/components/ui/Prose.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { siteConfig } from '@/site.config';
+---
+
+<BaseLayout
+  title="About"
+  description={`Why ${siteConfig.name} exists, the principles behind it and how this very site is built from the template.`}
+>
+  <article class="container max-w-3xl py-16">
+    <header class="mb-10">
+      <p class="text-sm font-semibold text-primary">About</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">
+        A template that documents itself
+      </h1>
+      <p class="mt-4 text-lg text-pretty text-muted-foreground">
+        {siteConfig.name} is a starting point for new websites. Every project we begin needs the
+        same foundation: content, authentication, search, SEO, security and tests. Instead of
+        rebuilding that foundation each time, it lives here, kept current, and this website is the
+        proof that it works.
+      </p>
+    </header>
+
+    <Prose as="div">
+      <h2 id="principles">Principles</h2>
+      <ul>
+        <li>
+          <strong>Static first.</strong> Pages are prerendered unless they genuinely need a server.
+          The auth routes and the dashboard opt in with <code>prerender = false</code>; everything
+          else is plain HTML served from a CDN.
+        </li>
+        <li>
+          <strong>One codebase, any host.</strong> The same repository builds for Vercel,
+          Cloudflare, Netlify and Node. Platform differences are isolated in a single adapter
+          resolver and documented per target.
+        </li>
+        <li>
+          <strong>Secure by default.</strong> A hash-based Content Security Policy, strict response
+          headers and CSRF origin checks ship enabled. You loosen them deliberately, never by
+          accident.
+        </li>
+        <li>
+          <strong>Current dependencies.</strong> Versions are pinned, verified and upgraded through
+          automated pull requests that must pass the full test matrix.
+        </li>
+        <li>
+          <strong>Boring where it should be.</strong> Conventional folder layout, Prettier and
+          ESLint defaults, Changesets for release notes, and documentation for every decision.
+        </li>
+      </ul>
+
+      <h2 id="how-this-site-is-built">How this site is built</h2>
+      <p>
+        The pages you are reading are the template's own docs and blog collections rendered with
+        MDX. The header, footer and metadata come from <code>src/site.config.ts</code>. The stack
+        table on the home page reads versions straight from <code>package.json</code>. Search is a
+        static Pagefind index generated at build time, and the Open Graph images are rendered with
+        Satori during the build.
+      </p>
+      <p>
+        When something in the template changes, this site changes with it. That keeps the
+        documentation honest and gives new projects a working reference for every feature.
+      </p>
+
+      <h2 id="license">License</h2>
+      <p>
+        The template is released under the MIT License. Use it for personal or commercial projects,
+        keep the license notice, and consider contributing improvements back through the
+        <a href={siteConfig.repo.url}>GitHub repository</a>.
+      </p>
+    </Prose>
+  </article>
+</BaseLayout>

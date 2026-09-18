@@ -1,0 +1,62 @@
+---
+import { cn } from '@/lib/utils';
+
+/**
+ * Typography wrapper for rendered Markdown/MDX.
+ * - Injects anchor links into h2–h4 headings at render time (no client JS).
+ * - Adds a copy button to every Shiki code block (small client script).
+ */
+interface Props {
+  as?: 'div' | 'article' | 'section';
+  class?: string;
+  anchors?: boolean;
+}
+
+const { as: Tag = 'div', class: className, anchors = true } = Astro.props;
+
+let html = await Astro.slots.render('default');
+if (anchors) {
+  html = html.replace(
+    /<h([2-4])([^>]*?)\sid="([^"]+)"([^>]*)>([\s\S]*?)<\/h\1>/g,
+    (_match, level, before, id, after, inner) =>
+      `<h${level}${before} id="${id}"${after}>${inner}<a class="heading-anchor" href="#${id}" aria-label="Link to this section">#</a></h${level}>`,
+  );
+}
+---
+
+<Tag class={cn('prose', className)} data-prose set:html={html} />
+
+<script>
+  const COPY_LABEL = 'Copy code';
+
+  function enhanceCodeBlocks(root: ParentNode) {
+    for (const pre of root.querySelectorAll<HTMLPreElement>(
+      'pre.astro-code:not([data-copy-ready])',
+    )) {
+      pre.dataset.copyReady = 'true';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-wrapper group relative';
+      pre.replaceWith(wrapper);
+      wrapper.append(pre);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className =
+        'absolute top-2 right-2 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground';
+      button.textContent = 'Copy';
+      button.setAttribute('aria-label', COPY_LABEL);
+      button.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(pre.innerText);
+          button.textContent = 'Copied';
+          setTimeout(() => (button.textContent = 'Copy'), 1500);
+        } catch {
+          button.textContent = 'Failed';
+        }
+      });
+      wrapper.append(button);
+    }
+  }
+
+  document.querySelectorAll('[data-prose]').forEach(enhanceCodeBlocks);
+</script>

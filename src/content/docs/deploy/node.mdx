@@ -1,0 +1,61 @@
+---
+title: Deploy to Node and Docker
+description: The standalone Node server, the multi-stage Dockerfile and notes for VPS and container platforms.
+sidebar:
+  order: 5
+---
+
+The Node target produces a self-contained server in `dist/server/entry.mjs` that serves static
+files and on-demand routes from one process. It is the default target and the one used by the
+end-to-end tests.
+
+## Build and run
+
+```bash
+pnpm build:node
+HOST=0.0.0.0 PORT=4321 pnpm start
+```
+
+The server reads configuration from the process environment only; nothing is loaded from `.env`
+at runtime. Provide `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` and `SITE_URL` (at
+build time) through your platform.
+
+## Docker
+
+The multi-stage `Dockerfile` installs dependencies with pnpm, builds the site, then copies only
+the build output and production dependencies into a `node:24-slim` image running as the
+unprivileged `node` user, with a health check against `/api/health`.
+
+```bash
+docker build --build-arg SITE_URL=https://example.com -t astro-framework .
+docker run -p 4321:4321 --env-file .env astro-framework
+```
+
+`docker-compose.yml` adds a named volume at `/app/.data` so a `file:` database survives
+restarts. For production prefer Turso or another hosted libSQL/SQLite service so the database is
+not tied to one container.
+
+Run migrations before starting a new version:
+
+```bash
+docker run --rm --env-file .env astro-framework pnpm exec drizzle-kit migrate
+```
+
+## Reverse proxy
+
+Put the server behind a TLS-terminating proxy (Caddy, nginx, a platform load balancer). The
+middleware adds security headers to server-rendered responses; for static files add them at the
+proxy, using `public/_headers` as the reference list. Make sure the proxy forwards
+`X-Forwarded-For` so rate limiting sees real client addresses.
+
+## Platforms
+
+- **Fly.io, Railway, Render**: point them at the Dockerfile; set the port to 4321.
+- **Kubernetes**: use the health check path `/api/health` for liveness and readiness probes.
+- **Bare VPS**: run with a process manager such as `systemd` or `pm2`, and keep Node 24 current.
+
+## Static hosting only
+
+If you remove authentication and every `prerender = false` route, the site becomes fully static.
+Set `output: 'static'` (already the default), delete the adapter and upload `dist/` to any static
+host.

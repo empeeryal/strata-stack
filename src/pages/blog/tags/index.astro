@@ -1,0 +1,24 @@
+---
+import Badge from '@/components/ui/Badge.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { collectTags, getPublishedPosts, tagHref } from '@/lib/content';
+
+const tags = collectTags(await getPublishedPosts());
+---
+
+<BaseLayout title="Tags" description="Browse blog posts by topic." canonical="/blog/tags">
+  <div class="container max-w-3xl py-16">
+    <p class="text-sm font-semibold text-primary">Blog</p>
+    <h1 class="mt-2 text-4xl font-bold tracking-tight">Tags</h1>
+    <ul class="mt-8 flex flex-wrap gap-3">
+      {tags.map(({ tag, count }) => (
+        <li>
+          <Badge variant="outline" href={tagHref(tag)} class="px-3 py-1 text-sm">
+            {tag}
+            <span class="text-muted-foreground">{count}</span>
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  </div>
+</BaseLayout>

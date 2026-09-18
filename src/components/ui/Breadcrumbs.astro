@@ -1,0 +1,42 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { cn } from '@/lib/utils';
+
+export interface Crumb {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  items: Crumb[];
+  class?: string;
+}
+
+const { items, class: className } = Astro.props;
+---
+
+<nav aria-label="Breadcrumb" class={cn('text-sm text-muted-foreground', className)}>
+  <ol class="flex flex-wrap items-center gap-1.5">
+    {items.map((item, index) => {
+      const isLast = index === items.length - 1;
+      return (
+        <li class="flex items-center gap-1.5">
+          {item.href && !isLast ? (
+            <a href={item.href} class="hover:text-foreground">
+              {item.label}
+            </a>
+          ) : (
+            <span
+              aria-current={isLast ? 'page' : undefined}
+              class={isLast ? 'text-foreground' : ''}
+            >
+              {item.label}
+            </span>
+          )}
+          {!isLast && <Icon name="lucide:chevron-right" class="size-3.5" aria-hidden="true" />}
+        </li>
+      );
+    })}
+  </ol>
+</nav>

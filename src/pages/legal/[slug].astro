@@ -1,0 +1,37 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+
+import Prose from '@/components/ui/Prose.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { formatDate, toISODate } from '@/lib/utils';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('legal');
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+interface Props {
+  entry: CollectionEntry<'legal'>;
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<BaseLayout title={entry.data.title} description={entry.data.description}>
+  <article class="container max-w-3xl py-16">
+    <header class="mb-10">
+      <p class="text-sm font-semibold text-primary">Legal</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight">{entry.data.title}</h1>
+      <p class="mt-3 text-sm text-muted-foreground">
+        Last updated{' '}
+        <time datetime={toISODate(entry.data.updatedDate)}>
+          {formatDate(entry.data.updatedDate)}
+        </time>
+      </p>
+    </header>
+    <Prose as="div">
+      <Content />
+    </Prose>
+  </article>
+</BaseLayout>

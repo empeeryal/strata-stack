@@ -1,0 +1,73 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+import Logo from './Logo.astro';
+import MobileNav from './MobileNav.astro';
+import Search from './Search.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+const pathname = Astro.url.pathname;
+const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+// Only populated on server-rendered routes (see src/middleware.ts); static pages show "Sign in".
+const user = Astro.locals.user ?? null;
+---
+
+<header class="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+  <div class="container flex h-16 items-center gap-4">
+    <a
+      href="/"
+      class="mr-2 flex items-center gap-2 font-semibold"
+      aria-label={`${siteConfig.name} home`}
+    >
+      <Logo class="size-7" />
+      <span class="hidden sm:inline">{siteConfig.name}</span>
+    </a>
+
+    <nav aria-label="Main" class="hidden items-center gap-1 md:flex">
+      {siteConfig.nav.map((item) => (
+        <a
+          href={item.href}
+          aria-current={isActive(item.href) ? 'page' : undefined}
+          class="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:text-foreground"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="ml-auto flex items-center gap-1">
+      <Search />
+      <a
+        href={siteConfig.social.github}
+        target="_blank"
+        rel="noopener noreferrer"
+        class={buttonVariants({ variant: 'ghost', size: 'icon' })}
+        aria-label="GitHub repository"
+      >
+        <Icon name="simple-icons:github" class="size-5" aria-hidden="true" />
+      </a>
+      <ThemeToggle />
+      {user ? (
+        <a
+          href="/dashboard"
+          class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'hidden md:inline-flex')}
+        >
+          <Icon name="lucide:user" aria-hidden="true" />
+          {user.name}
+        </a>
+      ) : (
+        <a
+          href="/login"
+          class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'hidden md:inline-flex')}
+        >
+          Sign in
+        </a>
+      )}
+      <MobileNav userName={user?.name ?? null} />
+    </div>
+  </div>
+</header>

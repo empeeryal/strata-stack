@@ -1,0 +1,67 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { siteConfig } from '@/site.config';
+
+import Logo from './Logo.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t bg-muted/40">
+  <div class="container grid gap-10 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+    <div class="space-y-4">
+      <a href="/" class="flex items-center gap-2 font-semibold">
+        <Logo class="size-7" />
+        <span>{siteConfig.name}</span>
+      </a>
+      <p class="max-w-xs text-sm text-muted-foreground">{siteConfig.tagline}</p>
+      <div class="flex items-center gap-2">
+        <a
+          href={siteConfig.social.github}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="GitHub repository"
+        >
+          <Icon name="simple-icons:github" class="size-5" aria-hidden="true" />
+        </a>
+        <a
+          href="/rss.xml"
+          class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="RSS feed"
+        >
+          <Icon name="lucide:rss" class="size-5" aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+    {siteConfig.footer.map((group) => (
+      <nav aria-label={group.title}>
+        <p class="mb-3 text-sm font-semibold">{group.title}</p>
+        <ul class="space-y-2 text-sm">
+          {group.links.map((link) => (
+            <li>
+              <a href={link.href} class="text-muted-foreground hover:text-foreground">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    ))}
+  </div>
+  <div class="border-t">
+    <div class="container flex flex-col gap-2 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        &copy; {year} {siteConfig.author.name}. Released under the MIT License.
+      </p>
+      <p>
+        Built with{' '}
+        <a href="https://astro.build" class="underline underline-offset-4 hover:text-foreground">
+          Astro
+        </a>{' '}
+        and deployed on {__DEPLOY_TARGET__}.
+      </p>
+    </div>
+  </div>
+</footer>

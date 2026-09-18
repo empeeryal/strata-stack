@@ -1,0 +1,43 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+import { cn } from '@/lib/utils';
+
+interface Props extends HTMLAttributes<'div'> {
+  /** Make the whole card a link. The outer element keeps its semantics (e.g. `li`). */
+  href?: string;
+  /** Semantic element for the card itself. */
+  as?: 'div' | 'article' | 'section' | 'li';
+  /** Adds hover elevation, used for grids of links. */
+  interactive?: boolean;
+}
+
+const {
+  href,
+  as: Tag = 'div',
+  interactive = Boolean(href),
+  class: className,
+  ...rest
+} = Astro.props;
+
+const classes = cn(
+  'block rounded-xl border bg-card text-card-foreground shadow-soft',
+  !href && 'p-6',
+  interactive &&
+    'transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg',
+  className,
+);
+---
+
+<Tag class={classes} {...rest}>
+  {href ? (
+    <a
+      href={href}
+      class="block h-full rounded-[inherit] p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
+      <slot />
+    </a>
+  ) : (
+    <slot />
+  )}
+</Tag>

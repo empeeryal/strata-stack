@@ -1,0 +1,76 @@
+---
+title: SEO and discoverability
+description: Metadata, Open Graph images, structured data, sitemap, RSS, robots.txt, llms.txt and search.
+sidebar:
+  order: 6
+---
+
+Every page is rendered through `src/components/seo/Head.astro`, which produces consistent
+metadata from a handful of props.
+
+## Page metadata
+
+```astro
+<BaseLayout
+  title="Installation"                     // <title> becomes "Installation · Astro Framework"
+  description="…"                          // meta description + Open Graph + Twitter
+  image="/og/docs/getting-started/installation.png"
+  type="article"
+  canonical="/docs/getting-started/installation" // optional, defaults to the current path
+  noindex={false}
+  jsonLd={[…]}                             // extra schema.org graphs
+/>
+```
+
+`Head.astro` emits: title, description, canonical, robots, theme colours, icons, manifest, RSS
+and sitemap links, preloaded fonts, Open Graph and Twitter cards, article metadata and JSON-LD.
+
+## Structured data
+
+`src/lib/seo.ts` has typed builders (using `schema-dts`) for `WebSite` (with a `SearchAction`),
+`Organization`, `BreadcrumbList`, `BlogPosting` and `TechArticle`. The docs and blog layouts add
+breadcrumbs and article graphs automatically; pass your own through the `jsonLd` prop for other
+page types.
+
+## Open Graph images
+
+`src/pages/og/[...slug].png.ts` renders a 1200×630 PNG for the home page, docs index, blog
+index, changelog and every docs page and blog post. The template is a small JSX component in
+`src/lib/og-template.tsx` rendered by Satori and rasterised by resvg at build time, so no image
+service is needed at runtime. Fonts come from the same self-hosted files as the site.
+
+Blog cards reuse these images, which means posts look polished without custom artwork.
+
+## Sitemap, RSS, robots and manifest
+
+| Endpoint                         | Source                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------- |
+| `/sitemap-index.xml`             | `@astrojs/sitemap`, excluding `/dashboard`, `/api`, `/login`, `/signup`, `/500` |
+| `/rss.xml`                       | `src/pages/rss.xml.ts` with `@astrojs/rss`                                      |
+| `/robots.txt`                    | `src/pages/robots.txt.ts`, points at the sitemap                                |
+| `/manifest.webmanifest`          | `src/pages/manifest.webmanifest.ts`, reads `siteConfig`                         |
+| `/llms.txt` and `/llms-full.txt` | `src/pages/llms*.txt.ts`, an LLM-friendly map and full docs text                |
+
+All of them read the canonical URL from `site` in `astro.config.ts`, which is why `SITE_URL`
+must be correct for production builds.
+
+## Search
+
+Search is powered by [Pagefind](https://pagefind.app). The `astro-pagefind` integration indexes
+the built HTML after every build and writes the index next to the site, so it works on every
+static host without a server. `data-pagefind-body` on `<main>` limits indexing to page content,
+and navigation, tables of contents and auth pages are excluded with `data-pagefind-ignore` or
+`searchable={false}`.
+
+The header uses Pagefind's modal component (also available with <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>),
+and `/search` renders an inline results page that understands `?q=`.
+
+<Callout type="note">
+  The index is only produced by `pnpm build`. In development the last built index is served.
+</Callout>
+
+## Performance
+
+Lighthouse budgets are enforced in CI through `lighthouserc.json` (performance ≥ 90 as a
+warning; accessibility, best practices and SEO ≥ 95 as errors). Run `pnpm build:node` then
+`pnpm lhci` locally to reproduce the report.

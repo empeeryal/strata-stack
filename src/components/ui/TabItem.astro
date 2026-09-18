@@ -1,0 +1,11 @@
+---
+/** A single panel inside <Tabs>. The label is read by the parent at render time. */
+interface Props {
+  label: string;
+}
+const { label } = Astro.props;
+---
+
+<section data-tab-item data-label={label}>
+  <slot />
+</section>

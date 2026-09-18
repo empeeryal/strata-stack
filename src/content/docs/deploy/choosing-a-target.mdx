@@ -1,0 +1,57 @@
+---
+title: Choosing a target
+description: How the deploy switch works, what each platform supports and how to pick one.
+sidebar:
+  order: 1
+---
+
+The template builds for four platforms from one configuration. `config/adapter.ts` resolves the
+target from `DEPLOY_TARGET`, or from the variables each platform sets during a build
+(`VERCEL=1`, `NETLIFY=true`, `WORKERS_CI=1`), and falls back to the Node server.
+
+```bash
+pnpm build:vercel      # DEPLOY_TARGET=vercel astro build
+pnpm build:cloudflare  # wrangler types && DEPLOY_TARGET=cloudflare astro build
+pnpm build:netlify     # DEPLOY_TARGET=netlify astro build
+pnpm build:node        # DEPLOY_TARGET=node astro build (default)
+```
+
+## Feature matrix
+
+| Capability                                  | Vercel                            | Cloudflare                      | Netlify                        | Node                      |
+| ------------------------------------------- | --------------------------------- | ------------------------------- | ------------------------------ | ------------------------- |
+| Static pages                                | CDN                               | Workers static assets           | CDN                            | Served by the Node server |
+| On-demand routes (auth, dashboard, actions) | Vercel Functions                  | workerd Worker                  | Netlify Functions              | Same process              |
+| Runtime                                     | Node 24                           | workerd + `nodejs_compat`       | Node 24                        | Node 24                   |
+| Image optimisation                          | Vercel Image Optimization         | Cloudflare Images binding       | Netlify Image CDN              | Sharp at build time       |
+| CSP for prerendered pages                   | Header                            | `<meta>` element                | Header                         | Header                    |
+| Extra security headers                      | Build Output config (integration) | `public/_headers` + middleware  | `public/_headers` + middleware | Middleware (SSR)          |
+| Database                                    | Turso over HTTP                   | Turso over HTTP                 | Turso over HTTP                | File or Turso             |
+| Local dev runtime                           | Node                              | workerd (`pnpm dev:cloudflare`) | Node with Netlify emulation    | Node                      |
+
+## Recommendations
+
+- **Vercel** is the reference deployment for this repository and needs no configuration.
+- **Cloudflare** has the lowest latency at the edge; remember that on-demand code runs in
+  workerd, so avoid Node-only packages in server routes.
+- **Netlify** is a good fit if you already use Netlify Forms, Blobs or Identity.
+- **Node** is for containers and VPS hosts (Fly.io, Railway, Render, Kubernetes). The included
+  Dockerfile produces a small image with a health check.
+
+## What stays identical
+
+Application code never branches on the platform. The libSQL client picks the correct build
+through package export conditions, Better Auth works on standard `Request`/`Response` objects,
+and Astro handles routing, prerendering and the CSP. Only `config/adapter.ts`, `wrangler.jsonc`,
+`netlify.toml`, `public/_headers` and the Dockerfile are platform-specific.
+
+## Verifying before you deploy
+
+Run the build for your target and, for Node, start the server:
+
+```bash
+pnpm build:node && pnpm start
+```
+
+CI builds every target on each pull request, so a passing pipeline is a strong signal that the
+deployment will succeed.

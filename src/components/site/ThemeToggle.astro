@@ -1,0 +1,70 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<theme-toggle class="contents">
+  <button
+    type="button"
+    class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), className)}
+    aria-label="Toggle dark mode"
+    title="Toggle dark mode"
+  >
+    <Icon name="lucide:sun" class="theme-icon-light size-5" aria-hidden="true" />
+    <Icon name="lucide:moon" class="theme-icon-dark size-5" aria-hidden="true" />
+  </button>
+</theme-toggle>
+
+<style>
+  :global([data-theme='dark']) .theme-icon-light,
+  :global(:root:not([data-theme='dark'])) .theme-icon-dark {
+    display: none;
+  }
+</style>
+
+<script>
+  import { THEME_STORAGE_KEY } from '@/lib/theme-script';
+
+  type Theme = 'light' | 'dark';
+
+  const root = document.documentElement;
+  const media = matchMedia('(prefers-color-scheme: dark)');
+
+  function apply(theme: Theme, preference: Theme | 'system') {
+    root.dataset.theme = theme;
+    root.dataset.themePreference = preference;
+    root.style.colorScheme = theme;
+  }
+
+  // Follow OS changes while no explicit choice has been made.
+  media.addEventListener('change', (event) => {
+    if (root.dataset.themePreference === 'system') {
+      apply(event.matches ? 'dark' : 'light', 'system');
+    }
+  });
+
+  class ThemeToggle extends HTMLElement {
+    connectedCallback() {
+      this.querySelector('button')?.addEventListener('click', () => {
+        const next: Theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        apply(next, next);
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, next);
+        } catch {
+          /* storage unavailable */
+        }
+      });
+    }
+  }
+
+  if (!customElements.get('theme-toggle')) {
+    customElements.define('theme-toggle', ThemeToggle);
+  }
+</script>

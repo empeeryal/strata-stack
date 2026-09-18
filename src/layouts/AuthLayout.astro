@@ -1,0 +1,40 @@
+---
+import Logo from '@/components/site/Logo.astro';
+import { siteConfig } from '@/site.config';
+
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  heading: string;
+  subheading?: string;
+}
+
+const { title, description, heading, subheading } = Astro.props;
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  noindex
+  searchable={false}
+  hideFooter
+  class="flex items-center justify-center px-4 py-12"
+>
+  <div class="w-full max-w-md">
+    <div class="mb-6 flex flex-col items-center text-center">
+      <a href="/" aria-label={`${siteConfig.name} home`}>
+        <Logo class="size-12" />
+      </a>
+      <h1 class="mt-4 text-2xl font-bold tracking-tight">{heading}</h1>
+      {subheading && <p class="mt-2 text-sm text-muted-foreground">{subheading}</p>}
+    </div>
+    <div class="rounded-xl border bg-card p-6 shadow-soft">
+      <slot />
+    </div>
+    <div class="mt-6 text-center text-sm text-muted-foreground">
+      <slot name="footer" />
+    </div>
+  </div>
+</BaseLayout>

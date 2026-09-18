@@ -1,0 +1,63 @@
+---
+/**
+ * Site search powered by Pagefind (static index built after `astro build`).
+ * Renders a header trigger button and a modal. In `astro dev` the index from the
+ * last build is served, so run `pnpm build` once to try search locally.
+ */
+import PagefindConfig from 'astro-pagefind/components/PagefindConfig.astro';
+import { Icon } from 'astro-icon/components';
+
+import Kbd from '@/components/ui/Kbd.astro';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
+---
+
+<PagefindConfig />
+
+{/* Pagefind renders its own trigger button; it stays hidden and is clicked programmatically. */}
+<pagefind-modal-trigger class="pf-trigger-hidden"></pagefind-modal-trigger>
+
+<search-trigger class="contents">
+  <button
+    type="button"
+    class={cn(
+      buttonVariants({ variant: 'outline', size: 'sm' }),
+      'hidden w-56 justify-between text-muted-foreground md:flex',
+    )}
+    aria-label="Search the site"
+  >
+    <span class="flex items-center gap-2">
+      <Icon name="lucide:search" aria-hidden="true" />
+      Search…
+    </span>
+    <span class="flex gap-1">
+      <Kbd>Ctrl</Kbd>
+      <Kbd>K</Kbd>
+    </span>
+  </button>
+  <button
+    type="button"
+    class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'md:hidden')}
+    aria-label="Search the site"
+  >
+    <Icon name="lucide:search" class="size-5" aria-hidden="true" />
+  </button>
+</search-trigger>
+
+<pagefind-modal placeholder="Search docs, blog and changelog…"></pagefind-modal>
+
+<script>
+  class SearchTrigger extends HTMLElement {
+    connectedCallback() {
+      for (const button of this.querySelectorAll('button')) {
+        button.addEventListener('click', () => {
+          document.querySelector<HTMLButtonElement>('pagefind-modal-trigger button')?.click();
+        });
+      }
+    }
+  }
+
+  if (!customElements.get('search-trigger')) {
+    customElements.define('search-trigger', SearchTrigger);
+  }
+</script>

@@ -1,0 +1,65 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { Icon } from 'astro-icon/components';
+
+import PostCard from '@/components/site/PostCard.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Pagination from '@/components/ui/Pagination.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { POSTS_PER_PAGE, collectTags, getPublishedPosts, tagHref } from '@/lib/content';
+import { siteConfig } from '@/site.config';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = await getPublishedPosts();
+  return paginate(posts, { pageSize: POSTS_PER_PAGE });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+const tags = collectTags(await getPublishedPosts());
+const isFirstPage = page.currentPage === 1;
+---
+
+<BaseLayout
+  title={
+    isFirstPage ? siteConfig.blog.title : `${siteConfig.blog.title} – page ${page.currentPage}`
+  }
+  description={siteConfig.blog.description}
+  canonical={isFirstPage ? '/blog' : `/blog/${page.currentPage}`}
+  image="/og/blog.png"
+>
+  <div class="container py-16">
+    <header class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <div class="max-w-2xl">
+        <p class="text-sm font-semibold text-primary">Blog</p>
+        <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">{siteConfig.blog.title}</h1>
+        <p class="mt-4 text-lg text-pretty text-muted-foreground">{siteConfig.blog.description}</p>
+      </div>
+      <a
+        href="/rss.xml"
+        class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Icon name="lucide:rss" class="size-4" aria-hidden="true" />
+        RSS feed
+      </a>
+    </header>
+
+    {tags.length > 0 && (
+      <nav aria-label="Tags" class="mt-8 flex flex-wrap gap-2">
+        {tags.map(({ tag, count }) => (
+          <Badge variant="outline" href={tagHref(tag)}>
+            {tag}
+            <span class="text-muted-foreground">{count}</span>
+          </Badge>
+        ))}
+      </nav>
+    )}
+
+    <ul class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {page.data.map((post, index) => (
+        <PostCard post={post} eager={index < 3} />
+      ))}
+    </ul>
+
+    <Pagination page={page} class="mt-12" />
+  </div>
+</BaseLayout>

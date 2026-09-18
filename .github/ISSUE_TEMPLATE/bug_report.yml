@@ -1,0 +1,38 @@
+name: Bug report
+description: Something is not working as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. pnpm install
+        2. pnpm build:cloudflare
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Deploy target
+      options: [node, vercel, cloudflare, netlify, not relevant]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `node -v`, `pnpm -v` and the template version from package.json.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: shell

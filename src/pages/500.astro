@@ -1,0 +1,32 @@
+---
+import Button from '@/components/ui/Button.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+
+interface Props {
+  error: unknown;
+}
+
+const { error } = Astro.props;
+const message = import.meta.env.DEV && error instanceof Error ? error.message : null;
+---
+
+<BaseLayout
+  title="Something went wrong"
+  description="An unexpected error occurred."
+  noindex
+  searchable={false}
+>
+  <section class="container flex flex-col items-center py-24 text-center">
+    <p class="font-mono text-sm text-muted-foreground">500</p>
+    <h1 class="mt-2 text-4xl font-bold tracking-tight">Something went wrong</h1>
+    <p class="mt-4 max-w-md text-pretty text-muted-foreground">
+      The server hit an unexpected error. It has been logged; please try again in a moment.
+    </p>
+    {message && <pre class="mt-6 max-w-2xl overflow-x-auto rounded-md border bg-code p-4 text-left font-mono text-xs">
+          {message}
+        </pre>}
+    <div class="mt-8">
+      <Button href="/">Back to home</Button>
+    </div>
+  </section>
+</BaseLayout>

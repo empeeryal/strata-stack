@@ -1,0 +1,49 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import ContactForm from '@/components/react/ContactForm';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { siteConfig } from '@/site.config';
+---
+
+<BaseLayout
+  title="Contact"
+  description={`Get in touch with the ${siteConfig.name} maintainers.`}
+  class="container max-w-5xl py-16"
+>
+  <div class="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
+    <div>
+      <p class="text-sm font-semibold text-primary">Contact</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">Send us a message</h1>
+      <p class="mt-4 text-pretty text-muted-foreground">
+        Questions, bug reports and ideas are welcome. For security issues, please follow the
+        responsible disclosure process in <code class="font-mono text-sm">SECURITY.md</code> instead
+        of this form.
+      </p>
+      <ul class="mt-8 space-y-4 text-sm">
+        <li class="flex gap-3">
+          <Icon name="simple-icons:github" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            Prefer GitHub?{' '}
+            <a
+              href={`${siteConfig.repo.url}/issues`}
+              class="font-medium underline underline-offset-4"
+            >
+              Open an issue
+            </a>
+          </span>
+        </li>
+        <li class="flex gap-3">
+          <Icon name="lucide:shield-check" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            This form is an Astro Action with server-side validation, a honeypot field and database
+            persistence. Messages are emailed when Resend is configured.
+          </span>
+        </li>
+      </ul>
+    </div>
+    <div class="rounded-xl border bg-card p-6 shadow-soft">
+      <ContactForm client:visible />
+    </div>
+  </div>
+</BaseLayout>

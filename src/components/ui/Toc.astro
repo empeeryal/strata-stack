@@ -1,0 +1,78 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+import { cn } from '@/lib/utils';
+
+interface Props {
+  headings: MarkdownHeading[];
+  minDepth?: number;
+  maxDepth?: number;
+  title?: string;
+  class?: string;
+}
+
+const {
+  headings,
+  minDepth = 2,
+  maxDepth = 3,
+  title = 'On this page',
+  class: className,
+} = Astro.props;
+const items = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
+---
+
+{items.length > 0 && (
+  <table-of-contents class={cn('block text-sm', className)}>
+    <p class="mb-3 font-semibold">{title}</p>
+    <ul class="space-y-1 border-l">
+      {items.map((heading) => (
+        <li>
+          <a
+            href={`#${heading.slug}`}
+            class={cn(
+              '-ml-px block border-l-2 border-transparent py-1 pr-2 text-muted-foreground transition-colors hover:text-foreground aria-[current=true]:border-primary aria-[current=true]:font-medium aria-[current=true]:text-foreground',
+              heading.depth === minDepth ? 'pl-4' : 'pl-7',
+            )}
+          >
+            {heading.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </table-of-contents>
+)}
+
+<script>
+  class TableOfContents extends HTMLElement {
+    connectedCallback() {
+      const links = Array.from(this.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
+      const targets = links
+        .map((link) => document.getElementById(decodeURIComponent(link.hash.slice(1))))
+        .filter((element): element is HTMLElement => element !== null);
+      if (targets.length === 0) return;
+
+      const setActive = (id: string) => {
+        for (const link of links) {
+          const isActive = link.hash === `#${id}`;
+          if (isActive) link.setAttribute('aria-current', 'true');
+          else link.removeAttribute('aria-current');
+        }
+      };
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (visible[0]) setActive(visible[0].target.id);
+        },
+        { rootMargin: '-80px 0px -70% 0px', threshold: [0, 1] },
+      );
+      targets.forEach((target) => observer.observe(target));
+    }
+  }
+
+  if (!customElements.get('table-of-contents')) {
+    customElements.define('table-of-contents', TableOfContents);
+  }
+</script>

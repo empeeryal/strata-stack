@@ -1,0 +1,106 @@
+---
+title: Styling and dark mode
+description: Tailwind CSS 4, the OKLCH design tokens, self-hosted fonts and the flash-free theme switch.
+sidebar:
+  order: 1
+---
+
+## Tailwind CSS 4
+
+Tailwind is wired through the official Vite plugin (`@tailwindcss/vite` in `astro.config.ts`).
+There is no `tailwind.config.js`: everything is declared in `src/styles/global.css`, which is
+imported once by `BaseLayout.astro`.
+
+```css title="src/styles/global.css"
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+```
+
+Tailwind scans every file in the project for class names, including `.astro`, `.mdx` and `.tsx`,
+so React islands and Markdown content share the same utilities.
+
+## Design tokens
+
+Colours are defined once as CSS custom properties in OKLCH, with a light set on `:root` and a
+dark set on `[data-theme='dark']`. The `@theme inline` block maps them to Tailwind colour
+utilities, so `bg-background`, `text-muted-foreground`, `border-primary/40` and friends work
+everywhere and switch automatically with the theme.
+
+| Token                                  | Utility                                  | Purpose                                 |
+| -------------------------------------- | ---------------------------------------- | --------------------------------------- |
+| `--background` / `--foreground`        | `bg-background`, `text-foreground`       | Page surface and body text              |
+| `--card`                               | `bg-card`                                | Elevated surfaces                       |
+| `--muted` / `--muted-foreground`       | `bg-muted`, `text-muted-foreground`      | Subtle backgrounds and secondary text   |
+| `--primary`                            | `bg-primary`, `text-primary`             | Brand colour, buttons, links            |
+| `--accent`                             | `text-accent`                            | Gradient partner for the primary colour |
+| `--success` / `--warning` / `--danger` | `text-success` …                         | Status colours                          |
+| `--border` / `--input` / `--ring`      | `border`, `border-input`, `outline-ring` | Lines and focus rings                   |
+| `--radius`                             | `rounded-lg` …                           | Corner radius scale                     |
+
+To rebrand, change the primary hue in both colour sets and update `themeColor` in
+`src/site.config.ts` so the browser UI matches.
+
+<Callout type="tip" title="Prefer semantic tokens">
+  Use `text-muted-foreground` rather than `text-gray-500`. Semantic tokens keep dark mode and future
+  palette changes free of search-and-replace.
+</Callout>
+
+## Dark mode
+
+Dark mode is controlled by `data-theme` on `<html>`, not by the `prefers-color-scheme` media
+query alone, so visitors can override their OS preference.
+
+1. `src/lib/theme-script.ts` exports a tiny script that reads `localStorage.theme`, falls back
+   to the OS preference and sets `data-theme` before the first paint.
+2. `integrations/theme-script.ts` injects it into `<head>` with `injectScript('head-inline')`.
+   Astro hashes scripts injected at that stage, so the Content Security Policy allows it without
+   `'unsafe-inline'`.
+3. `ThemeToggle.astro` flips the attribute, stores the choice and keeps following OS changes while
+   no explicit choice has been made.
+
+The `dark:` variant is available in Tailwind classes, but most components never need it because
+the tokens already change.
+
+## Fonts
+
+Inter and JetBrains Mono are self-hosted through Astro's Fonts API. The files live in
+`src/assets/fonts` (variable WOFF2 for the UI, static WOFF for Open Graph images) and are
+registered in `astro.config.ts`:
+
+```ts title="astro.config.ts"
+fonts: [
+  {
+    provider: fontProviders.local(),
+    name: 'Inter',
+    cssVariable: '--font-inter',
+    options: { variants: [{ weight: '100 900', style: 'normal', src: ['./src/assets/fonts/inter-latin-wght-normal.woff2'] }] },
+  },
+],
+```
+
+Astro generates `@font-face` rules, preload links and metric-matched fallback fonts. Tailwind's
+`font-sans` and `font-mono` map to the generated CSS variables in `global.css`.
+
+To swap fonts, replace the files, update the `fonts` array and the `@theme inline` block. You
+can also use `fontProviders.fontsource()` or `fontProviders.google()` if you prefer downloading
+fonts at build time.
+
+## Components
+
+`src/components/ui` contains the design-system primitives used across the site: `Button`,
+`Badge`, `Card`, `Callout`, `Tabs`/`TabItem`, `Steps`, `Breadcrumbs`, `Pagination`, `Toc`,
+`Prose`, `CodeBlock` and `Kbd`. Variants are described with `class-variance-authority` so the
+React islands (`src/components/react/primitives.tsx`) can share the exact same class recipes.
+
+`Prose.astro` wraps rendered Markdown, adds anchor links to headings at render time and attaches
+a copy button to every code block.
+
+## Motion
+
+React islands animate with [Motion](https://motion.dev). Import from `motion/react`, respect
+`useReducedMotion()` and hydrate lazily with `client:visible` where the island is below the
+fold. `DeployTargets.tsx` on the home page is the reference implementation. Astro components use
+CSS animations declared in `@theme` (`animate-fade-up`) so no JavaScript is required for
+above-the-fold motion.
