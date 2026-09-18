@@ -17,21 +17,21 @@ client, and Cloudflare exposes secrets through `process.env` when `nodejs_compat
 
 ## Reference
 
-| Variable                                   | Scope         | Notes                                                                      |
-| ------------------------------------------ | ------------- | -------------------------------------------------------------------------- |
-| `DEPLOY_TARGET`                            | build         | `node`, `vercel`, `cloudflare`, `netlify`. Auto-detected on the platforms. |
-| `SITE_URL`                                 | build         | Canonical origin for sitemap, RSS, OG images and canonical links.          |
-| `DATABASE_URL`                             | runtime       | `file:./.data/local.db` or `libsql://…`.                                   |
-| `DATABASE_AUTH_TOKEN`                      | runtime       | Turso token.                                                               |
-| `BETTER_AUTH_SECRET`                       | runtime       | ≥ 32 random bytes.                                                         |
-| `BETTER_AUTH_URL`                          | runtime       | Public origin visitors use.                                                |
-| `BETTER_AUTH_TRUSTED_ORIGINS`              | runtime       | Comma-separated extra origins; wildcards allowed.                          |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | runtime       | Enables GitHub sign-in.                                                    |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | runtime       | Enables Google sign-in.                                                    |
-| `RESEND_API_KEY`                           | runtime       | Sends magic links and contact messages.                                    |
-| `EMAIL_FROM`                               | runtime       | Sender address, e.g. `Site <noreply@example.com>`.                         |
-| `CONTACT_TO_EMAIL`                         | runtime       | Recipient of contact messages.                                             |
-| `PUBLIC_ANALYTICS`                         | build, public | `none` or `vercel`.                                                        |
+| Variable                                   | Scope         | Notes                                                                                            |
+| ------------------------------------------ | ------------- | ------------------------------------------------------------------------------------------------ |
+| `DEPLOY_TARGET`                            | build         | `node`, `vercel`, `cloudflare`, `netlify`. Auto-detected on the platforms.                       |
+| `SITE_URL`                                 | build         | Optional canonical origin. Defaults to the Vercel/Netlify production URL, then `siteConfig.url`. |
+| `DATABASE_URL`                             | runtime       | `file:./.data/local.db` or `libsql://…`.                                                         |
+| `DATABASE_AUTH_TOKEN`                      | runtime       | Turso token.                                                                                     |
+| `BETTER_AUTH_SECRET`                       | runtime       | ≥ 32 random bytes.                                                                               |
+| `BETTER_AUTH_URL`                          | runtime       | Public origin visitors use, as a full URL (`https://…`).                                         |
+| `BETTER_AUTH_TRUSTED_ORIGINS`              | runtime       | Comma-separated extra origins; wildcards allowed.                                                |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | runtime       | Enables GitHub sign-in.                                                                          |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | runtime       | Enables Google sign-in.                                                                          |
+| `RESEND_API_KEY`                           | runtime       | Sends magic links and contact messages.                                                          |
+| `EMAIL_FROM`                               | runtime       | Sender address, e.g. `Site <noreply@example.com>`.                                               |
+| `CONTACT_TO_EMAIL`                         | runtime       | Recipient of contact messages.                                                                   |
+| `PUBLIC_ANALYTICS`                         | build, public | `none` or `vercel`.                                                                              |
 
 Build-time variables must be present during `astro build`; runtime variables must be present
 where the server code runs.
