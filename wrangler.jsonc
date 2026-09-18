@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "astro-framework-v2",
+  // Node.js compatibility is required by Better Auth (AsyncLocalStorage) and lets
+  // `process.env` read Worker variables/secrets at runtime.
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+  },
+  // Session KV and Images bindings are provisioned automatically by the adapter when
+  // used. Add D1/R2/KV bindings here when your project needs them.
+}

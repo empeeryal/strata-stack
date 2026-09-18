@@ -1,0 +1,54 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      astro:
+        patterns: ['astro', '@astrojs/*', 'astro-*']
+      react:
+        patterns:
+          ['react', 'react-dom', '@types/react', '@types/react-dom', 'motion', 'lucide-react']
+      auth-and-data:
+        patterns: ['better-auth', '@better-auth/*', 'auth', 'drizzle-*', '@libsql/*', 'resend']
+      styling:
+        patterns:
+          [
+            'tailwindcss',
+            '@tailwindcss/*',
+            'prettier-plugin-tailwindcss',
+            'class-variance-authority',
+            'clsx',
+            'tailwind-merge',
+          ]
+      tooling:
+        patterns:
+          [
+            'eslint*',
+            '@eslint/*',
+            'typescript-eslint',
+            'prettier*',
+            'vitest',
+            '@vitest/*',
+            '@playwright/*',
+            '@axe-core/*',
+            'husky',
+            'lint-staged',
+            '@changesets/*',
+            '@lhci/*',
+            'globals',
+            'happy-dom',
+            '@testing-library/*',
+          ]
+    ignore:
+      # TypeScript 7 is not yet supported by @astrojs/check and typescript-eslint.
+      - dependency-name: typescript
+        versions: ['>=7.0.0']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

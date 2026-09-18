@@ -1,0 +1,10 @@
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+  DEPLOY_TARGET = "netlify"
+  # Functions runtime must be set in the Netlify UI/CLI: AWS_LAMBDA_JS_RUNTIME=nodejs24.x
+
+# Security headers for static assets live in public/_headers (also used by Cloudflare).

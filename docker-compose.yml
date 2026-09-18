@@ -1,0 +1,19 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        SITE_URL: ${SITE_URL:-http://localhost:4321}
+    ports:
+      - '4321:4321'
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: file:/app/.data/local.db
+      BETTER_AUTH_URL: ${SITE_URL:-http://localhost:4321}
+    volumes:
+      - app-data:/app/.data
+    restart: unless-stopped
+
+volumes:
+  app-data:
