@@ -1,0 +1,46 @@
+---
+import { PUBLIC_ANALYTICS } from 'astro:env/client';
+
+import Analytics from '@vercel/analytics/astro';
+
+import Head, { type Props as HeadProps } from '@/components/seo/Head.astro';
+import Footer from '@/components/site/Footer.astro';
+import Header from '@/components/site/Header.astro';
+import SkipLink from '@/components/ui/SkipLink.astro';
+import { cn } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+import '@/styles/global.css';
+
+interface Props extends HeadProps {
+  /** Extra classes for <main>. */
+  class?: string;
+  /** Hide the global footer (e.g. auth pages). */
+  hideFooter?: boolean;
+  /** Include this page in the Pagefind search index (default true). */
+  searchable?: boolean;
+}
+
+const { class: className, hideFooter = false, searchable = true, ...head } = Astro.props;
+---
+
+<!doctype html>
+<html lang={siteConfig.locale}>
+  <head>
+    <Head {...head} />
+    <slot name="head" />
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <SkipLink />
+    <Header />
+    <main
+      id="main"
+      class={cn('flex-1', className)}
+      data-pagefind-body={searchable ? '' : undefined}
+    >
+      <slot />
+    </main>
+    {!hideFooter && <Footer />}
+    {PUBLIC_ANALYTICS === 'vercel' && <Analytics />}
+  </body>
+</html>

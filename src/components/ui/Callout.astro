@@ -1,0 +1,55 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { cn } from '@/lib/utils';
+
+type Variant = 'note' | 'tip' | 'warning' | 'danger';
+
+interface Props {
+  type?: Variant;
+  title?: string;
+  class?: string;
+}
+
+const { type = 'note', title, class: className } = Astro.props;
+
+const variants: Record<Variant, { icon: string; label: string; classes: string }> = {
+  note: {
+    icon: 'lucide:info',
+    label: 'Note',
+    classes: 'border-primary/30 bg-primary/5 [&_.callout-icon]:text-primary',
+  },
+  tip: {
+    icon: 'lucide:lightbulb',
+    label: 'Tip',
+    classes: 'border-success/40 bg-success/10 [&_.callout-icon]:text-success',
+  },
+  warning: {
+    icon: 'lucide:triangle-alert',
+    label: 'Warning',
+    classes: 'border-warning/50 bg-warning/15 [&_.callout-icon]:text-warning-foreground',
+  },
+  danger: {
+    icon: 'lucide:octagon-alert',
+    label: 'Danger',
+    classes: 'border-danger/40 bg-danger/10 [&_.callout-icon]:text-danger',
+  },
+};
+
+const variant = variants[type];
+---
+
+<aside
+  class={cn(
+    'callout my-6 flex gap-3 rounded-lg border p-4 text-sm leading-relaxed [&_p]:my-1 [&_:first-child]:mt-0 [&_:last-child]:mb-0',
+    variant.classes,
+    className,
+  )}
+  aria-label={title ?? variant.label}
+>
+  <Icon name={variant.icon} class="callout-icon mt-0.5 size-5 shrink-0" aria-hidden="true" />
+  <div class="min-w-0 flex-1">
+    <p class="font-semibold">{title ?? variant.label}</p>
+    <slot />
+  </div>
+</aside>

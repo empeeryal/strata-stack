@@ -1,0 +1,360 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import pkg from '../../package.json';
+import DeployTargets from '@/components/react/DeployTargets';
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import Card from '@/components/ui/Card.astro';
+import CodeBlock from '@/components/ui/CodeBlock.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { siteConfig } from '@/site.config';
+
+const quickstart = [
+  `git clone ${siteConfig.repo.url}.git my-site`,
+  'cd my-site',
+  'pnpm install',
+  'cp .env.example .env',
+  'pnpm db:migrate',
+  'pnpm dev',
+].join('\n');
+
+const targets = [
+  { label: 'Vercel', icon: 'simple-icons:vercel', href: '/docs/deploy/vercel' },
+  { label: 'Cloudflare', icon: 'simple-icons:cloudflare', href: '/docs/deploy/cloudflare' },
+  { label: 'Netlify', icon: 'simple-icons:netlify', href: '/docs/deploy/netlify' },
+  { label: 'Node & Docker', icon: 'simple-icons:nodedotjs', href: '/docs/deploy/node' },
+];
+
+const features = [
+  {
+    icon: 'lucide:rocket',
+    title: 'Astro 7.3 at the core',
+    description:
+      'Static-first pages with islands where you need them, Vite 8 and the Rust compiler for fast builds and stricter HTML.',
+    href: '/docs/getting-started/introduction',
+  },
+  {
+    icon: 'lucide:atom',
+    title: 'React 19 + Motion',
+    description:
+      'Interactive islands written in React 19 and animated with Motion, hydrated only where they are used.',
+    href: '/docs/guides/styling',
+  },
+  {
+    icon: 'lucide:palette',
+    title: 'Tailwind CSS 4 and dark mode',
+    description:
+      'OKLCH design tokens, a flash-free theme switch that respects the OS, and self-hosted variable fonts.',
+    href: '/docs/guides/styling',
+  },
+  {
+    icon: 'lucide:shield-check',
+    title: 'Better Auth',
+    description:
+      'Email and password, GitHub, Google and magic-link sign-in with protected routes and sessions stored in your database.',
+    href: '/docs/guides/authentication',
+  },
+  {
+    icon: 'lucide:database',
+    title: 'Drizzle + libSQL',
+    description:
+      'A type-safe schema with migrations. A file database in development, Turso over HTTP in production, on every platform.',
+    href: '/docs/guides/database',
+  },
+  {
+    icon: 'lucide:book-open',
+    title: 'MDX docs and blog',
+    description:
+      'Content collections with tabs, callouts, steps, a table of contents, tags, RSS and reading time out of the box.',
+    href: '/docs/guides/content',
+  },
+  {
+    icon: 'lucide:search-check',
+    title: 'SEO built in',
+    description:
+      'Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, llms.txt and Pagefind search.',
+    href: '/docs/guides/seo',
+  },
+  {
+    icon: 'lucide:lock',
+    title: 'Secure by default',
+    description:
+      'A hash-based Content Security Policy, hardened response headers, CSRF origin checks and rate limiting.',
+    href: '/docs/guides/security',
+  },
+  {
+    icon: 'lucide:flask-conical',
+    title: 'Tested and automated',
+    description:
+      'Vitest, Playwright with axe accessibility checks, Lighthouse budgets and a CI matrix that builds every target.',
+    href: '/docs/guides/testing',
+  },
+];
+
+const deps = pkg.dependencies as Record<string, string>;
+const stack = [
+  ['Astro', 'astro'],
+  ['React', 'react'],
+  ['Motion', 'motion'],
+  ['Tailwind CSS', 'tailwindcss'],
+  ['Better Auth', 'better-auth'],
+  ['Drizzle ORM', 'drizzle-orm'],
+  ['libSQL client', '@libsql/client'],
+  ['MDX', '@astrojs/mdx'],
+].map(([name, dep]) => ({ name, dep, version: deps[dep!]?.replace(/^[\^~]/, '') ?? '' }));
+
+const steps = [
+  {
+    title: 'Clone and rename',
+    description:
+      'Every name, URL and link lives in src/site.config.ts. Update it once and the header, footer, SEO tags and manifest follow.',
+  },
+  {
+    title: 'Write content',
+    description:
+      'Add MDX to src/content for docs and blog posts. Schemas are validated at build time and the sidebar, TOC and RSS feed update themselves.',
+  },
+  {
+    title: 'Deploy anywhere',
+    description:
+      'Set DEPLOY_TARGET (or let the platform be detected) and push. Vercel, Cloudflare, Netlify and Node builds share one config.',
+  },
+];
+---
+
+<BaseLayout>
+  <section class="hero relative overflow-hidden">
+    <div class="container flex flex-col items-center gap-8 py-20 text-center md:py-28">
+      <Badge variant="secondary" class="animate-fade-up">
+        <Icon name="lucide:sparkles" aria-hidden="true" />
+        Astro 7.3 · React 19 · Node 24
+      </Badge>
+      <h1 class="max-w-4xl animate-fade-up text-4xl font-bold tracking-tight text-balance [animation-delay:80ms] sm:text-5xl md:text-6xl">
+        Ship a complete website on <span class="text-gradient animate-shimmer">Astro 7</span>, not a
+        starter you still have to finish.
+      </h1>
+      <p class="max-w-2xl animate-fade-up text-lg text-pretty text-muted-foreground [animation-delay:160ms]">
+        {siteConfig.description}
+      </p>
+      <div class="flex animate-fade-up flex-wrap justify-center gap-3 [animation-delay:240ms]">
+        <Button href="/docs/getting-started/introduction" size="lg">
+          Get started
+          <Icon name="lucide:arrow-right" aria-hidden="true" />
+        </Button>
+        <Button href={siteConfig.repo.url} variant="outline" size="lg" external>
+          <Icon name="simple-icons:github" aria-hidden="true" />
+          Star on GitHub
+        </Button>
+      </div>
+      <CodeBlock
+        code={quickstart}
+        lang="bash"
+        title="Terminal"
+        class="w-full max-w-2xl animate-fade-up text-left [animation-delay:320ms]"
+      />
+    </div>
+  </section>
+
+  <section class="border-y bg-muted/40" aria-labelledby="targets-heading">
+    <div class="container py-12">
+      <h2
+        id="targets-heading"
+        class="text-center text-sm font-semibold tracking-wider text-muted-foreground uppercase"
+      >
+        One codebase. Four deploy targets.
+      </h2>
+      <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {targets.map((target) => (
+          <li>
+            <a
+              href={target.href}
+              class="flex items-center justify-center gap-3 rounded-lg border bg-background px-4 py-4 font-medium transition-colors hover:border-primary/40 hover:bg-card"
+            >
+              <Icon name={target.icon} class="size-6" aria-hidden="true" />
+              {target.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="container py-20" aria-labelledby="features-heading">
+    <div class="mx-auto max-w-2xl text-center">
+      <h2 id="features-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+        Everything a modern site needs, already wired together
+      </h2>
+      <p class="mt-4 text-pretty text-muted-foreground">
+        This site is built from the template you are reading about. Every feature below is running
+        on the page in front of you.
+      </p>
+    </div>
+    <ul class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {features.map((feature) => (
+        <Card as="li" href={feature.href} class="group">
+          <div class="mb-4 inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon name={feature.icon} class="size-5" aria-hidden="true" />
+          </div>
+          <h3 class="font-semibold group-hover:text-primary">{feature.title}</h3>
+          <p class="mt-2 text-sm text-pretty text-muted-foreground">{feature.description}</p>
+        </Card>
+      ))}
+    </ul>
+  </section>
+
+  <section class="border-t bg-muted/40" aria-labelledby="deploy-heading">
+    <div class="container grid gap-12 py-20 lg:grid-cols-2 lg:items-center">
+      <div>
+        <h2 id="deploy-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+          Pick a platform at build time
+        </h2>
+        <p class="mt-4 text-pretty text-muted-foreground">
+          A single{' '}
+          <code class="rounded bg-code px-1.5 py-0.5 font-mono text-sm">astro.config.ts</code>{' '}
+          selects the adapter from the{' '}
+          <code class="rounded bg-code px-1.5 py-0.5 font-mono text-sm">DEPLOY_TARGET</code>{' '}
+          environment variable, or detects the platform automatically. Static pages, server-rendered
+          auth routes, image optimisation and security headers work the same way everywhere.
+        </p>
+        <ul class="mt-6 space-y-3 text-sm">
+          <li class="flex gap-3">
+            <Icon
+              name="lucide:check"
+              class="mt-0.5 size-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+            Static-first output with <code class="font-mono">prerender = false</code> only where you
+            need a server.
+          </li>
+          <li class="flex gap-3">
+            <Icon
+              name="lucide:check"
+              class="mt-0.5 size-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+            One database client that resolves to the right driver on Node, Workers and edge
+            runtimes.
+          </li>
+          <li class="flex gap-3">
+            <Icon
+              name="lucide:check"
+              class="mt-0.5 size-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+            CI builds all four targets on every pull request so nothing drifts.
+          </li>
+        </ul>
+      </div>
+      <DeployTargets client:visible />
+    </div>
+  </section>
+
+  <section class="container py-20" aria-labelledby="stack-heading">
+    <div class="grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:items-start">
+      <div>
+        <h2 id="stack-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+          Current, pinned and tested
+        </h2>
+        <p class="mt-4 text-pretty text-muted-foreground">
+          Versions below are read from this repository's{' '}
+          <code class="font-mono text-sm">package.json</code> at build time, so the page never lies
+          about what it runs on. Dependabot keeps them fresh and the CI matrix proves every upgrade
+          still builds on all targets.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-2">
+          <Badge variant="outline">Node {pkg.engines.node}</Badge>
+          <Badge variant="outline">pnpm</Badge>
+          <Badge variant="outline">TypeScript strict</Badge>
+          <Badge variant="outline">ESLint 10</Badge>
+        </div>
+      </div>
+      <table class="w-full overflow-hidden rounded-xl border text-sm shadow-soft">
+        <caption class="sr-only">Core dependencies and their versions</caption>
+        <thead class="bg-muted/60 text-left">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Package
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              npm
+            </th>
+            <th scope="col" class="px-4 py-3 text-right font-semibold">
+              Version
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y bg-card">
+          {stack.map((item) => (
+            <tr>
+              <td class="px-4 py-3 font-medium">{item.name}</td>
+              <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{item.dep}</td>
+              <td class="px-4 py-3 text-right font-mono text-xs">{item.version}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="border-t bg-muted/40" aria-labelledby="steps-heading">
+    <div class="container py-20">
+      <h2
+        id="steps-heading"
+        class="text-center text-3xl font-bold tracking-tight text-balance sm:text-4xl"
+      >
+        From clone to production in three steps
+      </h2>
+      <ol class="mt-12 grid gap-6 md:grid-cols-3">
+        {steps.map((step, index) => (
+          <li class="rounded-xl border bg-card p-6 shadow-soft">
+            <span class="inline-flex size-9 items-center justify-center rounded-full border bg-muted font-mono text-sm font-semibold">
+              {index + 1}
+            </span>
+            <h3 class="mt-4 font-semibold">{step.title}</h3>
+            <p class="mt-2 text-sm text-pretty text-muted-foreground">{step.description}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="container py-20 text-center" aria-labelledby="cta-heading">
+    <h2 id="cta-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+      Start with the docs, or read how it was built
+    </h2>
+    <p class="mx-auto mt-4 max-w-xl text-pretty text-muted-foreground">
+      The documentation covers every part of the template. The blog explains the decisions behind
+      it.
+    </p>
+    <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <Button href="/docs" size="lg">
+        Read the docs
+      </Button>
+      <Button href="/blog" variant="outline" size="lg">
+        Visit the blog
+      </Button>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(
+        60rem 30rem at 50% -10%,
+        color-mix(in oklch, var(--color-primary) 18%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        40rem 20rem at 85% 10%,
+        color-mix(in oklch, var(--color-accent) 14%, transparent),
+        transparent 70%
+      );
+    pointer-events: none;
+  }
+</style>

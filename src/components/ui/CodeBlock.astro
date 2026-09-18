@@ -1,0 +1,37 @@
+---
+import { Code } from 'astro:components';
+import type { BundledLanguage } from 'shiki';
+
+import { cn } from '@/lib/utils';
+
+/** Syntax-highlighted code with an optional title bar, for use in .astro pages. */
+interface Props {
+  code: string;
+  lang?: BundledLanguage | 'text';
+  title?: string;
+  wrap?: boolean;
+  class?: string;
+}
+
+const { code, lang = 'text', title, wrap = false, class: className } = Astro.props;
+---
+
+<figure
+  class={cn(
+    'code-block not-prose my-6 overflow-hidden rounded-lg border bg-code text-sm',
+    className,
+  )}
+>
+  {title && (
+    <figcaption class="flex items-center gap-2 border-b px-4 py-2 font-mono text-xs text-muted-foreground">
+      {title}
+    </figcaption>
+  )}
+  <Code
+    code={code}
+    lang={lang}
+    themes={{ light: 'github-light', dark: 'github-dark' }}
+    defaultColor={false}
+    wrap={wrap}
+  />
+</figure>

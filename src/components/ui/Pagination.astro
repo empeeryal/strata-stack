@@ -1,0 +1,40 @@
+---
+import type { Page } from 'astro';
+import { Icon } from 'astro-icon/components';
+
+import { cn } from '@/lib/utils';
+
+import { buttonVariants } from './button-variants';
+
+interface Props {
+  page: Page<unknown>;
+  class?: string;
+}
+
+const { page, class: className } = Astro.props;
+const { prev, next } = page.url;
+---
+
+{page.lastPage > 1 && (
+  <nav aria-label="Pagination" class={cn('flex items-center justify-between gap-4', className)}>
+    {prev ? (
+      <a href={prev} rel="prev" class={buttonVariants({ variant: 'outline', size: 'sm' })}>
+        <Icon name="lucide:arrow-left" aria-hidden="true" />
+        Newer
+      </a>
+    ) : (
+      <span aria-hidden="true" />
+    )}
+    <p class="text-sm text-muted-foreground">
+      Page {page.currentPage} of {page.lastPage}
+    </p>
+    {next ? (
+      <a href={next} rel="next" class={buttonVariants({ variant: 'outline', size: 'sm' })}>
+        Older
+        <Icon name="lucide:arrow-right" aria-hidden="true" />
+      </a>
+    ) : (
+      <span aria-hidden="true" />
+    )}
+  </nav>
+)}

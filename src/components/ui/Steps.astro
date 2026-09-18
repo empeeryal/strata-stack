@@ -1,0 +1,66 @@
+---
+/**
+ * Numbered steps for guides. Wrap a Markdown ordered list:
+ *
+ * <Steps>
+ * 1. First step
+ * 2. Second step
+ * </Steps>
+ */
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<div class:list={['steps', className]}>
+  <slot />
+</div>
+
+<style>
+  .steps :global(ol) {
+    list-style: none;
+    counter-reset: step;
+    padding-left: 0;
+  }
+
+  .steps :global(ol > li) {
+    counter-increment: step;
+    position: relative;
+    padding-left: 3rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .steps :global(ol > li::before) {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-muted);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .steps :global(ol > li:not(:last-child)::after) {
+    content: '';
+    position: absolute;
+    left: calc(1rem - 1px);
+    top: 2.25rem;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-border);
+  }
+
+  .steps :global(ol > li > :first-child) {
+    margin-top: 0.25rem;
+  }
+</style>
