@@ -1,0 +1,74 @@
+---
+title: Project structure
+description: A tour of the repository layout and what belongs where.
+sidebar:
+  order: 3
+---
+
+```text
+.
+├── astro.config.ts          # Adapter switch, CSP, fonts, integrations
+├── config/                  # Build-time configuration shared by tooling
+│   ├── adapter.ts           # DEPLOY_TARGET resolution and adapter options
+│   └── security-headers.ts  # Response headers used by middleware and adapters
+├── integrations/            # Small local Astro integrations
+├── drizzle/                 # Generated SQL migrations (commit these)
+├── public/                  # Static files copied as-is (_headers, icons, security.txt)
+├── scripts/                 # Node scripts: icons, seeding, cleanup
+├── src/
+│   ├── actions/             # Astro Actions (type-safe form handlers)
+│   ├── assets/              # Fonts and images processed by Astro
+│   ├── components/
+│   │   ├── content/         # MDX component map
+│   │   ├── react/           # React islands (Motion, auth forms)
+│   │   ├── seo/             # <Head> and structured data
+│   │   ├── site/            # Header, footer, navigation, search, theme toggle
+│   │   └── ui/              # Design-system primitives (Button, Card, Tabs, …)
+│   ├── content/             # Markdown/MDX collections and JSON data
+│   ├── content.config.ts    # Collection schemas
+│   ├── db/                  # Drizzle client and schema
+│   ├── layouts/             # Base, docs, blog and auth layouts
+│   ├── lib/                 # Framework-agnostic helpers (auth, email, seo, utils)
+│   ├── middleware.ts        # Session lookup and security headers
+│   ├── pages/               # File-based routes and endpoints
+│   ├── site.config.ts       # Site-wide metadata and navigation
+│   └── styles/global.css    # Tailwind entry and design tokens
+├── tests/
+│   ├── e2e/                 # Playwright specs (also run axe and CSP checks)
+│   └── unit/                # Vitest tests that are not colocated
+├── netlify.toml · wrangler.jsonc · Dockerfile
+└── .github/workflows/       # CI matrix and release automation
+```
+
+## Conventions
+
+### Colocated tests
+
+Unit tests live next to the code they cover as `*.test.ts` or `*.test.tsx`. Tests that span
+several modules go in `tests/unit`. End-to-end tests live in `tests/e2e`.
+
+### Path alias
+
+`@/` points at `src/`. Use it for imports inside the application so files can move without
+rewriting relative paths.
+
+```ts
+import { cn } from '@/lib/utils';
+```
+
+### Where server code lives
+
+Anything that reads secrets or talks to the database belongs in `src/lib`, `src/db`,
+`src/actions`, `src/middleware.ts` or an API route under `src/pages/api`. Components and
+layouts receive data as props.
+
+### Reserved file names
+
+Astro 7 treats `src/fetch.ts` as the advanced-routing entrypoint and `src/middleware.ts` as
+middleware. Do not create a `src/fetch.ts` for unrelated code.
+
+## Generated files
+
+The following are produced by tooling and are ignored by Git: `dist/`, `.astro/`, `.vercel/`,
+`.netlify/`, `.wrangler/`, `worker-configuration.d.ts`, `.data/` (local database),
+`coverage/`, `playwright-report/` and `test-results/`.

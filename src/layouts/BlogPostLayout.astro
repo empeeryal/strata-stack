@@ -1,0 +1,175 @@
+---
+import type { MarkdownHeading } from 'astro';
+import { type CollectionEntry, getEntry } from 'astro:content';
+import { Image } from 'astro:assets';
+import { Icon } from 'astro-icon/components';
+
+import Badge from '@/components/ui/Badge.astro';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
+import Prose from '@/components/ui/Prose.astro';
+import Toc from '@/components/ui/Toc.astro';
+import { getReadingTime, postHref, postOgImage, tagHref } from '@/lib/content';
+import { blogPostingJsonLd, breadcrumbsJsonLd } from '@/lib/seo';
+import { formatDate, toISODate } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+  headings: MarkdownHeading[];
+}
+
+const { post, headings } = Astro.props;
+const site = Astro.site ?? new URL(siteConfig.url);
+const author = await getEntry(post.data.author);
+const href = postHref(post);
+const ogImage = postOgImage(post);
+const readingTime = getReadingTime(post.body);
+
+const crumbs = [
+  { label: 'Blog', href: '/blog' },
+  { label: post.data.title, href },
+];
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  image={ogImage}
+  imageAlt={post.data.title}
+  type="article"
+  article={{
+    publishedTime: post.data.pubDate,
+    ...(post.data.updatedDate ? { modifiedTime: post.data.updatedDate } : {}),
+    authors: author?.data.url ? [author.data.url] : [],
+    tags: post.data.tags,
+  }}
+  jsonLd={[
+    breadcrumbsJsonLd(
+      crumbs.map((crumb) => ({ name: crumb.label, url: crumb.href })),
+      site,
+    ),
+    blogPostingJsonLd({
+      url: href,
+      title: post.data.title,
+      description: post.data.description,
+      image: ogImage,
+      datePublished: post.data.pubDate,
+      ...(post.data.updatedDate ? { dateModified: post.data.updatedDate } : {}),
+      author: {
+        name: author?.data.name ?? siteConfig.author.name,
+        ...(author?.data.url ? { url: author.data.url } : {}),
+      },
+      tags: post.data.tags,
+      site,
+    }),
+  ]}
+>
+  <article class="container max-w-3xl py-12" data-pagefind-filter="section:Blog">
+    <Breadcrumbs items={crumbs} class="mb-6" />
+    <header>
+      <div class="flex flex-wrap gap-2" data-pagefind-ignore>
+        {post.data.tags.map((tag) => (
+          <Badge variant="secondary" href={tagHref(tag)}>
+            {tag}
+          </Badge>
+        ))}
+      </div>
+      <h1 class="mt-4 text-4xl font-bold tracking-tight text-balance sm:text-5xl">
+        {post.data.title}
+      </h1>
+      <p class="mt-4 text-lg text-pretty text-muted-foreground">{post.data.description}</p>
+      <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        {author && (
+          <span class="flex items-center gap-2">
+            {author.data.avatar && (
+              <img
+                src={author.data.avatar}
+                alt=""
+                width="28"
+                height="28"
+                loading="lazy"
+                decoding="async"
+                class="size-7 rounded-full border"
+              />
+            )}
+            {author.data.url ? (
+              <a
+                href={author.data.url}
+                rel="author"
+                class="font-medium text-foreground hover:underline"
+              >
+                {author.data.name}
+              </a>
+            ) : (
+              <span class="font-medium text-foreground">{author.data.name}</span>
+            )}
+          </span>
+        )}
+        <time datetime={toISODate(post.data.pubDate)}>{formatDate(post.data.pubDate)}</time>
+        {post.data.updatedDate && (
+          <span>
+            Updated{' '}
+            <time datetime={toISODate(post.data.updatedDate)}>
+              {formatDate(post.data.updatedDate)}
+            </time>
+          </span>
+        )}
+        <span class="flex items-center gap-1">
+          <Icon name="lucide:clock" class="size-4" aria-hidden="true" />
+          {readingTime}
+        </span>
+      </div>
+    </header>
+
+    {post.data.heroImage && (
+      <Image
+        src={post.data.heroImage}
+        alt={post.data.heroAlt ?? ''}
+        widths={[640, 960, 1280]}
+        sizes="(min-width: 48rem) 48rem, 100vw"
+        class="mt-10 rounded-xl border"
+        loading="eager"
+      />
+    )}
+
+    <div class="mt-10 lg:hidden" data-pagefind-ignore>
+      <Toc headings={headings} class="rounded-lg border p-4" />
+    </div>
+
+    <Prose as="div" class="mt-10">
+      <slot />
+    </Prose>
+
+    <footer class="mt-12 border-t pt-8" data-pagefind-ignore>
+      {author && (
+        <div class="flex items-start gap-4 rounded-xl border bg-card p-5">
+          {author.data.avatar && (
+            <img
+              src={author.data.avatar}
+              alt=""
+              width="56"
+              height="56"
+              loading="lazy"
+              decoding="async"
+              class="size-14 rounded-full border"
+            />
+          )}
+          <div>
+            <p class="font-semibold">{author.data.name}</p>
+            {author.data.title && <p class="text-sm text-muted-foreground">{author.data.title}</p>}
+            {author.data.bio && <p class="mt-2 text-sm text-pretty">{author.data.bio}</p>}
+          </div>
+        </div>
+      )}
+      <a
+        href="/blog"
+        class="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+      >
+        <Icon name="lucide:arrow-left" class="size-4" aria-hidden="true" />
+        All posts
+      </a>
+    </footer>
+  </article>
+</BaseLayout>

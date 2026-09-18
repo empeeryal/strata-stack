@@ -1,0 +1,61 @@
+---
+title: 'Why we standardised on Astro 7 for every new site'
+description: 'Astro 7 shipped a Rust compiler, Vite 8, a native Markdown pipeline and stable route caching. Here is what changed, what broke, and why it is the right default for content-heavy sites in 2026.'
+pubDate: 2026-09-14
+author: empeeryal
+tags: [astro, architecture]
+---
+
+Astro 7 is the third major version in eighteen months, and it is the one that made us comfortable
+building a long-lived template on top of it. The headline features are performance-related, but the
+reasons we standardised on it are mostly about predictability.
+
+## What changed in 7.0
+
+- **The Rust compiler is the only compiler.** Builds are faster, and the compiler is stricter: it
+  no longer closes tags for you or reorders invalid HTML. That strictness caught three real bugs in
+  our older components during the migration.
+- **Vite 8** drives both the dev server and the production bundler, with Rolldown under the hood.
+- **Sätteri is the default Markdown pipeline.** It parses Markdown and MDX in Rust and runs plugins
+  in JavaScript. The template uses it as-is; the classic remark/rehype pipeline remains one import
+  away if you depend on a specific plugin.
+- **JSX whitespace rules by default.** `compressHTML: 'jsx'` strips whitespace between elements the
+  way React does, so a space between two inline elements must be written as `{' '}`.
+- **Advanced routing** is stable, which is why `src/fetch.ts` is now a reserved file name.
+- **Route caching** (`cache` and `routeRules`) is stable, giving on-demand pages CDN-aware caching
+  without platform-specific code.
+
+## What we rely on from Astro 6
+
+Several features the template depends on landed in 6.0 and matured through 7.x:
+
+| Feature                                 | Used for                                                              |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| Fonts API                               | Self-hosting Inter and JetBrains Mono with generated fallback metrics |
+| Content Security Policy                 | Per-page script and style hashes without a nonce server               |
+| Live and build-time content collections | Docs, blog, legal pages and the changelog loader                      |
+| Responsive images                       | `layout: 'constrained'` with build-time styles that survive CSP       |
+| `astro:env`                             | Type-safe public environment variables                                |
+
+## The trade-offs we accepted
+
+<Callout type="note" title="Shiki and CSP">
+  Shiki highlights code with inline `style` attributes. A strict CSP would block them, so the
+  template relaxes only the `style-src-attr` directive. Scripts stay hash-only. If you need a fully
+  strict policy, switch `markdown.syntaxHighlight` to Prism and ship a Prism stylesheet.
+</Callout>
+
+We also chose not to use Astro's `<ClientRouter />`. It is incompatible with the CSP
+implementation, and the native cross-document View Transitions API now covers the common case with
+a single CSS rule.
+
+## Why it is the right default
+
+For sites that are mostly content with a few interactive islands, Astro 7 produces the smallest
+output of any mainstream framework, and it does so with a single mental model: everything is static
+unless you opt out. The tooling around it (adapters, integrations, the Container API for testing)
+is mature enough that a template can encode good defaults once and keep them for years.
+
+The upgrade guides for [v6](https://docs.astro.build/en/guides/upgrade-to/v6/) and
+[v7](https://docs.astro.build/en/guides/upgrade-to/v7/) are short reads; both are worth an hour if
+you maintain an older Astro site.

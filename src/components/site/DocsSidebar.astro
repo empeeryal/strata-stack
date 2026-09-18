@@ -1,0 +1,35 @@
+---
+import Badge from '@/components/ui/Badge.astro';
+import type { DocsSection } from '@/lib/docs';
+
+interface Props {
+  tree: DocsSection[];
+  currentId: string;
+}
+
+const { tree, currentId } = Astro.props;
+---
+
+<nav aria-label="Documentation" class="text-sm">
+  <ul class="space-y-6">
+    {tree.map((section) => (
+      <li>
+        <p class="mb-2 font-semibold">{section.label}</p>
+        <ul class="space-y-0.5 border-l">
+          {section.items.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                aria-current={item.id === currentId ? 'page' : undefined}
+                class="-ml-px flex items-center justify-between gap-2 border-l-2 border-transparent py-1.5 pr-2 pl-4 text-muted-foreground transition-colors hover:border-border hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+              >
+                <span>{item.label}</span>
+                {item.badge && <Badge variant="secondary">{item.badge}</Badge>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </li>
+    ))}
+  </ul>
+</nav>

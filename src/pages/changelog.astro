@@ -1,0 +1,70 @@
+---
+import { getCollection, render } from 'astro:content';
+import { Icon } from 'astro-icon/components';
+
+import Badge from '@/components/ui/Badge.astro';
+import Prose from '@/components/ui/Prose.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { formatDate, toISODate } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+const releases = (await getCollection('changelog')).sort((a, b) => a.data.order - b.data.order);
+const rendered = await Promise.all(
+  releases.map(async (release) => ({ release, Content: (await render(release)).Content })),
+);
+---
+
+<BaseLayout
+  title="Changelog"
+  description="Every release of the template, generated from CHANGELOG.md by Changesets."
+  image="/og/changelog.png"
+>
+  <div class="container max-w-3xl py-16">
+    <header>
+      <p class="text-sm font-semibold text-primary">Releases</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight">Changelog</h1>
+      <p class="mt-4 text-lg text-pretty text-muted-foreground">
+        Notable changes for every version. Entries are written as
+        <a href="https://github.com/changesets/changesets" class="underline underline-offset-4">
+          Changesets
+        </a>{' '}
+        and compiled into <code class="font-mono text-sm">CHANGELOG.md</code> at release time; this
+        page renders that file.
+      </p>
+      <a
+        href={`${siteConfig.repo.url}/releases`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Icon name="simple-icons:github" class="size-4" aria-hidden="true" />
+        GitHub releases
+      </a>
+    </header>
+
+    <ol class="mt-12 space-y-12">
+      {rendered.map(({ release, Content }, index) => (
+        <li>
+          <article id={release.id} class="scroll-mt-24">
+            <header class="flex flex-wrap items-center gap-3">
+              <h2 class="text-2xl font-semibold tracking-tight">
+                <a href={`#${release.id}`} class="hover:underline">
+                  v{release.data.version}
+                </a>
+              </h2>
+              {index === 0 && <Badge>Latest</Badge>}
+              {release.data.date && (
+                <time datetime={toISODate(release.data.date)} class="text-sm text-muted-foreground">
+                  {formatDate(release.data.date)}
+                </time>
+              )}
+            </header>
+            <Prose as="div" class="mt-4" anchors={false}>
+              <Content />
+            </Prose>
+          </article>
+        </li>
+      ))}
+    </ol>
+  </div>
+</BaseLayout>

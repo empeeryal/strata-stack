@@ -1,0 +1,88 @@
+---
+title: Actions and forms
+description: Type-safe form handling with Astro Actions, validation, honeypots and the contact form example.
+sidebar:
+  order: 5
+---
+
+[Astro Actions](https://docs.astro.build/en/guides/actions/) let you define server functions
+with typed input and call them from the client with full type safety. Because actions are
+always executed on the server, they work from prerendered pages too, which is how the static
+`/contact` page submits a form.
+
+## Defining an action
+
+```ts title="src/actions/index.ts"
+import { ActionError, defineAction } from 'astro:actions';
+import { z } from 'astro/zod';
+
+export const server = {
+  contact: defineAction({
+    accept: 'form',
+    input: z.object({
+      name: z.string().trim().min(2).max(80),
+      email: z.email(),
+      message: z.string().trim().min(10).max(2000),
+      website: z.string().max(0).optional(), // honeypot
+    }),
+    handler: async (input) => {
+      // persist, send email, …
+      return { ok: true as const };
+    },
+  }),
+};
+```
+
+- `accept: 'form'` parses `FormData`, so the action works with a plain `<form>` as well as
+  `fetch`.
+- Validation uses Zod 4 from `astro/zod`; note the top-level `z.email()` instead of
+  `z.string().email()`.
+- Throw `ActionError` for expected failures; the client receives the code and message.
+
+## Calling from a React island
+
+```tsx title="src/components/react/ContactForm.tsx"
+import { actions, isInputError } from 'astro:actions';
+
+const { data, error } = await actions.contact(new FormData(form));
+if (error && isInputError(error)) {
+  // error.fields is keyed by input name
+}
+```
+
+The included `ContactForm.tsx` shows loading states, per-field error messages with
+`aria-describedby`, and a success message.
+
+## Spam protection
+
+The contact form combines three inexpensive measures:
+
+1. A hidden **honeypot** field named `website`. Humans never see it; bots fill it and the action
+   silently succeeds without sending anything.
+2. **Server-side validation** with length limits.
+3. **Origin checks** by Astro (`security.checkOrigin`) so only same-origin pages can post.
+
+For high-traffic sites add a CAPTCHA (Turnstile, hCaptcha) inside the action handler.
+
+## Persistence and email
+
+Messages are inserted into the `contact_message` table and, when `CONTACT_TO_EMAIL` and
+`RESEND_API_KEY` are set, forwarded by email through `src/lib/email.ts`. Without an API key the
+email is logged, so the form is testable offline.
+
+## Progressive enhancement
+
+Actions can also be submitted without JavaScript by pointing a form at the action:
+
+```astro
+---
+import { actions } from 'astro:actions';
+---
+
+<form method="POST" action={actions.contact}>
+  …
+</form>
+```
+
+Handle the result with `Astro.getActionResult(actions.contact)` in a server-rendered page. The
+template uses the React island for richer feedback, but both patterns are supported.

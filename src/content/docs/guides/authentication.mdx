@@ -1,0 +1,98 @@
+---
+title: Authentication
+description: Better Auth with email and password, GitHub, Google and magic links, and how routes are protected.
+sidebar:
+  order: 3
+---
+
+Authentication is provided by [Better Auth](https://better-auth.com), a framework-agnostic
+TypeScript auth library. Sessions are stored in your database and exposed to Astro through
+`Astro.locals`.
+
+## Anatomy
+
+| File                                    | Role                                                          |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `src/lib/auth.ts`                       | Server instance: providers, plugins, rate limiting            |
+| `src/lib/auth-client.ts`                | Browser client for React islands                              |
+| `src/pages/api/auth/[...all].ts`        | Catch-all route that mounts the Better Auth handler           |
+| `src/middleware.ts`                     | Resolves the session for on-demand requests                   |
+| `src/db/schema/auth.ts`                 | Generated Drizzle schema (`pnpm auth:generate`)               |
+| `src/pages/login.astro`, `signup.astro` | Sign-in and sign-up pages (server rendered)                   |
+| `src/pages/dashboard.astro`             | Example protected page                                        |
+| `src/components/react/auth/*`           | `AuthForm`, `MagicLinkForm`, `SocialButtons`, `SignOutButton` |
+
+## Sign-in methods
+
+- **Email and password** is enabled by default with an 8-character minimum. Set
+  `requireEmailVerification: true` once email delivery is configured.
+- **GitHub and Google** are registered automatically when `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`
+  or `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` exist. The buttons only render for configured
+  providers. Register `https://<your-domain>/api/auth/callback/github` (or `/google`) as the
+  callback URL with the provider.
+- **Magic links** use the `magicLink` plugin and `src/lib/email.ts`. Without `RESEND_API_KEY`
+  the link is printed to the server console, which is convenient in development.
+
+## Protecting routes
+
+Server-rendered pages read `Astro.locals.user` and redirect when it is missing:
+
+```astro title="src/pages/dashboard.astro"
+---
+export const prerender = false;
+
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect('/login?next=/dashboard');
+}
+---
+```
+
+<Callout type="warning" title="Do not guard by pathname in middleware">
+  Astro's docs warn that the pathname a middleware sees is not guaranteed to match the route Astro
+  resolves (encoding, duplicate slashes, `base`). Keep authorization in the page or endpoint itself,
+  or use a router such as Hono via Astro's advanced routing for whole sections.
+</Callout>
+
+API routes work the same way with `context.locals.user`. The `?next=` parameter is validated by
+`safeRedirectPath()` in `src/lib/redirect.ts` to prevent open redirects.
+
+## Using the client
+
+```tsx
+import { authClient } from '@/lib/auth-client';
+
+await authClient.signIn.email({ email, password, callbackURL: '/dashboard' });
+await authClient.signIn.social({ provider: 'github', callbackURL: '/dashboard' });
+await authClient.signIn.magicLink({ email, callbackURL: '/dashboard' });
+await authClient.signOut();
+```
+
+`useSession()` is also exported for React components that need reactive session state.
+
+## Sessions and cookies
+
+Sessions live in the `session` table and are cached in a signed cookie for five minutes
+(`session.cookieCache`), so most requests never touch the database. Cookies are `HttpOnly`,
+`SameSite=Lax` and `Secure` in production. Astro's own session storage is disabled
+(`session: false`); enable it per platform if you need `Astro.session` for unrelated state.
+
+## Rate limiting and CSRF
+
+Rate limiting is enabled with database storage so it works on serverless platforms. The auth
+route forwards the client address resolved by the adapter as `x-forwarded-for`. Astro's
+`security.checkOrigin` rejects cross-origin `POST` requests, and Better Auth additionally checks
+`trustedOrigins`, which are derived from `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` and the
+preview URLs each platform injects (see `src/lib/env.ts`).
+
+## Adding plugins
+
+Better Auth ships plugins for two-factor authentication, organizations, passkeys, admin roles and
+more. Add the plugin to `src/lib/auth.ts`, its client counterpart to `src/lib/auth-client.ts`,
+then regenerate and migrate the schema:
+
+```bash
+pnpm auth:generate
+pnpm db:generate
+pnpm db:migrate
+```

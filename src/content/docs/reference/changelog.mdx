@@ -1,0 +1,44 @@
+---
+title: Changelog process
+description: How releases are recorded with Changesets and rendered on the site.
+sidebar:
+  order: 3
+---
+
+The template keeps a human-readable changelog in `CHANGELOG.md`, managed by
+[Changesets](https://github.com/changesets/changesets), and renders it at
+[/changelog](/changelog).
+
+## Recording a change
+
+```bash
+pnpm changeset
+```
+
+Choose the bump type (patch, minor, major) and write a short summary. A Markdown file is created
+in `.changeset/`; commit it with your pull request. Multiple changesets can accumulate before a
+release.
+
+## Cutting a release
+
+The release workflow (`.github/workflows/release.yml`) runs on pushes to `main`. When changesets
+are present it opens a "Version Packages" pull request that:
+
+- bumps `version` in `package.json`,
+- prepends the new release to `CHANGELOG.md`,
+- deletes the consumed changesets.
+
+Merging that pull request tags the release. Run the same steps locally with
+`pnpm changeset:version` and `pnpm changeset:tag` if you prefer.
+
+## Rendering
+
+`src/content/loaders/changelog.ts` parses `CHANGELOG.md` into one collection entry per
+`## <version>` heading. An optional date in parentheses after the version (for example
+`## 1.2.0 (2026-10-01)`) is shown next to the release. Each release is rendered through Astro's
+Markdown pipeline, so links, code and lists work as they do elsewhere.
+
+## Version badge
+
+The current version appears in `/api/health` and in the footer of every OG image, both read from
+`package.json`, so the site always reports the release it was built from.

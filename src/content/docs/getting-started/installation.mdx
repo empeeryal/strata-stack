@@ -1,0 +1,82 @@
+---
+title: Installation
+description: Prerequisites, first run and the rename checklist for a new project.
+sidebar:
+  order: 2
+---
+
+## Prerequisites
+
+- **Node.js 24.x.** The repository pins the version in `.nvmrc` and `.node-version`, and the
+  `engines` field in `package.json` tells Vercel and Netlify which runtime to use.
+- **pnpm 10.** Enabled through the `packageManager` field; run `corepack enable` if pnpm is not
+  installed.
+- **Git.** Husky installs a pre-commit hook that runs lint-staged.
+
+## First run
+
+<Steps>
+
+1. Clone the repository and install dependencies.
+
+   ```bash
+   git clone https://github.com/empeeryal/astro-framework-v2.git my-site
+   cd my-site
+   pnpm install
+   ```
+
+2. Create your environment file. The defaults work for local development without any external
+   service.
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Create the local SQLite database and apply the migrations.
+
+   ```bash
+   pnpm db:migrate
+   ```
+
+4. Start the development server at `http://localhost:4321`.
+
+   ```bash
+   pnpm dev
+   ```
+
+</Steps>
+
+<Callout type="note">
+  Search uses a static index that is generated during `pnpm build`. Run a build once if you want to
+  try the search dialog in development.
+</Callout>
+
+## Rename checklist
+
+Everything that identifies the site lives in a few files. Work through this list once when you
+start a new project:
+
+1. `src/site.config.ts` – name, tagline, description, canonical URL, author, repository, navigation
+   and footer links.
+2. `package.json` – the `name`, `description` and `version` fields.
+3. `wrangler.jsonc` – the Worker `name` (Cloudflare only).
+4. `public/favicon.svg` – replace the mark, then run `node scripts/generate-icons.ts` to regenerate
+   the PNG icons.
+5. `src/content/authors/*.json` – your author profile.
+6. `LICENSE`, `SECURITY.md` and `src/content/legal/*` – legal text and contact details.
+7. `CHANGELOG.md` and `.changeset/config.json` – start your own release history.
+
+## Verifying the setup
+
+Run the complete quality suite before your first commit:
+
+```bash
+pnpm check        # astro check (TypeScript + Astro diagnostics)
+pnpm lint         # ESLint
+pnpm format:check # Prettier
+pnpm test         # Vitest unit and component tests
+pnpm build        # production build for the Node target
+pnpm test:e2e     # Playwright end-to-end tests against the build
+```
+
+Every one of these commands also runs in CI on each pull request.

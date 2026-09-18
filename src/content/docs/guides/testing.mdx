@@ -1,0 +1,82 @@
+---
+title: Testing
+description: Unit and component tests with Vitest, end-to-end tests with Playwright, accessibility checks with axe and Lighthouse budgets.
+sidebar:
+  order: 8
+---
+
+## Unit and component tests (Vitest)
+
+`vitest.config.ts` uses Astro's `getViteConfig()` so tests see the same aliases, plugins and
+virtual modules as the application. Tests live next to the code as `*.test.ts(x)` or under
+`tests/unit`.
+
+```bash
+pnpm test           # run once
+pnpm test:watch     # watch mode
+pnpm test:coverage  # V8 coverage report in ./coverage
+```
+
+Three styles are used in the template:
+
+- **Plain unit tests** for helpers (`src/lib/*.test.ts`, `config/*.test.ts`).
+- **Astro components** rendered with the Container API in the default Node environment
+  (`tests/unit/components.test.ts`):
+
+  ```ts
+  import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+  const container = await AstroContainer.create();
+  const html = await container.renderToString(Button, {
+    props: { href: '/docs' },
+    slots: { default: 'Docs' },
+  });
+  ```
+
+- **React islands** with Testing Library in a DOM environment, opted in per file with
+  `// @vitest-environment happy-dom`. Virtual modules such as `astro:actions` and the auth client
+  are mocked with `vi.mock()`.
+
+## End-to-end tests (Playwright)
+
+The e2e suite runs against the production build of the Node target with an isolated SQLite
+database that is recreated before every run.
+
+```bash
+pnpm build:node
+pnpm test:e2e            # all projects (desktop Chromium + mobile emulation)
+pnpm test:a11y           # only the axe accessibility checks
+pnpm test:e2e:ui         # Playwright UI mode
+```
+
+Specs in `tests/e2e` cover navigation and dark mode, docs sidebar and tabs, blog listing and tags,
+SEO endpoints and metadata, search, the full sign-up → dashboard → sign-out → sign-in flow,
+security headers, CSP violations and accessibility.
+
+<Callout type="tip" title="Waiting for islands">
+  Interactive React islands hydrate asynchronously. Use the `waitForIslands(page)` helper before
+  clicking into a `client:visible` or `client:load` component to avoid flaky tests.
+</Callout>
+
+Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to use a preinstalled browser instead of the one Playwright
+downloads.
+
+## Accessibility
+
+`tests/e2e/a11y.spec.ts` runs [axe](https://github.com/dequelabs/axe-core) with the WCAG 2.1 AA
+rule set on the key pages and fails on any violation. Components also follow the basics: visible
+focus rings, `aria-current` for navigation, labelled dialogs, keyboard-navigable tabs and skip
+links.
+
+## Lighthouse
+
+`lighthouserc.json` runs Lighthouse against the built site in CI and asserts the category scores.
+Locally:
+
+```bash
+pnpm build:node
+pnpm lhci
+```
+
+## Continuous integration
+
+See [CI and releases](/docs/guides/ci-cd) for how these suites are wired into GitHub Actions.

@@ -1,0 +1,115 @@
+---
+title: Content collections
+description: How the docs, blog, authors, legal pages and changelog are modelled, authored and rendered.
+sidebar:
+  order: 2
+---
+
+All content lives in `src/content` and is validated at build time by the schemas in
+`src/content.config.ts`. Astro's Content Layer API loads Markdown and MDX with the `glob()`
+loader; the changelog uses a small custom loader.
+
+| Collection  | Location                           | Rendered at                                    |
+| ----------- | ---------------------------------- | ---------------------------------------------- |
+| `docs`      | `src/content/docs/<section>/*.mdx` | `/docs/<section>/<slug>`                       |
+| `blog`      | `src/content/blog/*.mdx`           | `/blog/<slug>`, `/blog/tags/<tag>`, `/rss.xml` |
+| `authors`   | `src/content/authors/*.json`       | Referenced from posts                          |
+| `legal`     | `src/content/legal/*.md`           | `/legal/<slug>`                                |
+| `changelog` | `CHANGELOG.md` (project root)      | `/changelog`                                   |
+
+## Writing documentation
+
+Create an MDX file inside one of the section folders. The folder decides the sidebar section;
+the frontmatter decides the order and labels.
+
+```mdx title="src/content/docs/guides/my-guide.mdx"
+---
+title: My guide
+description: One sentence shown in the sidebar cards, meta description and llms.txt.
+sidebar:
+  order: 5
+  label: Shorter label # optional
+  badge: new # optional: new | updated | experimental
+draft: false
+---
+
+Your content here.
+```
+
+Sections are declared in `src/lib/docs.ts` (`DOCS_SECTIONS`). Add a new folder and an entry
+there to create a section; unknown folders fall back to a title-cased label at the end.
+
+Every docs page receives a table of contents (from `h2` and `h3`), previous/next links, an
+"Edit this page" link and a generated Open Graph image.
+
+## Writing blog posts
+
+```mdx title="src/content/blog/my-post.mdx"
+---
+title: 'A title of at most 90 characters'
+description: 'A summary of at most 200 characters used in cards, RSS and social previews.'
+pubDate: 2026-09-18
+updatedDate: 2026-10-01 # optional
+author: empeeryal # id of a file in src/content/authors
+tags: [astro, guide]
+heroImage: ./images/my-post.png # optional
+heroAlt: 'Describe the image' # optional
+draft: false
+---
+```
+
+Drafts are visible in development and excluded from production builds, the RSS feed and OG
+image generation. Post URLs come from the file name, so keep it stable once published.
+
+## MDX components
+
+The components in `src/components/content/mdx-components.ts` are available in every MDX file
+without an import: `Callout`, `Tabs` + `TabItem`, `Steps`, `Card`, `Badge` and `Kbd`.
+
+<Tabs syncKey="package-manager">
+  <TabItem label="pnpm">```bash pnpm add some-package ```</TabItem>
+  <TabItem label="npm">```bash npm install some-package ```</TabItem>
+</Tabs>
+
+```mdx
+<Tabs syncKey="package-manager">
+  <TabItem label="pnpm">…</TabItem>
+  <TabItem label="npm">…</TabItem>
+</Tabs>
+```
+
+`syncKey` keeps the same tab selected across every `<Tabs>` on the site and remembers the
+choice in `localStorage`.
+
+<Callout type="note" title="Astro 7 Markdown pipeline">
+  Markdown and MDX are rendered by Sätteri, Astro 7's native pipeline. Heading IDs, GitHub Flavored
+  Markdown and smart punctuation are built in. If you need remark or rehype plugins, install
+  `@astrojs/markdown-remark` and set `markdown.processor: unified()` as described in the Astro docs.
+</Callout>
+
+## Code blocks
+
+Fenced code blocks are highlighted by Shiki with the `github-light` and `github-dark` themes and
+switch with the site theme. Use a `title` attribute to show a file name:
+
+````mdx
+```ts title="src/lib/example.ts"
+export const answer = 42;
+```
+````
+
+Inside `.astro` pages use the `<CodeBlock>` component, which wraps Astro's `<Code>` with the
+same themes.
+
+## Images
+
+Put images next to the content file and reference them relatively. Astro optimises local images
+and, when `heroImage` is set, renders responsive `srcset` variants. Cards and social previews fall
+back to the generated Open Graph image, so posts look good without any artwork.
+
+## Changelog
+
+`CHANGELOG.md` is maintained by [Changesets](/docs/reference/changelog). The custom loader in
+`src/content/loaders/changelog.ts` splits it on `## <version>` headings, renders each release
+with Astro's Markdown pipeline and exposes them as a collection, so `/changelog` always matches
+the file in the repository.

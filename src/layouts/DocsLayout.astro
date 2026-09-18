@@ -1,0 +1,151 @@
+---
+import type { MarkdownHeading } from 'astro';
+import { type CollectionEntry, getCollection } from 'astro:content';
+import { Icon } from 'astro-icon/components';
+
+import DocsSidebar from '@/components/site/DocsSidebar.astro';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
+import Prose from '@/components/ui/Prose.astro';
+import Toc from '@/components/ui/Toc.astro';
+import { docsOgImage } from '@/lib/content';
+import {
+  DOCS_SECTIONS,
+  adjacentDocs,
+  buildDocsTree,
+  docsSectionOf,
+  flattenDocsTree,
+} from '@/lib/docs';
+import { breadcrumbsJsonLd, techArticleJsonLd } from '@/lib/seo';
+import { siteConfig } from '@/site.config';
+
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  entry: CollectionEntry<'docs'>;
+  headings: MarkdownHeading[];
+}
+
+const { entry, headings } = Astro.props;
+const site = Astro.site ?? new URL(siteConfig.url);
+
+const tree = buildDocsTree(await getCollection('docs'));
+const { prev, next } = adjacentDocs(flattenDocsTree(tree), entry.id);
+
+const sectionId = docsSectionOf(entry);
+const sectionLabel = DOCS_SECTIONS.find((section) => section.id === sectionId)?.label ?? sectionId;
+const href = `/docs/${entry.id}`;
+const editUrl = `${siteConfig.repo.url}/${siteConfig.repo.editPath}/${siteConfig.repo.branch}/src/content/docs/${entry.filePath?.split('src/content/docs/')[1] ?? `${entry.id}.mdx`}`;
+
+const crumbs = [
+  { label: 'Docs', href: '/docs' },
+  { label: sectionLabel },
+  { label: entry.data.title, href },
+];
+---
+
+<BaseLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  image={docsOgImage(entry.id)}
+  imageAlt={entry.data.title}
+  type="article"
+  jsonLd={[
+    breadcrumbsJsonLd(
+      crumbs.map((crumb) => ({ name: crumb.label, ...(crumb.href ? { url: crumb.href } : {}) })),
+      site,
+    ),
+    techArticleJsonLd({
+      url: href,
+      title: entry.data.title,
+      description: entry.data.description,
+      image: docsOgImage(entry.id),
+      datePublished: new Date('2026-09-18'),
+      author: siteConfig.author,
+      site,
+    }),
+  ]}
+>
+  <div class="container grid gap-10 py-10 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_14rem]">
+    <aside
+      class="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+      data-pagefind-ignore
+    >
+      <details class="rounded-lg border lg:hidden">
+        <summary class="cursor-pointer px-4 py-3 text-sm font-medium">Documentation menu</summary>
+        <div class="border-t p-4">
+          <DocsSidebar tree={tree} currentId={entry.id} />
+        </div>
+      </details>
+      <div class="hidden lg:block">
+        <DocsSidebar tree={tree} currentId={entry.id} />
+      </div>
+    </aside>
+
+    <article class="min-w-0" data-pagefind-filter={`section:Docs`}>
+      <Breadcrumbs items={crumbs} class="mb-6" />
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+          {entry.data.title}
+        </h1>
+        <p class="mt-3 text-lg text-pretty text-muted-foreground">{entry.data.description}</p>
+      </header>
+
+      <div class="mb-8 xl:hidden" data-pagefind-ignore>
+        <Toc headings={headings} class="rounded-lg border p-4" />
+      </div>
+
+      <Prose as="div">
+        <slot />
+      </Prose>
+
+      <footer class="mt-12 border-t pt-6" data-pagefind-ignore>
+        <a
+          href={editUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <Icon name="lucide:pencil" class="size-4" aria-hidden="true" />
+          Edit this page on GitHub
+        </a>
+        <nav aria-label="Previous and next page" class="mt-6 grid gap-4 sm:grid-cols-2">
+          {prev ? (
+            <a
+              href={prev.href}
+              rel="prev"
+              class="group rounded-lg border p-4 transition-colors hover:border-primary/40"
+            >
+              <span class="flex items-center gap-1 text-xs text-muted-foreground">
+                <Icon name="lucide:arrow-left" class="size-3.5" aria-hidden="true" />
+                Previous
+              </span>
+              <span class="mt-1 block font-medium group-hover:text-primary">{prev.label}</span>
+            </a>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          {next && (
+            <a
+              href={next.href}
+              rel="next"
+              class="group rounded-lg border p-4 text-right transition-colors hover:border-primary/40"
+            >
+              <span class="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                Next
+                <Icon name="lucide:arrow-right" class="size-3.5" aria-hidden="true" />
+              </span>
+              <span class="mt-1 block font-medium group-hover:text-primary">{next.label}</span>
+            </a>
+          )}
+        </nav>
+      </footer>
+    </article>
+
+    <aside
+      class="hidden xl:block xl:sticky xl:top-24 xl:max-h-[calc(100dvh-7rem)] xl:overflow-y-auto"
+      data-pagefind-ignore
+    >
+      <Toc headings={headings} />
+    </aside>
+  </div>
+</BaseLayout>

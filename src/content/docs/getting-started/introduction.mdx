@@ -1,0 +1,57 @@
+---
+title: Introduction
+description: What the template is, what ships in the box, and the principles that shape it.
+sidebar:
+  order: 1
+---
+
+Astro Framework is a complete starting point for production websites built on
+[Astro 7](https://astro.build). It is the repository you clone when a new project begins, and it
+is also the source of the site you are reading right now. Every feature described in these docs
+is running on this page.
+
+## What ships in the box
+
+| Area      | What you get                                                                            |
+| --------- | --------------------------------------------------------------------------------------- |
+| Rendering | Astro 7.3, static-first output, on-demand routes where needed, Vite 8, Rust compiler    |
+| UI        | React 19 islands, Motion animations, Tailwind CSS 4, OKLCH design tokens, dark mode     |
+| Content   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, RSS      |
+| Auth      | Better Auth with email/password, GitHub, Google and magic-link sign-in                  |
+| Data      | Drizzle ORM with libSQL: a file database locally, Turso over HTTP in production         |
+| SEO       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, llms.txt     |
+| Search    | Pagefind static search index and modal UI                                               |
+| Security  | Hash-based Content Security Policy, hardened headers, CSRF origin checks, rate limiting |
+| Quality   | TypeScript strict, ESLint 10, Prettier, Vitest, Playwright + axe, Lighthouse CI         |
+| Delivery  | Vercel, Cloudflare, Netlify and Node adapters behind one `DEPLOY_TARGET` switch         |
+
+## Principles
+
+<Steps>
+
+1. **Static first.** Pages are prerendered by default. Only the auth API, the dashboard and form
+   actions run on a server, and they opt in explicitly with `export const prerender = false`.
+
+2. **One codebase, any host.** Platform differences live in `config/adapter.ts` and a handful of
+   platform config files. The application code never checks which host it runs on.
+
+3. **Secure by default.** The Content Security Policy, response headers and origin checks ship
+   enabled. Relaxing them is a deliberate, documented change.
+
+4. **Current dependencies.** Versions are pinned and upgraded through automated pull requests
+   that must pass the full CI matrix, including a build for every deploy target.
+
+</Steps>
+
+## How to read these docs
+
+- **Getting started** walks through installation, the project layout and configuration.
+- **Guides** explain each subsystem: styling, content, authentication, database, SEO, security,
+  testing and CI.
+- **Deploy** has one page per platform with the exact settings that platform needs.
+- **Reference** lists scripts, configuration keys and frequently asked questions.
+
+<Callout type="tip" title="Copying the template">
+  The fastest way to start a new project is to clone the repository and change `src/site.config.ts`.
+  See [Installation](/docs/getting-started/installation) for the full checklist.
+</Callout>

@@ -1,0 +1,68 @@
+---
+title: Environment variables
+description: Every variable the template reads, where to set it on each platform, and the two access patterns.
+sidebar:
+  order: 10
+---
+
+## Two access patterns
+
+**Public variables** are declared in `env.schema` in `astro.config.ts`, validated at build time
+and imported from `astro:env/client`. They are inlined into the client bundle and must start with
+`PUBLIC_`.
+
+**Server variables** are read through `process.env` via `src/lib/env.ts`. This is deliberate:
+the Better Auth CLI loads `src/lib/auth.ts` outside Astro, Node scripts import the database
+client, and Cloudflare exposes secrets through `process.env` when `nodejs_compat` is enabled.
+
+## Reference
+
+| Variable                                   | Scope         | Notes                                                                      |
+| ------------------------------------------ | ------------- | -------------------------------------------------------------------------- |
+| `DEPLOY_TARGET`                            | build         | `node`, `vercel`, `cloudflare`, `netlify`. Auto-detected on the platforms. |
+| `SITE_URL`                                 | build         | Canonical origin for sitemap, RSS, OG images and canonical links.          |
+| `DATABASE_URL`                             | runtime       | `file:./.data/local.db` or `libsql://…`.                                   |
+| `DATABASE_AUTH_TOKEN`                      | runtime       | Turso token.                                                               |
+| `BETTER_AUTH_SECRET`                       | runtime       | ≥ 32 random bytes.                                                         |
+| `BETTER_AUTH_URL`                          | runtime       | Public origin visitors use.                                                |
+| `BETTER_AUTH_TRUSTED_ORIGINS`              | runtime       | Comma-separated extra origins; wildcards allowed.                          |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | runtime       | Enables GitHub sign-in.                                                    |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | runtime       | Enables Google sign-in.                                                    |
+| `RESEND_API_KEY`                           | runtime       | Sends magic links and contact messages.                                    |
+| `EMAIL_FROM`                               | runtime       | Sender address, e.g. `Site <noreply@example.com>`.                         |
+| `CONTACT_TO_EMAIL`                         | runtime       | Recipient of contact messages.                                             |
+| `PUBLIC_ANALYTICS`                         | build, public | `none` or `vercel`.                                                        |
+
+Build-time variables must be present during `astro build`; runtime variables must be present
+where the server code runs.
+
+## Where to set them
+
+<Tabs syncKey="platform">
+  <TabItem label="Local">
+    Copy `.env.example` to `.env`. Astro loads it automatically; `drizzle.config.ts` and the scripts
+    load it with `process.loadEnvFile()`.
+  </TabItem>
+  <TabItem label="Vercel">
+    Project → Settings → Environment Variables. Mark secrets as sensitive. Preview URLs are trusted
+    automatically through `VERCEL_URL`.
+  </TabItem>
+  <TabItem label="Cloudflare">
+    Non-secret variables go in `wrangler.jsonc` under `vars`; secrets are set with `wrangler secret
+    put NAME`. For local development copy `.dev.vars.example` to `.dev.vars`.
+  </TabItem>
+  <TabItem label="Netlify">
+    Site configuration → Environment variables, or `netlify env:set`. Deploy previews are trusted
+    through `DEPLOY_PRIME_URL`.
+  </TabItem>
+  <TabItem label="Node / Docker">
+    Pass them to the process (`docker run --env-file .env`) or use your orchestrator's secret store.
+    Nothing is loaded from `.env` at runtime by the built server.
+  </TabItem>
+</Tabs>
+
+## Adding a variable
+
+1. Add it to `.env.example` with a comment.
+2. Public: declare it in `env.schema`. Server: read it with `getEnv()` or `requireEnv()`.
+3. Document it in this table and, if the platform needs it at build time, in the deploy guide.

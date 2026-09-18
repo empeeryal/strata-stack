@@ -1,0 +1,83 @@
+---
+title: Deploy to Cloudflare
+description: Running on Cloudflare Workers with static assets, workerd for on-demand routes and Node compatibility for Better Auth.
+sidebar:
+  order: 3
+---
+
+The Cloudflare adapter builds a Worker that serves static assets from the edge and runs
+on-demand routes in the workerd runtime.
+
+<Steps>
+
+1. Create a Workers project connected to the repository (Workers & Pages → Create → Import a
+   repository), or deploy from your machine:
+
+   ```bash
+   pnpm build:cloudflare
+   pnpm exec wrangler deploy
+   ```
+
+   Workers Builds set `WORKERS_CI=1`, which selects the adapter automatically.
+
+2. Set secrets with Wrangler (they are not stored in `wrangler.jsonc`):
+
+   ```bash
+   pnpm exec wrangler secret put DATABASE_URL
+   pnpm exec wrangler secret put DATABASE_AUTH_TOKEN
+   pnpm exec wrangler secret put BETTER_AUTH_SECRET
+   pnpm exec wrangler secret put BETTER_AUTH_URL
+   ```
+
+   Non-secret values such as `SITE_URL` can live in `wrangler.jsonc` under `vars`; `SITE_URL` is
+   also needed at build time, so set it in the Workers Builds environment as well.
+
+3. Deploy. The first deploy provisions the Images binding used for image optimisation.
+
+</Steps>
+
+## `wrangler.jsonc`
+
+```jsonc title="wrangler.jsonc"
+{
+  "name": "astro-framework-v2",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+}
+```
+
+`nodejs_compat` is required: Better Auth uses `AsyncLocalStorage`, and with a compatibility
+date of 2025-04-01 or later Cloudflare also populates `process.env` from your variables and
+secrets, which is how `src/lib/env.ts` reads configuration. The adapter generates the remaining
+settings (entrypoint, assets directory) itself.
+
+## What the adapter configures
+
+```ts title="config/adapter.ts"
+cloudflare({ prerenderEnvironment: 'node' });
+```
+
+Prerendered pages and build-time endpoints (Open Graph images use the native `resvg` module) are
+built in Node. On-demand routes always run in workerd, so keep Node-only packages out of
+`src/pages/api`, `src/actions` and `src/middleware.ts`. The libSQL client automatically uses its
+HTTP build on workerd.
+
+## Headers
+
+Cloudflare has no static-headers option, so the CSP for prerendered pages is injected as a
+`<meta>` element. Additional headers for static assets come from `public/_headers`; on-demand
+responses get them from `src/middleware.ts`.
+
+## Local development
+
+`pnpm dev:cloudflare` runs `astro dev` inside workerd, which cannot open `file:` databases.
+Start a local libSQL server and point `DATABASE_URL` at it in `.dev.vars`:
+
+```bash
+turso dev --db-file .data/local.db   # http://127.0.0.1:8080
+cp .dev.vars.example .dev.vars
+pnpm dev:cloudflare
+```
+
+Regular `pnpm dev` (Node) remains the fastest way to work on the site day to day.

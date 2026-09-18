@@ -1,0 +1,77 @@
+---
+title: Security
+description: The Content Security Policy, response headers, CSRF protection and secrets handling that ship enabled.
+sidebar:
+  order: 7
+---
+
+## Content Security Policy
+
+Astro generates the CSP (`security.csp` in `astro.config.ts`) with a SHA-256 hash for every
+script and style it emits, so no `'unsafe-inline'` is needed for scripts. The resulting policy
+looks like this:
+
+```text
+default-src 'self'; img-src 'self' data: blob: https:; font-src 'self' data:;
+connect-src 'self'; media-src 'self'; worker-src 'self' blob:; manifest-src 'self';
+object-src 'none'; base-uri 'self'; form-action 'self';
+script-src 'self' 'wasm-unsafe-eval' 'sha256-…';
+style-src-elem 'self' 'sha256-…'; style-src-attr 'unsafe-inline'
+```
+
+Two deliberate relaxations:
+
+- `'wasm-unsafe-eval'` allows Pagefind's WebAssembly search index.
+- `style-src-attr 'unsafe-inline'` allows the `style` attributes Shiki uses for syntax
+  highlighting. `<style>` elements remain hash-protected. For a fully strict policy switch
+  `markdown.syntaxHighlight` to `'prism'` and remove the attribute source.
+
+On Vercel, Netlify and Node (`staticHeaders: true`) the policy is sent as a real header for
+prerendered pages; on Cloudflare it is injected as a `<meta http-equiv>` element. Server-rendered
+pages always receive the header.
+
+<Callout type="warning" title="Things that will not work under this CSP">
+  Inline `onclick` handlers, `<script is:inline>` written by hand (Astro does not hash those),
+  third-party scripts from other origins, and Astro's `<ClientRouter />`. Add scripts through an
+  integration's `injectScript('head-inline')` or as processed `<script>` tags, and list external
+  origins in `scriptDirective.resources` if you must load them.
+</Callout>
+
+CSP is disabled in `astro dev`, so verify changes with `pnpm build && pnpm preview`. The e2e
+suite fails if any page logs a CSP violation.
+
+## Response headers
+
+`config/security-headers.ts` is the single source of truth for the remaining headers:
+
+| Header                       | Value                                               |
+| ---------------------------- | --------------------------------------------------- |
+| `Strict-Transport-Security`  | `max-age=63072000; includeSubDomains`               |
+| `X-Content-Type-Options`     | `nosniff`                                           |
+| `X-Frame-Options`            | `DENY`                                              |
+| `Referrer-Policy`            | `strict-origin-when-cross-origin`                   |
+| `Permissions-Policy`         | camera, microphone, geolocation and others disabled |
+| `Cross-Origin-Opener-Policy` | `same-origin`                                       |
+
+They are applied by `src/middleware.ts` to every on-demand response, by `public/_headers` for
+static assets on Netlify and Cloudflare, and by `integrations/security-headers.ts`, which adds
+them to the Vercel Build Output configuration. A unit test keeps `_headers` and the TypeScript map
+in sync. Add `preload` to HSTS only after submitting the domain to the preload list.
+
+## CSRF and origins
+
+Astro's `security.checkOrigin` rejects cross-origin `POST`, `PUT`, `PATCH` and `DELETE` requests
+to on-demand routes. Better Auth validates `trustedOrigins` independently, and cookies are
+`SameSite=Lax`.
+
+## Secrets
+
+- Secrets are read on the server only (`src/lib/env.ts`); the client bundle can only see
+  variables declared with `context: 'client'` in `env.schema`, which must start with `PUBLIC_`.
+- `.env` files are ignored by Git. `.env.example` documents every variable.
+- CI runs `pnpm audit --audit-level=high` and Dependabot opens upgrade pull requests weekly.
+
+## Reporting vulnerabilities
+
+`public/.well-known/security.txt` and `SECURITY.md` describe how to report issues. Update the
+contact details before launching.

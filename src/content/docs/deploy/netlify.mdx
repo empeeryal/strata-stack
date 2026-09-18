@@ -1,0 +1,50 @@
+---
+title: Deploy to Netlify
+description: Netlify Functions for on-demand routes, the Image CDN for images and static headers for prerendered pages.
+sidebar:
+  order: 4
+---
+
+<Steps>
+
+1. Import the repository at [app.netlify.com](https://app.netlify.com). `netlify.toml` sets the
+   build command (`pnpm build`), the publish directory (`dist`) and `NODE_VERSION=24`. Netlify sets
+   `NETLIFY=true`, which selects the adapter.
+
+2. Add the environment variables from `.env.example` in Site configuration → Environment
+   variables (or `netlify env:set`). Set `SITE_URL` and `BETTER_AUTH_URL` to your production
+   domain.
+
+3. Set the functions runtime to Node 24 by adding `AWS_LAMBDA_JS_RUNTIME=nodejs24.x` as an
+   environment variable. This value cannot be set in `netlify.toml`.
+
+4. Deploy. Deploy previews are trusted by Better Auth automatically through `DEPLOY_PRIME_URL`.
+
+</Steps>
+
+## What the adapter configures
+
+```ts title="config/adapter.ts"
+netlify({ staticHeaders: true });
+```
+
+- **Static headers** deliver the CSP for prerendered pages through Netlify's configuration.
+- **Netlify Image CDN** optimises `<Image>` on the fly; remote domains must be listed in
+  `image.domains` or `image.remotePatterns`.
+- **Netlify Blobs** are available if you enable Astro sessions.
+- **Skew protection** is configured automatically for actions and server islands.
+
+Security headers for static assets come from `public/_headers`, which Netlify reads from the
+publish directory. On-demand responses get them from `src/middleware.ts`.
+
+## Local development
+
+The adapter emulates the Image CDN, Blobs and edge context during `pnpm dev` once you link the
+site with `netlify link`. Nothing else is required.
+
+## Netlify CLI
+
+```bash
+pnpm build:netlify
+pnpm exec netlify deploy --prod
+```

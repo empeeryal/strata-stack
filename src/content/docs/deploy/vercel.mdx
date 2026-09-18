@@ -1,0 +1,52 @@
+---
+title: Deploy to Vercel
+description: Zero-configuration deployment to Vercel with Node 24 functions, static headers and image optimisation.
+sidebar:
+  order: 2
+---
+
+Vercel is the primary deployment target for this repository.
+
+<Steps>
+
+1. Import the repository at [vercel.com/new](https://vercel.com/new). Vercel detects Astro and
+   pnpm automatically. Leave the build command as `astro build`; `DEPLOY_TARGET` is inferred from
+   `VERCEL=1`.
+
+2. Add the environment variables from `.env.example` in Project → Settings → Environment
+   Variables. At minimum: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `BETTER_AUTH_SECRET`,
+   `BETTER_AUTH_URL` and `SITE_URL` (set both to your production domain).
+
+3. Deploy. Every pull request gets a preview deployment; preview hostnames are trusted by Better
+   Auth automatically through `VERCEL_URL` and `VERCEL_BRANCH_URL`.
+
+</Steps>
+
+## What the adapter configures
+
+```ts title="config/adapter.ts"
+vercel({ imageService: true, staticHeaders: true });
+```
+
+- **Node version.** Vercel reads `"engines": { "node": "24.x" }` from `package.json`.
+- **Static headers.** The Content Security Policy for prerendered pages is written to the Build
+  Output configuration instead of a `<meta>` tag.
+- **Security headers.** `integrations/security-headers.ts` prepends a route to
+  `.vercel/output/config.json` that applies the headers from `config/security-headers.ts` to
+  every path.
+- **Images.** `<Image>` and `<Picture>` use Vercel Image Optimization at runtime.
+
+## Optional extras
+
+- Enable **Vercel Web Analytics** by setting `PUBLIC_ANALYTICS=vercel`; the `@vercel/analytics`
+  Astro component is rendered only when this is set, and its beacons are same-origin so the CSP
+  needs no change.
+- Turn on **ISR** for on-demand pages with `vercel({ isr: { expiration: 60 } })` if you add
+  server-rendered pages that can be cached.
+- Store the database with the Turso integration from the Vercel Marketplace, which injects
+  `DATABASE_URL` and `DATABASE_AUTH_TOKEN` for you.
+
+## Custom domains
+
+After adding a domain in Vercel, update `SITE_URL`, `BETTER_AUTH_URL` and `siteConfig.url`,
+then redeploy so canonical links, the sitemap and OAuth callback URLs use the final host.
