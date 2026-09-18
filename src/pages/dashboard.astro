@@ -1,0 +1,106 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import SignOutButton from '@/components/react/auth/SignOutButton';
+import Badge from '@/components/ui/Badge.astro';
+import Card from '@/components/ui/Card.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { formatDate, toISODate } from '@/lib/utils';
+
+export const prerender = false;
+
+const { user, session } = Astro.locals;
+if (!user || !session) {
+  return Astro.redirect('/login?next=/dashboard');
+}
+---
+
+<BaseLayout
+  title="Dashboard"
+  description="Your account overview."
+  noindex
+  searchable={false}
+  class="container max-w-4xl py-16"
+>
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="text-sm font-semibold text-primary">Dashboard</p>
+      <h1 class="mt-2 text-3xl font-bold tracking-tight">Hello, {user.name}</h1>
+      <p class="mt-2 text-muted-foreground">
+        This page is rendered on the server for every request and only for signed-in users.
+      </p>
+    </div>
+    <SignOutButton client:load />
+  </header>
+
+  <div class="mt-10 grid gap-6 md:grid-cols-2">
+    <Card>
+      <h2 class="flex items-center gap-2 font-semibold">
+        <Icon name="lucide:user" class="size-4 text-primary" aria-hidden="true" />
+        Account
+      </h2>
+      <dl class="mt-4 space-y-3 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Name</dt>
+          <dd class="font-medium">{user.name}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Email</dt>
+          <dd class="font-medium">{user.email}</dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Email verified</dt>
+          <dd>
+            {user.emailVerified ? (
+              <Badge variant="success">Verified</Badge>
+            ) : (
+              <Badge variant="muted">Not verified</Badge>
+            )}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Member since</dt>
+          <dd>
+            <time datetime={toISODate(user.createdAt)}>{formatDate(user.createdAt)}</time>
+          </dd>
+        </div>
+      </dl>
+    </Card>
+
+    <Card>
+      <h2 class="flex items-center gap-2 font-semibold">
+        <Icon name="lucide:key-round" class="size-4 text-primary" aria-hidden="true" />
+        Session
+      </h2>
+      <dl class="mt-4 space-y-3 text-sm">
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Expires</dt>
+          <dd>
+            <time datetime={toISODate(session.expiresAt)}>
+              {formatDate(session.expiresAt, { dateStyle: 'medium', timeStyle: 'short' })}
+            </time>
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Rendered on</dt>
+          <dd class="font-mono text-xs">{__DEPLOY_TARGET__}</dd>
+        </div>
+      </dl>
+      <p class="mt-4 text-xs text-pretty text-muted-foreground">
+        Sessions are stored in the database by Better Auth and cached in a signed cookie for five
+        minutes to avoid a database read on every request.
+      </p>
+    </Card>
+  </div>
+
+  <Card class="mt-6">
+    <h2 class="font-semibold">How this route is protected</h2>
+    <p class="mt-2 text-sm text-pretty text-muted-foreground">
+      <code class="font-mono">src/middleware.ts</code> resolves the session for every on-demand
+      request and stores it in <code class="font-mono">Astro.locals</code>. This page opts out of
+      prerendering and redirects to <code class="font-mono">/login</code> when no user is present.
+      Because the check lives in the page itself, it cannot be bypassed with an unusual URL encoding
+      of the path.
+    </p>
+  </Card>
+</BaseLayout>

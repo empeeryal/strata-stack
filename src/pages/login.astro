@@ -1,0 +1,45 @@
+---
+import AuthForm from '@/components/react/auth/AuthForm';
+import MagicLinkForm from '@/components/react/auth/MagicLinkForm';
+import SocialButtons from '@/components/react/auth/SocialButtons';
+import AuthLayout from '@/layouts/AuthLayout.astro';
+import { enabledSocialProviders } from '@/lib/auth';
+import { safeRedirectPath } from '@/lib/redirect';
+
+export const prerender = false;
+
+const redirectTo = safeRedirectPath(Astro.url.searchParams.get('next'), '/dashboard');
+
+if (Astro.locals.user) {
+  return Astro.redirect(redirectTo);
+}
+
+const providers = enabledSocialProviders();
+---
+
+<AuthLayout
+  title="Sign in"
+  description="Sign in to your account."
+  heading="Welcome back"
+  subheading="Sign in with your email and password, a magic link, or a connected account."
+>
+  <div class="space-y-6">
+    <AuthForm client:load mode="login" redirectTo={redirectTo} />
+    <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
+      <span class="relative bg-card px-3">or</span>
+    </div>
+    <MagicLinkForm client:load redirectTo={redirectTo} />
+    {providers.length > 0 && (
+      <SocialButtons client:load providers={providers} redirectTo={redirectTo} />
+    )}
+  </div>
+  <Fragment slot="footer">
+    New here?{' '}
+    <a
+      href={`/signup${redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redirectTo)}` : ''}`}
+      class="font-medium text-foreground underline underline-offset-4"
+    >
+      Create an account
+    </a>
+  </Fragment>
+</AuthLayout>
