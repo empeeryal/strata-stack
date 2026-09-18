@@ -3,7 +3,8 @@
  * Refuses to run against anything other than a `file:` URL.
  */
 import { spawnSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 const url = process.env.DATABASE_URL ?? 'file:./.data/local.db';
 if (!url.startsWith('file:')) {
@@ -12,6 +13,8 @@ if (!url.startsWith('file:')) {
 }
 
 const path = url.slice('file:'.length);
+// A fresh checkout or CI runner may not have the directory yet (libSQL cannot create it).
+mkdirSync(dirname(path), { recursive: true });
 for (const suffix of ['', '-journal', '-shm', '-wal']) {
   rmSync(`${path}${suffix}`, { force: true });
 }
