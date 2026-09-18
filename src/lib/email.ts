@@ -1,6 +1,6 @@
 import { siteConfig } from '../site.config';
 
-import { getEnv } from './env';
+import { getEnv, isProduction } from './env';
 
 export interface EmailMessage {
   to: string;
@@ -9,18 +9,36 @@ export interface EmailMessage {
   html?: string;
 }
 
+/** Thrown when an email must be sent but no provider is configured. */
+export class EmailNotConfiguredError extends Error {
+  constructor() {
+    super('Email delivery is not configured. Set RESEND_API_KEY to send email.');
+    this.name = 'EmailNotConfiguredError';
+  }
+}
+
+/** True when a transactional email provider is available. */
+export function isEmailConfigured(): boolean {
+  return Boolean(getEnv('RESEND_API_KEY'));
+}
+
 /**
  * Sends transactional email through Resend when RESEND_API_KEY is configured.
- * Without a key (local development, CI) the message is logged instead so flows like
- * magic-link sign-in remain testable.
+ *
+ * Without a key the behaviour depends on the environment:
+ * - development and test: the message (including any sign-in link) is printed to the
+ *   console so flows like magic-link sign-in stay testable offline;
+ * - production: the call fails with `EmailNotConfiguredError`. Sign-in links and reset
+ *   tokens are bearer credentials and must never end up in production logs.
  */
 export async function sendEmail(message: EmailMessage): Promise<{ id: string }> {
   const apiKey = getEnv('RESEND_API_KEY');
   const from = getEnv('EMAIL_FROM') ?? `${siteConfig.name} <onboarding@resend.dev>`;
 
   if (!apiKey) {
+    if (isProduction) throw new EmailNotConfiguredError();
     console.info(
-      `[email] RESEND_API_KEY is not set; logging message instead.\n  to: ${message.to}\n  subject: ${message.subject}\n  ${message.text}`,
+      `[email] RESEND_API_KEY is not set; printing the message instead (development only).\n  to: ${message.to}\n  subject: ${message.subject}\n  ${message.text}`,
     );
     return { id: 'logged' };
   }

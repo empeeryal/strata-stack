@@ -2,6 +2,7 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
+import { isAdmin } from '@/lib/admin';
 import { cn } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
@@ -52,13 +53,24 @@ const user = Astro.locals.user ?? null;
       </a>
       <ThemeToggle />
       {user ? (
-        <a
-          href="/dashboard"
-          class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'hidden md:inline-flex')}
-        >
-          <Icon name="lucide:user" aria-hidden="true" />
-          {user.name}
-        </a>
+        <>
+          {isAdmin(user) && (
+            <a
+              href="/admin"
+              class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden md:inline-flex')}
+            >
+              <Icon name="lucide:shield" aria-hidden="true" />
+              Admin
+            </a>
+          )}
+          <a
+            href="/dashboard"
+            class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'hidden md:inline-flex')}
+          >
+            <Icon name="lucide:user" aria-hidden="true" />
+            {user.name}
+          </a>
+        </>
       ) : (
         <a
           href="/login"
@@ -67,7 +79,7 @@ const user = Astro.locals.user ?? null;
           Sign in
         </a>
       )}
-      <MobileNav userName={user?.name ?? null} />
+      <MobileNav userName={user?.name ?? null} admin={isAdmin(user)} />
     </div>
   </div>
 </header>

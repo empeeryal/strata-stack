@@ -36,7 +36,8 @@ which is built from this exact code.
 | **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, Vite 8, Rust compiler                                                                |
 | **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts    |
 | **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`            |
-| **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, protected routes, rate limiting                                |
+| **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, verification, password reset, protected routes, rate limiting  |
+| **Accounts**  | Data export, account deletion, change password; admin area with a contact inbox, user management (roles, bans, sessions) and an audit log           |
 | **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                         |
 | **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, Pagefind search                                |
 | **Security**  | Hash-based Content Security Policy, hardened response headers, CSRF origin checks, open-redirect protection, `security.txt`                         |
@@ -56,7 +57,8 @@ pnpm db:migrate          # creates .data/local.db
 pnpm dev                 # http://localhost:4321
 ```
 
-Optional: `pnpm db:seed` creates `demo@example.com` / `password123`.
+Optional: `pnpm db:seed` creates `demo@example.com` and `admin@example.com` (password
+`password123`); the admin account opens `/admin`.
 
 ## Deploy
 
@@ -85,7 +87,8 @@ command can simply be `astro build`. See the [deploy guides](https://astro-frame
 | `SITE_URL`                                         | no         | Canonical origin; defaults to the Vercel/Netlify production URL, then `siteConfig.url` |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`        | no         | Enables GitHub sign-in                                                                 |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                                                 |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links and contact form email                                                     |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links, verification, password resets, contact notifications                      |
+| `ADMIN_EMAILS`                                     | no         | Addresses that get the `admin` role on sign-up (or `pnpm admin:promote`)               |
 | `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                           |
 
 The full list with platform notes lives in [`.env.example`](.env.example) and the
@@ -102,6 +105,7 @@ The full list with platform notes lives in [`.env.example`](.env.example) and th
 | `pnpm test` · `pnpm test:e2e` · `pnpm test:a11y`                         | Vitest, Playwright, axe checks                      |
 | `pnpm lhci`                                                              | Lighthouse budgets                                  |
 | `pnpm db:migrate` · `db:generate` · `db:studio` · `db:seed` · `db:reset` | Database                                            |
+| `pnpm db:prune` · `pnpm admin:promote <email>`                           | Retention job, grant the admin role                 |
 | `pnpm auth:generate`                                                     | Regenerate the Better Auth schema                   |
 | `pnpm changeset`                                                         | Record a change for the changelog                   |
 
@@ -112,14 +116,14 @@ astro.config.ts         adapter switch, CSP, fonts, integrations
 config/                 adapter resolver, security headers
 integrations/           theme script, security headers
 src/
-  actions/              Astro Actions (contact form)
+  actions/              Astro Actions (contact form, admin operations)
   components/           ui primitives, site chrome, React islands, SEO head
   content/              docs, blog, authors, legal (MDX/JSON) + changelog loader
   db/                   Drizzle client and schema (auth schema generated)
-  layouts/              Base, Docs, Blog, Auth
-  lib/                  auth, email, env, seo, utils
+  layouts/              Base, Docs, Blog, Auth, Admin
+  lib/                  auth, email, env, contact, throttle, admin, seo, utils
   middleware.ts         session + security headers
-  pages/                routes and endpoints (og images, rss, robots, llms.txt, api)
+  pages/                routes and endpoints (admin area, account export, og images, rss, api)
   site.config.ts        the one file to edit when rebranding
   styles/global.css     Tailwind 4 + design tokens
 tests/                  unit (Vitest) and e2e (Playwright)

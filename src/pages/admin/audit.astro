@@ -1,0 +1,73 @@
+---
+import { desc } from 'drizzle-orm';
+
+import { db } from '@/db/client';
+import { auditLog } from '@/db/schema';
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { guardAdminPage } from '@/lib/admin-page';
+import { formatDate, toISODate } from '@/lib/utils';
+
+export const prerender = false;
+
+const denied = await guardAdminPage(Astro);
+if (denied) return denied;
+
+const entries = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(200);
+---
+
+<AdminLayout title="Audit log" description="Privileged and privacy-relevant actions.">
+  <p class="text-sm text-muted-foreground">
+    Every administrative change, account deletion and data export is recorded here with the acting
+    account. Entries never contain message bodies or secrets.
+  </p>
+
+  {entries.length === 0 ? (
+    <p class="mt-8 text-sm text-muted-foreground">Nothing recorded yet.</p>
+  ) : (
+    <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
+      <table class="w-full text-sm">
+        <caption class="sr-only">Audit log entries</caption>
+        <thead class="bg-muted/60 text-left">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              When
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Actor
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Action
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Target
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Details
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {entries.map((entry) => (
+            <tr>
+              <td class="px-4 py-3 align-top whitespace-nowrap">
+                <time datetime={toISODate(entry.createdAt)}>
+                  {formatDate(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+                </time>
+              </td>
+              <td class="px-4 py-3 align-top">{entry.actorEmail ?? 'system'}</td>
+              <td class="px-4 py-3 align-top">
+                <code class="font-mono text-xs">{entry.action}</code>
+              </td>
+              <td class="px-4 py-3 align-top font-mono text-xs text-muted-foreground">
+                {entry.targetType ? `${entry.targetType}:${entry.targetId ?? ''}` : ''}
+              </td>
+              <td class="px-4 py-3 align-top font-mono text-xs break-all text-muted-foreground">
+                {entry.details ?? ''}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</AdminLayout>

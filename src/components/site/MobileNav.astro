@@ -8,9 +8,11 @@ import { siteConfig } from '@/site.config';
 interface Props {
   /** Display name of the signed-in user, if any. */
   userName?: string | null;
+  /** Whether the signed-in user may open the admin area. */
+  admin?: boolean;
 }
 
-const { userName = null } = Astro.props;
+const { userName = null, admin = false } = Astro.props;
 const pathname = Astro.url.pathname;
 const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 ---
@@ -56,9 +58,17 @@ const isActive = (href: string) => pathname === href || pathname.startsWith(`${h
       </a>
       <div class="mt-auto flex flex-col gap-2 border-t pt-4">
         {userName ? (
-          <a href="/dashboard" class={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
-            {userName}
-          </a>
+          <>
+            {admin && (
+              <a href="/admin" class={cn(buttonVariants({ variant: 'ghost' }), 'w-full')}>
+                <Icon name="lucide:shield" aria-hidden="true" />
+                Admin
+              </a>
+            )}
+            <a href="/dashboard" class={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
+              {userName}
+            </a>
+          </>
         ) : (
           <a href="/login" class={cn(buttonVariants({ variant: 'primary' }), 'w-full')}>
             Sign in

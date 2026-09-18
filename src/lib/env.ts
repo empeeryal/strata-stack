@@ -69,3 +69,92 @@ export function getTrustedOrigins(): string[] {
 
   return [...origins];
 }
+
+/** Addresses that receive the `admin` role automatically when they sign up (ADMIN_EMAILS). */
+export function getAdminEmails(env: Record<string, string | undefined> = process.env): string[] {
+  return (env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** How long archived contact messages are kept before `pnpm db:prune` deletes them. */
+export function getContactRetentionDays(
+  env: Record<string, string | undefined> = process.env,
+): number {
+  const value = Number(env.CONTACT_RETENTION_DAYS ?? 365);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 365;
+}
+
+export interface ConfigIssue {
+  level: 'error' | 'warn';
+  message: string;
+}
+
+/**
+ * Checks the settings that make a production deployment safe. Errors describe states in
+ * which the app must not serve requests (an unset or weak auth secret); warnings describe
+ * features that silently degrade (no email provider, no contact recipient).
+ */
+export function checkProductionConfig(
+  env: Record<string, string | undefined> = process.env,
+): ConfigIssue[] {
+  const issues: ConfigIssue[] = [];
+  if (env.NODE_ENV !== 'production') return issues;
+
+  const secret = env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    issues.push({
+      level: 'error',
+      message: 'BETTER_AUTH_SECRET is not set. Generate one with `openssl rand -base64 32`.',
+    });
+  } else if (secret.length < 32) {
+    issues.push({
+      level: 'error',
+      message: 'BETTER_AUTH_SECRET must be at least 32 characters long.',
+    });
+  }
+
+  if (!env.DATABASE_URL || env.DATABASE_URL.startsWith('file:')) {
+    issues.push({
+      level: 'warn',
+      message:
+        'DATABASE_URL points to a local SQLite file. Serverless file systems are ephemeral; use a Turso (libsql://) database unless you deploy the Node/Docker target with a volume.',
+    });
+  }
+  if (!env.RESEND_API_KEY) {
+    issues.push({
+      level: 'warn',
+      message:
+        'RESEND_API_KEY is not set: magic links, email verification and password resets are unavailable until email delivery is configured.',
+    });
+  }
+  if (!env.CONTACT_TO_EMAIL) {
+    issues.push({
+      level: 'warn',
+      message:
+        'CONTACT_TO_EMAIL is not set: contact form messages are stored but nobody is notified. Review them at /admin/messages.',
+    });
+  }
+  return issues;
+}
+
+/**
+ * Logs warnings and throws on errors from `checkProductionConfig`. Called once per server
+ * instance from the middleware (not at import time, so builds never depend on runtime
+ * secrets).
+ */
+export function assertProductionConfig(
+  env: Record<string, string | undefined> = process.env,
+): void {
+  const issues = checkProductionConfig(env);
+  for (const issue of issues) {
+    if (issue.level === 'warn') console.warn(`[config] ${issue.message}`);
+  }
+  const errors = issues.filter((issue) => issue.level === 'error');
+  if (errors.length > 0) {
+    throw new Error(
+      `Invalid production configuration:\n${errors.map((issue) => `- ${issue.message}`).join('\n')}`,
+    );
+  }
+}

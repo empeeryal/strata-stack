@@ -8,3 +8,7 @@ BETTER_AUTH_URL=http://localhost:4321
 RESEND_API_KEY=
 EMAIL_FROM="Astro Framework <noreply@example.com>"
 CONTACT_TO_EMAIL=you@example.com
+
+# wrangler.jsonc sets NODE_ENV=production for deployments; override it locally so
+# email falls back to the console during `pnpm dev:cloudflare`.
+NODE_ENV=development

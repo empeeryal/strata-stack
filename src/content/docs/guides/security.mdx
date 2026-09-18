@@ -1,6 +1,7 @@
 ---
 title: Security
 description: The Content Security Policy, response headers, CSRF protection and secrets handling that ship enabled.
+publishedDate: 2026-09-18
 sidebar:
   order: 7
 ---
@@ -63,6 +64,30 @@ in sync. Add `preload` to HSTS only after submitting the domain to the preload l
 Astro's `security.checkOrigin` rejects cross-origin `POST`, `PUT`, `PATCH` and `DELETE` requests
 to on-demand routes. Better Auth validates `trustedOrigins` independently, and cookies are
 `SameSite=Lax`.
+
+## Production configuration checks
+
+`assertProductionConfig()` (`src/lib/env.ts`) runs once per server instance from the
+middleware when `NODE_ENV=production`, never at build time. A missing or short
+`BETTER_AUTH_SECRET` makes on-demand requests fail with a clear error instead of running with
+a default secret; a file database, missing email provider or missing contact recipient are
+logged as warnings and reported by `/api/health`.
+
+## Email safety
+
+Sign-in links, verification links and reset tokens are bearer credentials. Without
+`RESEND_API_KEY`, `sendEmail()` prints messages only outside production; in production it
+throws, and the login page hides the magic-link form and the reset link. See
+[authentication](/docs/guides/authentication#email-delivery-and-the-production-rule).
+
+## Abuse controls and audit
+
+- Better Auth rate limits every auth endpoint with database storage; sign-in, sign-up, magic
+  link and password endpoints have stricter built-in limits.
+- The contact form is throttled per address and per IP (`src/lib/throttle.ts`) and protected
+  by a honeypot.
+- Administrative actions, account deletions and data exports are recorded in `audit_log`
+  (see the [admin area](/docs/guides/admin)).
 
 ## Secrets
 

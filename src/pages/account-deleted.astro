@@ -1,0 +1,24 @@
+---
+import Button from '@/components/ui/Button.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Account deleted"
+  description="Your account and its data have been removed."
+  noindex
+  searchable={false}
+  class="container flex max-w-xl flex-col items-center py-24 text-center"
+>
+  <h1 class="text-3xl font-bold tracking-tight">Your account has been deleted</h1>
+  <p class="mt-4 text-pretty text-muted-foreground">
+    Your profile, sessions and connected sign-in methods were removed. You can create a new account
+    at any time.
+  </p>
+  <div class="mt-8 flex gap-3">
+    <Button href="/">Back to the homepage</Button>
+    <Button href="/signup" variant="outline">
+      Create a new account
+    </Button>
+  </div>
+</BaseLayout>

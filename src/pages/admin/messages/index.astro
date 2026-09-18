@@ -1,0 +1,160 @@
+---
+import { actions } from 'astro:actions';
+import { count, desc, eq } from 'drizzle-orm';
+
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import { db } from '@/db/client';
+import { CONTACT_STATUSES, contactMessages, type ContactStatus } from '@/db/schema';
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import { guardAdminPage, summarizeActionResults } from '@/lib/admin-page';
+import { formatDate, toISODate } from '@/lib/utils';
+
+export const prerender = false;
+
+const denied = await guardAdminPage(Astro);
+if (denied) return denied;
+
+const requested = Astro.url.searchParams.get('status') ?? 'new';
+const filter: ContactStatus | 'all' = (CONTACT_STATUSES as readonly string[]).includes(requested)
+  ? (requested as ContactStatus)
+  : 'all';
+const listUrl = `/admin/messages?status=${filter}`;
+
+// Form actions post back to this page; redirect after a success so refresh never repeats it.
+const outcome = summarizeActionResults([
+  Astro.getActionResult(actions.admin.setMessageStatus),
+  Astro.getActionResult(actions.admin.deleteMessage),
+  Astro.getActionResult(actions.admin.retryMessageDelivery),
+]);
+if (outcome.completed) return Astro.redirect(listUrl);
+
+const [counts, messages] = await Promise.all([
+  db
+    .select({ status: contactMessages.status, value: count() })
+    .from(contactMessages)
+    .groupBy(contactMessages.status),
+  db
+    .select()
+    .from(contactMessages)
+    .where(filter === 'all' ? undefined : eq(contactMessages.status, filter))
+    .orderBy(desc(contactMessages.createdAt))
+    .limit(100),
+]);
+const byStatus = Object.fromEntries(counts.map((row) => [row.status, row.value]));
+const total = counts.reduce((sum, row) => sum + row.value, 0);
+
+const tabs: Array<{ id: ContactStatus | 'all'; label: string; value: number }> = [
+  { id: 'new', label: 'New', value: byStatus.new ?? 0 },
+  { id: 'read', label: 'Read', value: byStatus.read ?? 0 },
+  { id: 'archived', label: 'Archived', value: byStatus.archived ?? 0 },
+  { id: 'all', label: 'All', value: total },
+];
+
+const deliveryVariant = {
+  sent: 'success',
+  failed: 'danger',
+  pending: 'muted',
+  skipped: 'muted',
+} as const;
+---
+
+<AdminLayout title="Messages" description="Contact form inbox." error={outcome.error}>
+  <nav aria-label="Filter messages" class="flex flex-wrap gap-1">
+    {tabs.map((tab) => (
+      <a
+        href={`/admin/messages?status=${tab.id}`}
+        aria-current={filter === tab.id ? 'page' : undefined}
+        class="rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:text-foreground"
+      >
+        {tab.label} <span class="text-xs">({tab.value})</span>
+      </a>
+    ))}
+  </nav>
+
+  {messages.length === 0 ? (
+    <p class="mt-8 text-sm text-muted-foreground">No messages in this view.</p>
+  ) : (
+    <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
+      <table class="w-full text-sm">
+        <caption class="sr-only">Contact messages</caption>
+        <thead class="bg-muted/60 text-left">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              From
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Message
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Received
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Notification
+            </th>
+            <th scope="col" class="px-4 py-3 text-right font-semibold">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {messages.map((message) => (
+            <tr class:list={[message.status === 'new' && 'font-medium']}>
+              <td class="px-4 py-3 align-top">
+                <a href={`/admin/messages/${message.id}`} class="hover:underline">
+                  {message.name}
+                </a>
+                <p class="text-xs font-normal text-muted-foreground">{message.email}</p>
+              </td>
+              <td class="max-w-xs truncate px-4 py-3 align-top font-normal text-muted-foreground">
+                {message.message}
+              </td>
+              <td class="px-4 py-3 align-top font-normal whitespace-nowrap">
+                <time datetime={toISODate(message.createdAt)}>
+                  {formatDate(message.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+                </time>
+              </td>
+              <td class="px-4 py-3 align-top">
+                <Badge variant={deliveryVariant[message.deliveryStatus]}>
+                  {message.deliveryStatus}
+                </Badge>
+              </td>
+              <td class="px-4 py-3 align-top">
+                <div class="flex justify-end gap-1">
+                  {message.status !== 'archived' && (
+                    <form method="POST" action={actions.admin.setMessageStatus}>
+                      <input type="hidden" name="id" value={message.id} />
+                      <input type="hidden" name="status" value="archived" />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Archive
+                      </Button>
+                    </form>
+                  )}
+                  {message.status === 'archived' && (
+                    <form method="POST" action={actions.admin.setMessageStatus}>
+                      <input type="hidden" name="id" value={message.id} />
+                      <input type="hidden" name="status" value="read" />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Restore
+                      </Button>
+                    </form>
+                  )}
+                  <form
+                    method="POST"
+                    action={actions.admin.deleteMessage}
+                    data-confirm="Delete this message permanently?"
+                  >
+                    <input type="hidden" name="id" value={message.id} />
+                    <Button type="submit" variant="ghost" size="sm" class="text-danger">
+                      Delete
+                    </Button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</AdminLayout>

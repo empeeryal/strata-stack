@@ -1,0 +1,69 @@
+---
+title: Admin area
+description: The built-in administration pages for contact messages, users and the audit log, and how authorization works.
+publishedDate: 2026-09-18
+sidebar:
+  order: 5.5
+  badge: new
+---
+
+Signed-in users with the `admin` role get an **Admin** link in the header that opens `/admin`.
+Everything there is server rendered, works without JavaScript and is authorized twice: in the
+page (`guardAdminPage()`) and in every action (`requireAdmin()` in `src/actions/index.ts`).
+
+## Becoming an administrator
+
+- Set `ADMIN_EMAILS=you@example.com,ops@example.com` before those people sign up: the
+  database hook in `src/lib/auth.ts` assigns the role at creation.
+- For existing accounts run `pnpm admin:promote user@example.com` (or `--revoke`).
+- Administrators can promote or demote each other from the users page, but never themselves.
+- `pnpm db:seed` creates `admin@example.com` / `password123` for local development.
+
+## Pages
+
+| Route                  | What it does                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `/admin`               | Counts, configuration health (email delivery, contact recipient), latest messages and activity    |
+| `/admin/messages`      | Inbox with New / Read / Archived / All views; archive, restore and delete                         |
+| `/admin/messages/[id]` | Full message (opening it marks it read), reply by email, resend the owner notification            |
+| `/admin/users`         | Every account with role and status; make or remove admin, ban, unban, sign out everywhere, delete |
+| `/admin/audit`         | The last 200 audit entries                                                                        |
+
+Destructive buttons ask for confirmation through a small processed script (inline handlers
+are blocked by the CSP).
+
+## Actions
+
+All admin operations are [Astro Actions](/docs/guides/actions-and-forms) under `server.admin`
+and are called from plain `<form method="POST">` elements, so they are covered by Astro's
+origin check. The pages redirect after a successful action (POST → redirect → GET) so a
+refresh never repeats it.
+
+| Action                  | Backed by                                                   |
+| ----------------------- | ----------------------------------------------------------- |
+| `setMessageStatus`      | `contact_message.status` (+ `read_at` / `archived_at`)      |
+| `deleteMessage`         | Hard delete                                                 |
+| `retryMessageDelivery`  | `deliverContactMessage()` in `src/lib/contact.ts`           |
+| `setUserRole`           | `auth.api.setRole`                                          |
+| `banUser` / `unbanUser` | `auth.api.banUser` / `unbanUser` (bans revoke all sessions) |
+| `revokeUserSessions`    | `auth.api.revokeUserSessions`                               |
+| `removeUser`            | `auth.api.removeUser`                                       |
+
+User operations go through Better Auth's admin plugin, which checks the caller's role again
+using the request headers. Every action writes an audit entry.
+
+## Audit log
+
+`recordAudit()` (`src/lib/admin.ts`) appends to the `audit_log` table: actor, action, target
+and small JSON details. It is also called for account deletions and data exports, so the log
+doubles as evidence for privacy requests. Entries never contain message bodies, passwords or
+tokens, and a failure to write an entry is logged rather than thrown.
+
+## Extending
+
+- Add a table and a page under `src/pages/admin/`, guard it with `guardAdminPage()` and add a
+  link in `src/layouts/AdminLayout.astro`.
+- Add actions under `server.admin` and start each handler with `requireAdmin(context)`.
+- For finer permissions define custom roles with Better Auth's access control and pass them
+  to `admin({ ac, roles })` on the server and `adminClient({ ac, roles })` on the client.
+- Impersonation is available through `auth.api.impersonateUser` if you need support flows.

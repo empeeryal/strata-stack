@@ -1,6 +1,9 @@
 ---
 import { Icon } from 'astro-icon/components';
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import pkg from '../../package.json';
 import DeployTargets from '@/components/react/DeployTargets';
 import Badge from '@/components/ui/Badge.astro';
@@ -8,6 +11,7 @@ import Button from '@/components/ui/Button.astro';
 import Card from '@/components/ui/Card.astro';
 import CodeBlock from '@/components/ui/CodeBlock.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { resolvedVersions } from '@/lib/stack';
 import { siteConfig } from '@/site.config';
 
 const quickstart = [
@@ -93,7 +97,7 @@ const features = [
 ];
 
 const deps = pkg.dependencies as Record<string, string>;
-const stack = [
+const stackEntries = [
   ['Astro', 'astro'],
   ['React', 'react'],
   ['Motion', 'motion'],
@@ -102,7 +106,18 @@ const stack = [
   ['Drizzle ORM', 'drizzle-orm'],
   ['libSQL client', '@libsql/client'],
   ['MDX', '@astrojs/mdx'],
-].map(([name, dep]) => ({ name, dep, version: deps[dep!]?.replace(/^[\^~]/, '') ?? '' }));
+] as const;
+// Exact versions come from the lockfile (what is installed); package.json only holds ranges.
+// This page is prerendered, so the read happens at build time from the project root.
+const installed = resolvedVersions(
+  readFileSync(resolve(process.cwd(), 'pnpm-lock.yaml'), 'utf8'),
+  stackEntries.map(([, dep]) => dep),
+);
+const stack = stackEntries.map(([name, dep]) => ({
+  name,
+  dep,
+  version: installed[dep] ?? deps[dep]?.replace(/^[\^~]/, '') ?? '',
+}));
 
 const steps = [
   {
@@ -254,13 +269,13 @@ const steps = [
     <div class="grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:items-start">
       <div>
         <h2 id="stack-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-          Current, pinned and tested
+          Current, locked and tested
         </h2>
         <p class="mt-4 text-pretty text-muted-foreground">
-          Versions below are read from this repository's{' '}
-          <code class="font-mono text-sm">package.json</code> at build time, so the page never lies
-          about what it runs on. Dependabot keeps them fresh and the CI matrix proves every upgrade
-          still builds on all targets.
+          Versions below are the exact releases installed from this repository's{' '}
+          <code class="font-mono text-sm">pnpm-lock.yaml</code>, read at build time, so the page
+          never lies about what it runs on. Dependabot keeps them fresh and the CI matrix proves
+          every upgrade still builds on all targets.
         </p>
         <div class="mt-6 flex flex-wrap gap-2">
           <Badge variant="outline">Node {pkg.engines.node}</Badge>
@@ -269,31 +284,35 @@ const steps = [
           <Badge variant="outline">ESLint 10</Badge>
         </div>
       </div>
-      <table class="w-full overflow-hidden rounded-xl border text-sm shadow-soft">
-        <caption class="sr-only">Core dependencies and their versions</caption>
-        <thead class="bg-muted/60 text-left">
-          <tr>
-            <th scope="col" class="px-4 py-3 font-semibold">
-              Package
-            </th>
-            <th scope="col" class="px-4 py-3 font-semibold">
-              npm
-            </th>
-            <th scope="col" class="px-4 py-3 text-right font-semibold">
-              Version
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y bg-card">
-          {stack.map((item) => (
+      <div class="overflow-x-auto rounded-xl border shadow-soft">
+        <table class="w-full text-sm">
+          <caption class="sr-only">Core dependencies and their installed versions</caption>
+          <thead class="bg-muted/60 text-left">
             <tr>
-              <td class="px-4 py-3 font-medium">{item.name}</td>
-              <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{item.dep}</td>
-              <td class="px-4 py-3 text-right font-mono text-xs">{item.version}</td>
+              <th scope="col" class="px-4 py-3 font-semibold">
+                Package
+              </th>
+              <th scope="col" class="hidden px-4 py-3 font-semibold sm:table-cell">
+                npm
+              </th>
+              <th scope="col" class="px-4 py-3 text-right font-semibold">
+                Installed
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody class="divide-y bg-card">
+            {stack.map((item) => (
+              <tr>
+                <td class="px-4 py-3 font-medium">{item.name}</td>
+                <td class="hidden px-4 py-3 font-mono text-xs text-muted-foreground sm:table-cell">
+                  {item.dep}
+                </td>
+                <td class="px-4 py-3 text-right font-mono text-xs">{item.version}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 

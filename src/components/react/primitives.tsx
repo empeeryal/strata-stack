@@ -1,9 +1,10 @@
-import { Loader2 } from 'lucide-react';
-import type {
-  ButtonHTMLAttributes,
-  InputHTMLAttributes,
-  LabelHTMLAttributes,
-  ReactNode,
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import {
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type LabelHTMLAttributes,
+  type ReactNode,
+  useState,
 } from 'react';
 
 import { buttonVariants, type ButtonVariantProps } from '@/components/ui/button-variants';
@@ -36,15 +37,37 @@ export function Button({
   );
 }
 
+const inputClasses =
+  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger';
+
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={cn(inputClasses, className)} {...props} />;
+}
+
+/** Password field with a show/hide toggle; the toggle is a real button for keyboard users. */
+export function PasswordInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  const [visible, setVisible] = useState(false);
   return (
-    <input
-      className={cn(
-        'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger',
-        className,
-      )}
-      {...props}
-    />
+    <div className="relative">
+      <input
+        {...props}
+        type={visible ? 'text' : 'password'}
+        className={cn(inputClasses, 'pr-10', className)}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((value) => !value)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {visible ? (
+          <EyeOff className="size-4" aria-hidden="true" />
+        ) : (
+          <Eye className="size-4" aria-hidden="true" />
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -73,6 +96,10 @@ export function Field({ children, className }: { children: ReactNode; className?
   return <div className={cn('space-y-2', className)}>{children}</div>;
 }
 
+/**
+ * Inline feedback. Errors use `role="alert"` (assertive), everything else `role="status"`
+ * (polite), so screen readers announce results of form submissions.
+ */
 export function Alert({
   variant = 'danger',
   children,
@@ -96,3 +123,6 @@ export function Alert({
     </div>
   );
 }
+
+/** Message for failures that are not API results (dropped connection, runtime error). */
+export const UNEXPECTED_ERROR = 'Something went wrong. Check your connection and try again.';

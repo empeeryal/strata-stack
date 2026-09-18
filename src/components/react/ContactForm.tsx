@@ -1,7 +1,7 @@
 import { actions, isInputError } from 'astro:actions';
 import { type SubmitEvent, useState } from 'react';
 
-import { Alert, Button, Field, Input, Label, Textarea } from './primitives';
+import { Alert, Button, Field, Input, Label, Textarea, UNEXPECTED_ERROR } from './primitives';
 
 /**
  * Contact form submitted through the `contact` Astro Action. Works from static pages
@@ -18,23 +18,31 @@ export default function ContactForm() {
     setFieldErrors({});
     setStatus('sending');
 
-    const { error: actionError } = await actions.contact(new FormData(event.currentTarget));
-    if (actionError) {
-      if (isInputError(actionError)) {
-        setFieldErrors(actionError.fields);
-        setError('Please fix the highlighted fields.');
-      } else {
-        setError(actionError.message);
+    try {
+      const { error: actionError } = await actions.contact(new FormData(event.currentTarget));
+      if (actionError) {
+        if (isInputError(actionError)) {
+          setFieldErrors(actionError.fields);
+          setError('Please fix the highlighted fields.');
+        } else {
+          setError(actionError.message);
+        }
+        setStatus('idle');
+        return;
       }
+      setStatus('sent');
+    } catch {
+      setError(UNEXPECTED_ERROR);
       setStatus('idle');
-      return;
     }
-    setStatus('sent');
   }
 
   if (status === 'sent') {
     return (
-      <Alert variant="success">Thanks, your message has been sent. We will reply by email.</Alert>
+      <Alert variant="success">
+        Thanks, your message has been received. We read every message and reply by email when a
+        response is needed.
+      </Alert>
     );
   }
 
@@ -92,8 +100,11 @@ export default function ContactForm() {
           </p>
         )}
       </Field>
-      {/* Honeypot: hidden from people, filled by bots. */}
-      <div className="hidden" aria-hidden="true">
+      {/* Honeypot: moved off-screen rather than display:none, which simple bots skip. */}
+      <div
+        className="absolute top-auto -left-[10000px] h-px w-px overflow-hidden"
+        aria-hidden="true"
+      >
         <label htmlFor="contact-website">Website</label>
         <input id="contact-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>

@@ -1,6 +1,7 @@
 ---
 title: Actions and forms
 description: Type-safe form handling with Astro Actions, validation, honeypots and the contact form example.
+publishedDate: 2026-09-18
 sidebar:
   order: 5
 ---
@@ -23,11 +24,11 @@ export const server = {
       name: z.string().trim().min(2).max(80),
       email: z.email(),
       message: z.string().trim().min(10).max(2000),
-      website: z.string().max(0).optional(), // honeypot
+      website: z.string().max(200).optional(), // honeypot
     }),
-    handler: async (input) => {
-      // persist, send email, …
-      return { ok: true as const };
+    handler: async (input, context) => {
+      // honeypot, throttling, persistence, notification (src/lib/contact.ts)
+      return submitContactMessage(input, { ip: context.clientAddress }, deps);
     },
   }),
 };
@@ -55,20 +56,33 @@ The included `ContactForm.tsx` shows loading states, per-field error messages wi
 
 ## Spam protection
 
-The contact form combines three inexpensive measures:
+The contact form combines four inexpensive measures, all implemented in `src/lib/contact.ts`
+and covered by `src/lib/contact.test.ts`:
 
-1. A hidden **honeypot** field named `website`. Humans never see it; bots fill it and the action
-   silently succeeds without sending anything.
-2. **Server-side validation** with length limits.
-3. **Origin checks** by Astro (`security.checkOrigin`) so only same-origin pages can post.
+1. A **honeypot** field named `website`, positioned off-screen (not `display: none`, which
+   simple bots skip). The schema accepts up to 200 characters so a filled field reaches the
+   handler, which answers with the normal success response without storing anything.
+2. **Throttling** per sender: 3 messages per hour per email address and 5 per 15 minutes per
+   IP, counted in the `throttle` table (`src/lib/throttle.ts`) so limits hold across serverless
+   instances. Keys are SHA-256 hashes, never raw addresses. Exceeding a limit returns
+   `TOO_MANY_REQUESTS`.
+3. **Server-side validation** with length limits.
+4. **Origin checks** by Astro (`security.checkOrigin`) so only same-origin pages can post.
 
 For high-traffic sites add a CAPTCHA (Turnstile, hCaptcha) inside the action handler.
 
-## Persistence and email
+## Persistence and notification
 
-Messages are inserted into the `contact_message` table and, when `CONTACT_TO_EMAIL` and
-`RESEND_API_KEY` are set, forwarded by email through `src/lib/email.ts`. Without an API key the
-email is logged, so the form is testable offline.
+The database write is the authoritative success: the message is inserted into
+`contact_message` first, then the owner notification (`CONTACT_TO_EMAIL`) is attempted and its
+result is recorded on the row (`delivery_status`: `sent`, `failed`, `skipped` when no recipient
+is configured, plus attempts and the last error). A failed notification never fails the request,
+so a retry from the visitor cannot create a duplicate; administrators resend it from the
+[inbox](/docs/guides/admin). The success message tells visitors the message was _received_ and
+only promises a reply when one is needed.
+
+Without `RESEND_API_KEY` the notification is printed to the console in development and marked
+`failed` in production (see [authentication](/docs/guides/authentication#email-delivery-and-the-production-rule)).
 
 ## Progressive enhancement
 

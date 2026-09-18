@@ -1,0 +1,80 @@
+---
+title: Privacy and data
+description: What personal data the template stores, the self-service export and deletion flows, retention, and the checklist for adapting the legal pages.
+publishedDate: 2026-09-18
+sidebar:
+  order: 5.6
+  badge: new
+---
+
+The template is designed so the promises in the privacy policy are backed by real
+functionality. This page lists what is stored, how people exercise their rights, and what you
+must adapt before launch.
+
+## What is stored where
+
+| Data                                | Table             | Lifecycle                                                |
+| ----------------------------------- | ----------------- | -------------------------------------------------------- |
+| Profile, verification, role         | `user`            | Until the account is deleted                             |
+| Password hash / OAuth links         | `account`         | With the user                                            |
+| Sessions (IP, user agent)           | `session`         | With the user; expired rows are removed by Better Auth   |
+| Contact messages                    | `contact_message` | Open messages stay; archived ones are pruned (see below) |
+| Throttle counters (hashed IP/email) | `throttle`        | Expire after 15 minutes / 1 hour, pruned by `db:prune`   |
+| Audit log                           | `audit_log`       | Kept; contains no message bodies or secrets              |
+
+## Self-service
+
+From the dashboard a signed-in user can:
+
+- **Export** their data: `/api/account/export` returns profile, sign-in methods, sessions and,
+  when the address is verified, contact messages from that address. Tokens and hashes are
+  never included.
+- **Delete** their account. Password accounts confirm with the password; social-only accounts
+  need a fresh session (younger than a day). Contact messages from a verified address are
+  removed with it and the deletion is recorded in the audit log.
+- **Change** their password, which signs out other sessions.
+
+Both export and deletion are implemented with Better Auth (`deleteUser`) and the
+`afterDelete` hook in `src/lib/auth.ts`.
+
+## Requests from people without an account
+
+The contact form is the fallback. Messages arrive in the [admin inbox](/docs/guides/admin);
+administrators can find everything tied to an address there and in the users page, act on it
+and archive the request. The audit log shows what was done and when.
+
+## Retention
+
+`pnpm db:prune` deletes archived contact messages older than `CONTACT_RETENTION_DAYS` (default 365) and expired throttle counters. Run it on a schedule:
+
+```yaml title=".github/workflows/prune.yml"
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:prune
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
+```
+
+Open (new or read) messages are never deleted automatically.
+
+## Launch checklist
+
+1. Edit `src/content/legal/privacy.md` and `terms.md`: legal entity, contact address,
+   jurisdiction, and the providers you actually use (hosting, Turso, Resend, OAuth, analytics).
+2. Set `CONTACT_RETENTION_DAYS` to match the policy.
+3. Decide who the administrators are (`ADMIN_EMAILS`) and make sure at least one exists.
+4. Configure `RESEND_API_KEY` so verification, resets and magic links work, or accept that
+   those features stay hidden.
+5. Document your hosting provider's log retention in the policy.
+6. Update `public/.well-known/security.txt` and `SECURITY.md` with real contacts.

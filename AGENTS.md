@@ -32,6 +32,10 @@ netlify`). Application code must not branch on the platform.
   middleware.
 - DB: `src/db/client.ts` (libSQL + Drizzle). `src/db/schema/auth.ts` is generated; edit
   `src/db/schema/app.ts` for your own tables, then `pnpm db:generate && pnpm db:migrate`.
+- Contact flow: `src/lib/contact.ts` (honeypot, throttle, store-then-notify) behind the action in
+  `src/actions/index.ts`. Admin area: `src/pages/admin/*` guarded by `guardAdminPage()`, actions
+  under `server.admin` guarded by `requireAdmin()`, audit entries via `recordAudit()`.
+- Email: `src/lib/email.ts` prints messages only outside production; never log links in production.
 - Security: `security.csp` in `astro.config.ts` (hash-based), `config/security-headers.ts`
   (mirrored in `public/_headers`, verified by a unit test).
 
