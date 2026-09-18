@@ -26,12 +26,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
         env:
           HUSKY: 0
+      # changesets/action v2 renamed its inputs and reads the token from `github-token`
+      # (the GITHUB_TOKEN environment variable is no longer honoured).
       - name: Create release pull request or tag release
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          version: pnpm changeset:version
-          publish: pnpm changeset:tag
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm changeset:version
+          publish-script: pnpm changeset:tag
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
