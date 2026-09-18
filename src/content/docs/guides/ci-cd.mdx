@@ -20,6 +20,14 @@ sidebar:
 The matrix is the guarantee behind "deploy anywhere": a dependency that only works on one
 runtime fails the pull request instead of a production deploy.
 
+### How the test servers are started
+
+The `e2e` and `lighthouse` jobs start the built Node server on `127.0.0.1` explicitly
+(`HOST=127.0.0.1`) instead of the adapter's default `localhost`, which resolves to IPv6 first on
+GitHub's runners while the tests connect over IPv4. The Playwright web-server command also resets
+and migrates `.data/e2e.db` before the server starts (Playwright launches the web server before
+`globalSetup`), and the tracked `.data/.gitkeep` keeps that directory present on a fresh checkout.
+
 ### Audit exceptions
 
 `pnpm audit --audit-level=high` fails the `quality` job on new high or critical advisories.

@@ -14,8 +14,11 @@ Vercel is the primary deployment target for this repository.
    `VERCEL=1`.
 
 2. Add the environment variables from `.env.example` in Project → Settings → Environment
-   Variables. At minimum: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `BETTER_AUTH_SECRET`,
-   `BETTER_AUTH_URL` and `SITE_URL` (set both to your production domain).
+   Variables. At minimum: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `BETTER_AUTH_SECRET` and
+   `BETTER_AUTH_URL` (a full URL such as `https://my-site.vercel.app`). `SITE_URL` is optional:
+   when it is unset the build uses the production URL Vercel injects
+   (`VERCEL_PROJECT_PRODUCTION_URL`). None of these variables are needed to _build_, so you
+   can also add them after the first deployment and redeploy.
 
 3. Deploy. Every pull request gets a preview deployment; preview hostnames are trusted by Better
    Auth automatically through `VERCEL_URL` and `VERCEL_BRANCH_URL`.
@@ -48,5 +51,6 @@ vercel({ imageService: true, staticHeaders: true });
 
 ## Custom domains
 
-After adding a domain in Vercel, update `SITE_URL`, `BETTER_AUTH_URL` and `siteConfig.url`,
-then redeploy so canonical links, the sitemap and OAuth callback URLs use the final host.
+After adding a domain in Vercel, `VERCEL_PROJECT_PRODUCTION_URL` switches to it automatically.
+Update `BETTER_AUTH_URL` and `siteConfig.url` (or set `SITE_URL`), then redeploy so canonical
+links, the sitemap and OAuth callback URLs use the final host.
