@@ -1,0 +1,6 @@
+# Security contact for this site (RFC 9116). Update before going live.
+Contact: https://github.com/empeeryal/astro-framework-v2/security/advisories/new
+Expires: 2027-09-18T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://astro-framework-v2.vercel.app/.well-known/security.txt
+Policy: https://github.com/empeeryal/astro-framework-v2/blob/main/SECURITY.md

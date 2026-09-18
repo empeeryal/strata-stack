@@ -1,0 +1,378 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+/* Dark mode is driven by <html data-theme="dark"> (set by the head-inline theme script). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ------------------------------------------------------------------------- */
+/* Design tokens                                                              */
+/* Raw values live on :root / [data-theme='dark']; Tailwind utilities read    */
+/* them through @theme inline below (bg-background, text-primary, …).         */
+/* ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --background: oklch(100% 0 0);
+  --foreground: oklch(21% 0.03 262);
+
+  --muted: oklch(96.5% 0.006 262);
+  --muted-foreground: oklch(48% 0.025 262);
+
+  --card: oklch(100% 0 0);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(100% 0 0);
+  --popover-foreground: var(--foreground);
+
+  --border: oklch(91% 0.01 262);
+  --input: oklch(88% 0.012 262);
+  --ring: oklch(52% 0.23 275);
+
+  --primary: oklch(52% 0.23 275);
+  --primary-foreground: oklch(98% 0.01 275);
+
+  --secondary: oklch(95% 0.02 275);
+  --secondary-foreground: oklch(36% 0.13 275);
+
+  --accent: oklch(70% 0.15 195);
+  --accent-foreground: oklch(20% 0.05 195);
+
+  --success: oklch(62% 0.17 150);
+  --success-foreground: oklch(98% 0.02 150);
+  --warning: oklch(78% 0.16 80);
+  --warning-foreground: oklch(25% 0.06 80);
+  --danger: oklch(58% 0.22 25);
+  --danger-foreground: oklch(98% 0.02 25);
+
+  --code: oklch(96.5% 0.006 262);
+  --code-foreground: oklch(30% 0.05 275);
+
+  --radius: 0.75rem;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --background: oklch(15% 0.02 262);
+  --foreground: oklch(95% 0.01 262);
+
+  --muted: oklch(22% 0.02 262);
+  --muted-foreground: oklch(70% 0.02 262);
+
+  --card: oklch(18.5% 0.02 262);
+  --card-foreground: var(--foreground);
+
+  --popover: oklch(18.5% 0.02 262);
+  --popover-foreground: var(--foreground);
+
+  --border: oklch(28% 0.02 262);
+  --input: oklch(31% 0.02 262);
+  --ring: oklch(72% 0.17 275);
+
+  --primary: oklch(72% 0.17 275);
+  --primary-foreground: oklch(15% 0.05 275);
+
+  --secondary: oklch(26% 0.05 275);
+  --secondary-foreground: oklch(88% 0.05 275);
+
+  --accent: oklch(78% 0.13 195);
+  --accent-foreground: oklch(18% 0.05 195);
+
+  --success: oklch(72% 0.16 150);
+  --success-foreground: oklch(16% 0.05 150);
+  --warning: oklch(82% 0.15 80);
+  --warning-foreground: oklch(22% 0.06 80);
+  --danger: oklch(68% 0.19 25);
+  --danger-foreground: oklch(16% 0.05 25);
+
+  --code: oklch(20% 0.02 262);
+  --code-foreground: oklch(85% 0.06 275);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+
+  /* Self-hosted fonts registered through Astro's Fonts API (see astro.config.ts). */
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) + 0.75rem);
+
+  --shadow-soft: 0 1px 2px oklch(0% 0 0 / 0.04), 0 8px 24px -12px oklch(0% 0 0 / 0.18);
+
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 8s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes shimmer {
+    to {
+      background-position: 200% center;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Base                                                                       */
+/* ------------------------------------------------------------------------- */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  [id] {
+    scroll-margin-top: 5.5rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    font-feature-settings: 'liga' 0;
+  }
+
+  /* Native cross-document view transitions (no client router needed). */
+  @view-transition {
+    navigation: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    @view-transition {
+      navigation: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Utilities                                                                  */
+/* ------------------------------------------------------------------------- */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+  width: 100%;
+  max-width: 80rem;
+
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
+  }
+
+  @media (width >= 64rem) {
+    padding-inline: 2rem;
+  }
+}
+
+/* Gradient headline used on the home page. */
+@utility text-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--color-primary),
+    var(--color-accent),
+    var(--color-primary)
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Prose (Markdown / MDX content) – colours follow the theme tokens so no      */
+/* `prose-invert` toggling is needed.                                         */
+/* ------------------------------------------------------------------------- */
+.prose {
+  --tw-prose-body: var(--color-foreground);
+  --tw-prose-headings: var(--color-foreground);
+  --tw-prose-lead: var(--color-muted-foreground);
+  --tw-prose-links: var(--color-primary);
+  --tw-prose-bold: var(--color-foreground);
+  --tw-prose-counters: var(--color-muted-foreground);
+  --tw-prose-bullets: var(--color-border);
+  --tw-prose-hr: var(--color-border);
+  --tw-prose-quotes: var(--color-foreground);
+  --tw-prose-quote-borders: var(--color-primary);
+  --tw-prose-captions: var(--color-muted-foreground);
+  --tw-prose-kbd: var(--color-foreground);
+  --tw-prose-code: var(--color-code-foreground);
+  --tw-prose-pre-code: inherit;
+  --tw-prose-pre-bg: var(--color-code);
+  --tw-prose-th-borders: var(--color-border);
+  --tw-prose-td-borders: var(--color-border);
+  max-width: none;
+}
+
+.prose :where(a):not(:where(.not-prose *)) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.prose :where(code):not(:where(pre code, .not-prose *)) {
+  background-color: var(--color-code);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.prose :where(code):not(:where(pre code, .not-prose *))::before,
+.prose :where(code):not(:where(pre code, .not-prose *))::after {
+  content: none;
+}
+
+.prose :where(pre):not(:where(.not-prose *)) {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: 0.875em;
+  line-height: 1.7;
+}
+
+.prose :where(img, video):not(:where(.not-prose *)) {
+  border-radius: var(--radius-lg);
+}
+
+/* Heading anchor links injected by Prose.astro. */
+.prose :where(h2, h3, h4) > a.heading-anchor {
+  margin-left: 0.4em;
+  color: var(--color-muted-foreground);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.prose :where(h2, h3, h4):hover > a.heading-anchor,
+.prose :where(h2, h3, h4) > a.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Shiki dual themes (light/dark) – see markdown.shikiConfig in astro.config   */
+/* ------------------------------------------------------------------------- */
+.astro-code,
+.astro-code span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+  font-style: var(--shiki-light-font-style);
+  font-weight: var(--shiki-light-font-weight);
+  text-decoration: var(--shiki-light-text-decoration);
+}
+
+[data-theme='dark'] .astro-code,
+[data-theme='dark'] .astro-code span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+  font-style: var(--shiki-dark-font-style);
+  font-weight: var(--shiki-dark-font-weight);
+  text-decoration: var(--shiki-dark-text-decoration);
+}
+
+.astro-code {
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Pagefind component UI – follow the site theme                              */
+/* ------------------------------------------------------------------------- */
+/* Pagefind renders its own trigger button; Search.astro keeps it for its click
+   handler but shows custom buttons instead. Unlayered so it beats Pagefind's CSS. */
+pagefind-modal-trigger.pf-trigger-hidden {
+  display: none !important;
+}
+
+pagefind-modal,
+pagefind-searchbox,
+pagefind-input,
+pagefind-results,
+pagefind-summary {
+  --pf-font: var(--font-sans);
+  --pf-background: var(--color-card);
+  --pf-text: var(--color-foreground);
+  --pf-text-secondary: var(--color-muted-foreground);
+  --pf-text-muted: var(--color-muted-foreground);
+  --pf-border: var(--color-border);
+  --pf-border-focus: var(--color-ring);
+  --pf-outline-focus: var(--color-ring);
+  --pf-hover: var(--color-muted);
+  --pf-mark: color-mix(in oklch, var(--color-primary) 30%, transparent);
+  --pf-border-radius: var(--radius-lg);
+  --pf-modal-backdrop: oklch(0% 0 0 / 0.55);
+  --pf-skeleton: var(--color-muted);
+  --pf-skeleton-shine: var(--color-border);
+  --pf-shadow-lg: var(--shadow-soft);
+}
