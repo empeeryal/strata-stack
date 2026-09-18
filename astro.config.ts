@@ -7,6 +7,7 @@ import pagefind from 'astro-pagefind';
 import { defineConfig, envField, fontProviders } from 'astro/config';
 
 import { resolveAdapter, resolveDeployTarget } from './config/adapter';
+import { resolveSiteUrl } from './config/site-url';
 import { securityHeaders } from './integrations/security-headers';
 import { themeScript } from './integrations/theme-script';
 import { siteConfig } from './src/site.config';
@@ -14,8 +15,12 @@ import { siteConfig } from './src/site.config';
 /** Platform we are building for: node | vercel | cloudflare | netlify (see config/adapter.ts). */
 const deployTarget = resolveDeployTarget();
 
-/** Canonical site URL. `SITE_URL` wins so preview deployments can override it. */
-const site = (process.env.SITE_URL ?? siteConfig.url).replace(/\/+$/, '');
+/**
+ * Canonical site URL: `SITE_URL`, else the production URL Vercel/Netlify inject, else
+ * `siteConfig.url`. Empty or scheme-less values no longer abort the build (config/site-url.ts).
+ */
+const { url: site, source: siteSource } = resolveSiteUrl(process.env, siteConfig.url);
+console.info(`[site] ${site} (from ${siteSource})`);
 
 /** Routes that must never appear in the sitemap. */
 const SITEMAP_EXCLUDE = [/\/dashboard(\/|$)/, /\/api(\/|$)/, /\/login$/, /\/signup$/, /\/500$/];

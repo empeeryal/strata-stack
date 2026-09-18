@@ -5,8 +5,10 @@ import { defineConfig, devices } from '@playwright/test';
  *
  *   pnpm build:node && pnpm test:e2e
  *
- * The web server uses an isolated SQLite database (.data/e2e.db) that is reset and
- * migrated by tests/e2e/global-setup.ts before every run.
+ * The web server command first resets and migrates an isolated SQLite database
+ * (.data/e2e.db) and then starts the built server, so the schema exists before the first
+ * request. Playwright launches the web server *before* `globalSetup`, which is why the reset
+ * lives in the command rather than in tests/e2e/global-setup.ts.
  */
 const PORT = Number(process.env.E2E_PORT ?? 4321);
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
@@ -38,9 +40,12 @@ export default defineConfig({
       : {}),
   },
   webServer: {
-    command: 'node ./dist/server/entry.mjs',
+    // Reset + migrate the e2e database, then start the built server (both get `env`).
+    command: 'node scripts/reset-db.ts && node ./dist/server/entry.mjs',
     url: `${baseURL}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // Always start a fresh server so the reset above runs on every invocation and a stray
+    // `astro dev` on the same port is never tested by mistake.
+    reuseExistingServer: false,
     timeout: 60_000,
     env: serverEnv,
   },

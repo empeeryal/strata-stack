@@ -76,17 +76,17 @@ command can simply be `astro build`. See the [deploy guides](https://astro-frame
 
 ## Environment variables
 
-| Variable                                           | Required   | Purpose                                                     |
-| -------------------------------------------------- | ---------- | ----------------------------------------------------------- |
-| `DATABASE_URL`                                     | yes        | `file:./.data/local.db` locally, `libsql://…` in production |
-| `DATABASE_AUTH_TOKEN`                              | production | Turso token                                                 |
-| `BETTER_AUTH_SECRET`                               | yes        | ≥ 32 random bytes (`openssl rand -base64 32`)               |
-| `BETTER_AUTH_URL`                                  | yes        | Public origin, e.g. `https://example.com`                   |
-| `SITE_URL`                                         | build      | Canonical origin for sitemap, RSS, OG images                |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`        | no         | Enables GitHub sign-in                                      |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                      |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links and contact form email                          |
-| `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                |
+| Variable                                           | Required   | Purpose                                                                                |
+| -------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                     | yes        | `file:./.data/local.db` locally, `libsql://…` in production                            |
+| `DATABASE_AUTH_TOKEN`                              | production | Turso token                                                                            |
+| `BETTER_AUTH_SECRET`                               | yes        | ≥ 32 random bytes (`openssl rand -base64 32`)                                          |
+| `BETTER_AUTH_URL`                                  | yes        | Public origin as a full URL, e.g. `https://example.com`                                |
+| `SITE_URL`                                         | no         | Canonical origin; defaults to the Vercel/Netlify production URL, then `siteConfig.url` |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`        | no         | Enables GitHub sign-in                                                                 |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                                                 |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links and contact form email                                                     |
+| `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                           |
 
 The full list with platform notes lives in [`.env.example`](.env.example) and the
 [environment variables guide](https://astro-framework-v2.vercel.app/docs/guides/environment-variables).
