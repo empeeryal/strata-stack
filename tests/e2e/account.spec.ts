@@ -60,6 +60,11 @@ test.describe('account self-service', () => {
     const reset = await page.goto('/reset-password');
     expect(reset?.status()).toBe(200);
     await expect(page.getByRole('alert')).toContainText('invalid or has expired');
+
+    // With a token the form renders and there is still a way back without submitting.
+    await page.goto('/reset-password?token=not-checked-until-submit');
+    await expect(page.getByLabel('New password', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to sign in' })).toBeVisible();
   });
 
   test('rejects unauthenticated export requests', async ({ request }) => {

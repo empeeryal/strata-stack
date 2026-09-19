@@ -34,6 +34,8 @@ client, and Cloudflare exposes secrets through `process.env` when `nodejs_compat
 | `CONTACT_TO_EMAIL`                         | runtime       | Recipient of contact notifications. Unset: messages are only visible in `/admin/messages`.                                                       |
 | `ADMIN_EMAILS`                             | runtime       | Comma-separated addresses that get the `admin` role on sign-up.                                                                                  |
 | `CONTACT_RETENTION_DAYS`                   | scripts       | Age after which `pnpm db:prune` deletes archived messages (default 365).                                                                         |
+| `CONTACT_MAX_AGE_DAYS`                     | scripts       | Optional hard cap: `pnpm db:prune` also deletes messages of any status older than this. Unset: open messages are kept.                           |
+| `HEALTH_TOKEN`                             | runtime       | Optional bearer token that unlocks the detailed `/api/health` response for monitors. Without it only administrators see the details.             |
 | `NODE_ENV`                                 | runtime       | `production` enables the safety rules (no console email fallback, secret validation). Set by the platforms, the Dockerfile and `wrangler.jsonc`. |
 | `PUBLIC_ANALYTICS`                         | build, public | `none` or `vercel`.                                                                                                                              |
 

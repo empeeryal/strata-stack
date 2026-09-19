@@ -4,7 +4,14 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { CONTACT_STATUSES, contactMessages } from '@/db/schema';
-import { isAdmin, recordAudit } from '@/lib/admin';
+import {
+  isAdmin,
+  isLastActiveAdmin,
+  LAST_ADMIN_MESSAGE,
+  recordAudit,
+  writeAudit,
+} from '@/lib/admin';
+import type { AdminNotice } from '@/lib/admin-page';
 import { auth } from '@/lib/auth';
 import {
   ContactThrottledError,
@@ -14,6 +21,7 @@ import {
 } from '@/lib/contact';
 import { sendEmail } from '@/lib/email';
 import { getEnv } from '@/lib/env';
+import { getAuthoritativeSession } from '@/lib/session';
 import { siteConfig } from '@/site.config';
 
 function contactDeps(): ContactDeps {
@@ -28,9 +36,14 @@ function clientAddress(context: ActionAPIContext): string | null {
   }
 }
 
-/** Resolves the acting admin or throws the matching action error. */
-function requireAdmin(context: ActionAPIContext) {
-  const user = context.locals.user;
+/**
+ * Resolves the acting admin or throws the matching action error. The role comes from the
+ * database (not the cookie cache), so a demotion, ban or revoked session applies at once.
+ */
+async function requireAdmin(context: ActionAPIContext) {
+  const { user, session } = await getAuthoritativeSession(context.request.headers);
+  context.locals.user = user;
+  context.locals.session = session;
   if (!user) {
     throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in to continue.' });
   }
@@ -38,6 +51,13 @@ function requireAdmin(context: ActionAPIContext) {
     throw new ActionError({ code: 'FORBIDDEN', message: 'Administrator access is required.' });
   }
   return user;
+}
+
+/** Refuses an operation that would leave the deployment without an active administrator. */
+async function assertNotLastAdmin(targetId: string): Promise<void> {
+  if (await isLastActiveAdmin(db, targetId)) {
+    throw new ActionError({ code: 'BAD_REQUEST', message: LAST_ADMIN_MESSAGE });
+  }
 }
 
 /** Turns Better Auth API errors into action errors with their original message. */
@@ -52,6 +72,12 @@ function toActionError(error: unknown, fallback: string): ActionError {
 
 const userId = z.string().min(1);
 const messageId = z.string().min(1);
+
+const STATUS_NOTICE: Record<(typeof CONTACT_STATUSES)[number], AdminNotice> = {
+  new: 'message-unread',
+  read: 'message-read',
+  archived: 'message-archived',
+};
 
 export const server = {
   /**
@@ -91,35 +117,45 @@ export const server = {
     },
   }),
 
-  /** Administrative actions. Authorization is enforced here, not in the pages. */
+  /**
+   * Administrative actions. Authorization is enforced here, not in the pages. Each returns
+   * a `notice` key the pages show after the redirect (see src/lib/admin-page.ts).
+   *
+   * Message changes and their audit entries are written in one transaction, so neither can
+   * exist without the other. User operations go through Better Auth and cannot share a
+   * transaction; their audit entries are best-effort (`recordAudit`).
+   */
   admin: {
     setMessageStatus: defineAction({
       accept: 'form',
       input: z.object({ id: messageId, status: z.enum(CONTACT_STATUSES) }),
       handler: async ({ id, status }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         const now = new Date();
-        const [updated] = await db
-          .update(contactMessages)
-          .set({
-            status,
-            ...(status === 'read' ? { readAt: now } : {}),
-            ...(status === 'archived' ? { archivedAt: now } : {}),
-          })
-          .where(eq(contactMessages.id, id))
-          .returning({ id: contactMessages.id });
-        if (!updated) {
-          throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
-        }
-        await recordAudit(db, {
-          actorId: actor.id,
-          actorEmail: actor.email,
-          action: 'message.status',
-          targetType: 'message',
-          targetId: id,
-          details: { status },
+        await db.transaction(async (tx) => {
+          const [updated] = await tx
+            .update(contactMessages)
+            .set({
+              status,
+              ...(status === 'new' ? { readAt: null, archivedAt: null } : {}),
+              ...(status === 'read' ? { readAt: now, archivedAt: null } : {}),
+              ...(status === 'archived' ? { archivedAt: now } : {}),
+            })
+            .where(eq(contactMessages.id, id))
+            .returning({ id: contactMessages.id });
+          if (!updated) {
+            throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
+          }
+          await writeAudit(tx, {
+            actorId: actor.id,
+            actorEmail: actor.email,
+            action: 'message.status',
+            targetType: 'message',
+            targetId: id,
+            details: { status },
+          });
         });
-        return { ok: true as const };
+        return { ok: true as const, status, notice: STATUS_NOTICE[status] };
       },
     }),
 
@@ -127,22 +163,24 @@ export const server = {
       accept: 'form',
       input: z.object({ id: messageId }),
       handler: async ({ id }, context) => {
-        const actor = requireAdmin(context);
-        const [deleted] = await db
-          .delete(contactMessages)
-          .where(eq(contactMessages.id, id))
-          .returning({ id: contactMessages.id });
-        if (!deleted) {
-          throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
-        }
-        await recordAudit(db, {
-          actorId: actor.id,
-          actorEmail: actor.email,
-          action: 'message.delete',
-          targetType: 'message',
-          targetId: id,
+        const actor = await requireAdmin(context);
+        await db.transaction(async (tx) => {
+          const [deleted] = await tx
+            .delete(contactMessages)
+            .where(eq(contactMessages.id, id))
+            .returning({ id: contactMessages.id });
+          if (!deleted) {
+            throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
+          }
+          await writeAudit(tx, {
+            actorId: actor.id,
+            actorEmail: actor.email,
+            action: 'message.delete',
+            targetType: 'message',
+            targetId: id,
+          });
         });
-        return { ok: true as const };
+        return { ok: true as const, notice: 'message-deleted' satisfies AdminNotice };
       },
     }),
 
@@ -150,7 +188,7 @@ export const server = {
       accept: 'form',
       input: z.object({ id: messageId }),
       handler: async ({ id }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         let delivery;
         try {
           delivery = await deliverContactMessage(id, contactDeps());
@@ -165,7 +203,13 @@ export const server = {
           targetId: id,
           details: { delivery },
         });
-        return { ok: true as const, delivery };
+        const notice: AdminNotice =
+          delivery === 'sent'
+            ? 'delivery-sent'
+            : delivery === 'skipped'
+              ? 'delivery-skipped'
+              : 'delivery-failed';
+        return { ok: true as const, delivery, notice };
       },
     }),
 
@@ -173,13 +217,14 @@ export const server = {
       accept: 'form',
       input: z.object({ userId, role: z.enum(['user', 'admin']) }),
       handler: async ({ userId: targetId, role }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         if (targetId === actor.id) {
           throw new ActionError({
             code: 'BAD_REQUEST',
             message: 'You cannot change your own role.',
           });
         }
+        if (role !== 'admin') await assertNotLastAdmin(targetId);
         try {
           await auth.api.setRole({
             body: { userId: targetId, role },
@@ -196,7 +241,7 @@ export const server = {
           targetId,
           details: { role },
         });
-        return { ok: true as const };
+        return { ok: true as const, notice: 'role-updated' satisfies AdminNotice };
       },
     }),
 
@@ -204,10 +249,11 @@ export const server = {
       accept: 'form',
       input: z.object({ userId, reason: z.string().trim().max(200).optional() }),
       handler: async ({ userId: targetId, reason }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         if (targetId === actor.id) {
           throw new ActionError({ code: 'BAD_REQUEST', message: 'You cannot ban yourself.' });
         }
+        await assertNotLastAdmin(targetId);
         try {
           await auth.api.banUser({
             body: { userId: targetId, ...(reason ? { banReason: reason } : {}) },
@@ -224,7 +270,7 @@ export const server = {
           targetId,
           details: { reason: reason ?? null },
         });
-        return { ok: true as const };
+        return { ok: true as const, notice: 'user-banned' satisfies AdminNotice };
       },
     }),
 
@@ -232,7 +278,7 @@ export const server = {
       accept: 'form',
       input: z.object({ userId }),
       handler: async ({ userId: targetId }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         try {
           await auth.api.unbanUser({
             body: { userId: targetId },
@@ -248,7 +294,7 @@ export const server = {
           targetType: 'user',
           targetId,
         });
-        return { ok: true as const };
+        return { ok: true as const, notice: 'user-unbanned' satisfies AdminNotice };
       },
     }),
 
@@ -256,7 +302,7 @@ export const server = {
       accept: 'form',
       input: z.object({ userId }),
       handler: async ({ userId: targetId }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         try {
           await auth.api.revokeUserSessions({
             body: { userId: targetId },
@@ -272,7 +318,7 @@ export const server = {
           targetType: 'user',
           targetId,
         });
-        return { ok: true as const };
+        return { ok: true as const, notice: 'sessions-revoked' satisfies AdminNotice };
       },
     }),
 
@@ -280,13 +326,14 @@ export const server = {
       accept: 'form',
       input: z.object({ userId }),
       handler: async ({ userId: targetId }, context) => {
-        const actor = requireAdmin(context);
+        const actor = await requireAdmin(context);
         if (targetId === actor.id) {
           throw new ActionError({
             code: 'BAD_REQUEST',
             message: 'Delete your own account from the dashboard instead.',
           });
         }
+        await assertNotLastAdmin(targetId);
         try {
           await auth.api.removeUser({
             body: { userId: targetId },
@@ -302,7 +349,7 @@ export const server = {
           targetType: 'user',
           targetId,
         });
-        return { ok: true as const };
+        return { ok: true as const, notice: 'user-deleted' satisfies AdminNotice };
       },
     }),
   },

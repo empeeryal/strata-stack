@@ -1,4 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { APIError } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, magicLink } from 'better-auth/plugins';
 import { eq } from 'drizzle-orm';
@@ -7,7 +8,7 @@ import { db } from '../db/client';
 import * as schema from '../db/schema/index';
 import { siteConfig } from '../site.config';
 
-import { recordAudit } from './admin';
+import { isLastActiveAdmin, LAST_ADMIN_MESSAGE, recordAudit } from './admin';
 import { isEmailConfigured, sendEmail } from './email';
 import { getAdminEmails, getEnv, getSiteUrl, getTrustedOrigins } from './env';
 
@@ -97,6 +98,13 @@ export const auth = betterAuth({
   user: {
     deleteUser: {
       enabled: true,
+      // The last administrator cannot delete their own account: the site would be left
+      // without anyone who can reach /admin (recovery would need `pnpm admin:promote`).
+      beforeDelete: async (user) => {
+        if (await isLastActiveAdmin(db, user.id)) {
+          throw new APIError('BAD_REQUEST', { message: LAST_ADMIN_MESSAGE });
+        }
+      },
       // Remove the personal data this template stores outside the auth tables. Contact
       // messages are only tied to an address, so they are deleted when the address was
       // verified as belonging to this user.

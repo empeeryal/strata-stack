@@ -49,7 +49,12 @@ test.describe('authentication', () => {
     expect(dashboard.status()).toBe(302);
     expect(dashboard.headers()['location']).toContain('/login');
 
+    // Anonymous callers get liveness only; the configuration details need an admin session
+    // or HEALTH_TOKEN (see tests/e2e/admin.spec.ts).
     const health = await request.get('/api/health');
-    expect(await health.json()).toMatchObject({ status: 'ok', target: 'node' });
+    const body = await health.json();
+    expect(body).toMatchObject({ status: 'ok' });
+    expect(body.checks).toBeUndefined();
+    expect(body.version).toBeUndefined();
   });
 });

@@ -13,14 +13,14 @@ must adapt before launch.
 
 ## What is stored where
 
-| Data                                | Table             | Lifecycle                                                |
-| ----------------------------------- | ----------------- | -------------------------------------------------------- |
-| Profile, verification, role         | `user`            | Until the account is deleted                             |
-| Password hash / OAuth links         | `account`         | With the user                                            |
-| Sessions (IP, user agent)           | `session`         | With the user; expired rows are removed by Better Auth   |
-| Contact messages                    | `contact_message` | Open messages stay; archived ones are pruned (see below) |
-| Throttle counters (hashed IP/email) | `throttle`        | Expire after 15 minutes / 1 hour, pruned by `db:prune`   |
-| Audit log                           | `audit_log`       | Kept; contains no message bodies or secrets              |
+| Data                                | Table             | Lifecycle                                                                   |
+| ----------------------------------- | ----------------- | --------------------------------------------------------------------------- |
+| Profile, verification, role         | `user`            | Until the account is deleted                                                |
+| Password hash / OAuth links         | `account`         | With the user                                                               |
+| Sessions (IP, user agent)           | `session`         | With the user; expired rows are removed by Better Auth                      |
+| Contact messages                    | `contact_message` | Archived ones are pruned; open ones too if a maximum age is set (see below) |
+| Throttle counters (hashed IP/email) | `throttle`        | Expire after 15 minutes / 1 hour, pruned by `db:prune`                      |
+| Audit log                           | `audit_log`       | Kept; contains no message bodies or secrets                                 |
 
 ## Self-service
 
@@ -66,14 +66,23 @@ jobs:
           DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
 ```
 
-Open (new or read) messages are never deleted automatically.
+By default open (new or read) messages are never deleted automatically, so
+`CONTACT_RETENTION_DAYS` is not a maximum age for all contact data. If your policy needs one,
+set `CONTACT_MAX_AGE_DAYS` as well: the same job then deletes every message older than that,
+whatever its status, and says so in its output. Both values belong in the privacy policy.
+
+The audit log records message actions together with the change (one transaction) and Better
+Auth user operations on a best-effort basis; see the [admin area](/docs/guides/admin#audit-log)
+before promising more than that in your policy.
 
 ## Launch checklist
 
 1. Edit `src/content/legal/privacy.md` and `terms.md`: legal entity, contact address,
    jurisdiction, and the providers you actually use (hosting, Turso, Resend, OAuth, analytics).
-2. Set `CONTACT_RETENTION_DAYS` to match the policy.
-3. Decide who the administrators are (`ADMIN_EMAILS`) and make sure at least one exists.
+2. Set `CONTACT_RETENTION_DAYS` (and `CONTACT_MAX_AGE_DAYS` if open messages must expire) to
+   match the policy, and schedule `pnpm db:prune`.
+3. Decide who the administrators are (`ADMIN_EMAILS`) and make sure at least one exists. The
+   application refuses to remove the last one.
 4. Configure `RESEND_API_KEY` so verification, resets and magic links work, or accept that
    those features stay hidden.
 5. Document your hosting provider's log retention in the policy.

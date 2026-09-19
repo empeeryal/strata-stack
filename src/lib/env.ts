@@ -86,6 +86,19 @@ export function getContactRetentionDays(
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : 365;
 }
 
+/**
+ * Optional hard cap on message age (CONTACT_MAX_AGE_DAYS): `pnpm db:prune` deletes messages
+ * older than this whatever their status. Unset by default, so open messages are kept.
+ */
+export function getContactMaxAgeDays(
+  env: Record<string, string | undefined> = process.env,
+): number | null {
+  const raw = env.CONTACT_MAX_AGE_DAYS;
+  if (raw === undefined || raw.trim() === '') return null;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+}
+
 export interface ConfigIssue {
   level: 'error' | 'warn';
   message: string;

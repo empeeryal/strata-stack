@@ -71,7 +71,10 @@ to on-demand routes. Better Auth validates `trustedOrigins` independently, and c
 middleware when `NODE_ENV=production`, never at build time. A missing or short
 `BETTER_AUTH_SECRET` makes on-demand requests fail with a clear error instead of running with
 a default secret; a file database, missing email provider or missing contact recipient are
-logged as warnings and reported by `/api/health`.
+logged as warnings and reported by `/api/health`. Anonymous callers of that route only get
+`status` and `time`; the configuration details need an admin session or
+`Authorization: Bearer <HEALTH_TOKEN>`, so the route does not describe the deployment to
+everyone.
 
 ## Email safety
 
@@ -86,8 +89,15 @@ throws, and the login page hides the magic-link form and the reset link. See
   link and password endpoints have stricter built-in limits.
 - The contact form is throttled per address and per IP (`src/lib/throttle.ts`) and protected
   by a honeypot.
-- Administrative actions, account deletions and data exports are recorded in `audit_log`
-  (see the [admin area](/docs/guides/admin)).
+- Administrative actions, account deletions and data exports are recorded in `audit_log`.
+  Message actions and their entries are one transaction; entries for Better Auth user
+  operations are best-effort and a failed write is logged (see the
+  [admin area](/docs/guides/admin#audit-log)).
+- Access decisions (`/admin`, the admin actions, the account export) read the session from the
+  database instead of the cookie cache, so demotion, bans and "sign out everywhere" apply
+  immediately. The last active administrator cannot be removed.
+- Admin pages never change data while rendering: marking a message read is a POST action, so
+  link prefetching and previews cannot alter state.
 
 ## Secrets
 

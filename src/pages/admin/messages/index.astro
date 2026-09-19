@@ -1,13 +1,14 @@
 ---
 import { actions } from 'astro:actions';
-import { count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 
 import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
 import { db } from '@/db/client';
 import { CONTACT_STATUSES, contactMessages, type ContactStatus } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
-import { guardAdminPage, summarizeActionResults } from '@/lib/admin-page';
+import { guardAdminPage, summarizeActionResults, withNotice } from '@/lib/admin-page';
+import { escapeLike, listQuery, paginate } from '@/lib/pagination';
 import { formatDate, toISODate } from '@/lib/utils';
 
 export const prerender = false;
@@ -15,11 +16,14 @@ export const prerender = false;
 const denied = await guardAdminPage(Astro);
 if (denied) return denied;
 
-const requested = Astro.url.searchParams.get('status') ?? 'new';
-const filter: ContactStatus | 'all' = (CONTACT_STATUSES as readonly string[]).includes(requested)
+const PAGE_SIZE = 25;
+const requested = Astro.url.searchParams.get('status');
+const filter: ContactStatus | 'all' = CONTACT_STATUSES.includes(requested as ContactStatus)
   ? (requested as ContactStatus)
   : 'all';
-const listUrl = `/admin/messages?status=${filter}`;
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 100);
+const listUrl = (page = 1) =>
+  `/admin/messages${listQuery({ status: filter, q, page: page > 1 ? page : null })}`;
 
 // Form actions post back to this page; redirect after a success so refresh never repeats it.
 const outcome = summarizeActionResults([
@@ -27,22 +31,35 @@ const outcome = summarizeActionResults([
   Astro.getActionResult(actions.admin.deleteMessage),
   Astro.getActionResult(actions.admin.retryMessageDelivery),
 ]);
-if (outcome.completed) return Astro.redirect(listUrl);
+if (outcome.completed) return Astro.redirect(withNotice(listUrl(), outcome.notice));
 
-const [counts, messages] = await Promise.all([
-  db
-    .select({ status: contactMessages.status, value: count() })
-    .from(contactMessages)
-    .groupBy(contactMessages.status),
-  db
-    .select()
-    .from(contactMessages)
-    .where(filter === 'all' ? undefined : eq(contactMessages.status, filter))
-    .orderBy(desc(contactMessages.createdAt))
-    .limit(100),
-]);
+// The search matches the sender's name or address literally (wildcards escaped).
+const pattern = q ? `%${escapeLike(q.toLowerCase())}%` : null;
+const searchCondition: SQL | undefined = pattern
+  ? or(
+      sql`lower(${contactMessages.name}) like ${pattern} escape '\\'`,
+      sql`lower(${contactMessages.email}) like ${pattern} escape '\\'`,
+    )
+  : undefined;
+const statusCondition = filter === 'all' ? undefined : eq(contactMessages.status, filter);
+
+const counts = await db
+  .select({ status: contactMessages.status, value: count() })
+  .from(contactMessages)
+  .where(searchCondition)
+  .groupBy(contactMessages.status);
 const byStatus = Object.fromEntries(counts.map((row) => [row.status, row.value]));
 const total = counts.reduce((sum, row) => sum + row.value, 0);
+const matching = filter === 'all' ? total : (byStatus[filter] ?? 0);
+const paging = paginate(matching, Astro.url.searchParams.get('page'), PAGE_SIZE);
+
+const messages = await db
+  .select()
+  .from(contactMessages)
+  .where(and(statusCondition, searchCondition))
+  .orderBy(desc(contactMessages.createdAt))
+  .limit(PAGE_SIZE)
+  .offset(paging.offset);
 
 const tabs: Array<{ id: ContactStatus | 'all'; label: string; value: number }> = [
   { id: 'new', label: 'New', value: byStatus.new ?? 0 },
@@ -57,25 +74,61 @@ const deliveryVariant = {
   pending: 'muted',
   skipped: 'muted',
 } as const;
+const statusVariant = { new: 'default', read: 'outline', archived: 'muted' } as const;
 ---
 
 <AdminLayout title="Messages" description="Contact form inbox." error={outcome.error}>
-  <nav aria-label="Filter messages" class="flex flex-wrap gap-1">
-    {tabs.map((tab) => (
-      <a
-        href={`/admin/messages?status=${tab.id}`}
-        aria-current={filter === tab.id ? 'page' : undefined}
-        class="rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:text-foreground"
-      >
-        {tab.label} <span class="text-xs">({tab.value})</span>
-      </a>
-    ))}
-  </nav>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav aria-label="Filter messages" class="flex flex-wrap gap-1">
+      {tabs.map((tab) => (
+        <a
+          href={`/admin/messages${listQuery({ status: tab.id, q })}`}
+          aria-current={filter === tab.id ? 'page' : undefined}
+          class="rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:text-foreground"
+        >
+          {tab.label} <span class="text-xs">({tab.value})</span>
+        </a>
+      ))}
+    </nav>
 
-  {messages.length === 0 ? (
-    <p class="mt-8 text-sm text-muted-foreground">No messages in this view.</p>
-  ) : (
-    <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
+    <form method="GET" action="/admin/messages" role="search" class="flex items-center gap-2">
+      <input type="hidden" name="status" value={filter} />
+      <label for="message-search" class="sr-only">
+        Search by name or email
+      </label>
+      <input
+        id="message-search"
+        name="q"
+        type="search"
+        value={q}
+        maxlength="100"
+        placeholder="Search by name or email"
+        class="h-9 w-56 rounded-md border border-input bg-background px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      />
+      <Button type="submit" variant="outline" size="sm">
+        Search
+      </Button>
+      {q && (
+        <a
+          href={`/admin/messages${listQuery({ status: filter })}`}
+          class="text-sm font-medium underline underline-offset-4"
+        >
+          Clear
+        </a>
+      )}
+    </form>
+  </div>
+
+  <p class="mt-4 text-sm text-muted-foreground" data-list-summary>
+    {paging.total === 0
+      ? q
+        ? `No messages match “${q}”.`
+        : 'No messages in this view.'
+      : `Showing ${paging.from}–${paging.to} of ${paging.total}${q ? ` matching “${q}”` : ''}.`}
+  </p>
+
+  {messages.length > 0 && (
+    <div class="mt-4 overflow-x-auto rounded-xl border bg-card shadow-soft">
       <table class="w-full text-sm">
         <caption class="sr-only">Contact messages</caption>
         <thead class="bg-muted/60 text-left">
@@ -90,6 +143,9 @@ const deliveryVariant = {
               Received
             </th>
             <th scope="col" class="px-4 py-3 font-semibold">
+              Status
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
               Notification
             </th>
             <th scope="col" class="px-4 py-3 text-right font-semibold">
@@ -101,7 +157,12 @@ const deliveryVariant = {
           {messages.map((message) => (
             <tr class:list={[message.status === 'new' && 'font-medium']}>
               <td class="px-4 py-3 align-top">
-                <a href={`/admin/messages/${message.id}`} class="hover:underline">
+                {/* Prefetch is off: opening a message is a real visit, never a background GET. */}
+                <a
+                  href={`/admin/messages/${message.id}`}
+                  data-astro-prefetch="false"
+                  class="hover:underline"
+                >
                   {message.name}
                 </a>
                 <p class="text-xs font-normal text-muted-foreground">{message.email}</p>
@@ -113,6 +174,9 @@ const deliveryVariant = {
                 <time datetime={toISODate(message.createdAt)}>
                   {formatDate(message.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
                 </time>
+              </td>
+              <td class="px-4 py-3 align-top">
+                <Badge variant={statusVariant[message.status]}>{message.status}</Badge>
               </td>
               <td class="px-4 py-3 align-top">
                 <Badge variant={deliveryVariant[message.deliveryStatus]}>
@@ -156,5 +220,27 @@ const deliveryVariant = {
         </tbody>
       </table>
     </div>
+  )}
+
+  {paging.pages > 1 && (
+    <nav aria-label="Pagination" class="mt-4 flex items-center justify-between text-sm">
+      {paging.page > 1 ? (
+        <a href={listUrl(paging.page - 1)} class="font-medium underline underline-offset-4">
+          Previous
+        </a>
+      ) : (
+        <span />
+      )}
+      <span class="text-muted-foreground">
+        Page {paging.page} of {paging.pages}
+      </span>
+      {paging.page < paging.pages ? (
+        <a href={listUrl(paging.page + 1)} class="font-medium underline underline-offset-4">
+          Next
+        </a>
+      ) : (
+        <span />
+      )}
+    </nav>
   )}
 </AdminLayout>
