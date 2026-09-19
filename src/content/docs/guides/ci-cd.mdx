@@ -46,8 +46,16 @@ Motion, auth and data (Better Auth, Drizzle, libSQL, Resend), styling, tooling, 
 Actions used by the workflows and the composite action. Because the CI matrix builds every
 target, merging an update is safe when the checks are green.
 
-TypeScript is pinned to the 6.x line (`~6.0.3`) because `@astrojs/check` and `typescript-eslint`
-do not yet support TypeScript 7; Dependabot is configured to ignore TypeScript 7 until then.
+Two dependencies are held back on purpose: TypeScript stays on the 6.x line (`~6.0.3`) because
+`@astrojs/check` and `typescript-eslint` do not yet support TypeScript 7, and `@types/node` follows
+the Node 24 runtime pinned in `engines` and `.nvmrc`. Both are listed under `ignore`.
+
+Newly published versions wait three days before Dependabot proposes them (`cooldown`). Dependabot
+passes the same gate to pnpm while it rewrites the lockfile, and pnpm 10 applies it to every
+package it re-resolves, including ones already pinned in the lockfile. An update therefore fails
+with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` while any package in `pnpm-lock.yaml` is younger than
+three days, which happens after a manual `pnpm install` picked up fresh versions. The next run
+succeeds once those packages have aged.
 
 ## Releases with Changesets
 

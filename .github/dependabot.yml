@@ -6,6 +6,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    # Dependabot's default for npm, made explicit: a version must be at least this old before
+    # it is proposed. The same gate is passed to pnpm while the lockfile is updated.
+    cooldown:
+      default-days: 3
     groups:
       astro:
         patterns: ['astro', '@astrojs/*', 'astro-*']
@@ -46,6 +50,9 @@ updates:
       # TypeScript 7 is not yet supported by @astrojs/check and typescript-eslint.
       - dependency-name: typescript
         versions: ['>=7.0.0']
+      # The types follow the Node runtime pinned in `engines` and .nvmrc (24.x).
+      - dependency-name: '@types/node'
+        versions: ['>=25.0.0']
   - package-ecosystem: github-actions
     directories: ['/', '/.github/actions/setup']
     schedule:
