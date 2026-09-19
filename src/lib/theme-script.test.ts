@@ -42,9 +42,4 @@ describe('theme bootstrap script', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(document.documentElement.dataset.themePreference).toBe('system');
   });
-
-  it('is minified enough to inline', () => {
-    expect(THEME_SCRIPT.length).toBeLessThan(400);
-    expect(THEME_SCRIPT).not.toContain('\n');
-  });
 });

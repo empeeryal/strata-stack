@@ -20,7 +20,7 @@ const message = import.meta.env.DEV && error instanceof Error ? error.message : 
     <p class="font-mono text-sm text-muted-foreground">500</p>
     <h1 class="mt-2 text-4xl font-bold tracking-tight">Something went wrong</h1>
     <p class="mt-4 max-w-md text-pretty text-muted-foreground">
-      The server hit an unexpected error. It has been logged; please try again in a moment.
+      The server hit an unexpected error. It has been logged. Try again in a moment.
     </p>
     {message && <pre class="mt-6 max-w-2xl overflow-x-auto rounded-md border bg-code p-4 text-left font-mono text-xs">
           {message}

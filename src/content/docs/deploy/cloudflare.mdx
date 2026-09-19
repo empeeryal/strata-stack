@@ -44,14 +44,17 @@ on-demand routes in the workerd runtime.
   "name": "astro-framework-v2",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": { "NODE_ENV": "production" },
   "observability": { "enabled": true },
 }
 ```
 
 `nodejs_compat` is required: Better Auth uses `AsyncLocalStorage`, and with a compatibility
 date of 2025-04-01 or later Cloudflare also populates `process.env` from your variables and
-secrets, which is how `src/lib/env.ts` reads configuration. The adapter generates the remaining
-settings (entrypoint, assets directory) itself.
+secrets, which is how `src/lib/env.ts` reads configuration. `NODE_ENV=production` turns on the
+production safety rules (see [security](/docs/guides/security#production-configuration-checks));
+`.dev.vars` overrides it locally. The adapter generates the remaining settings (entrypoint,
+assets directory) itself.
 
 ## What the adapter configures
 

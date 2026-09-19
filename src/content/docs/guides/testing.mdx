@@ -3,7 +3,7 @@ title: Testing
 description: Unit and component tests with Vitest, end-to-end tests with Playwright, accessibility checks with axe and Lighthouse budgets.
 publishedDate: 2026-09-18
 sidebar:
-  order: 8
+  order: 10
 ---
 
 ## Unit and component tests (Vitest)
@@ -49,9 +49,10 @@ pnpm test:a11y           # only the axe accessibility checks
 pnpm test:e2e:ui         # Playwright UI mode
 ```
 
-Specs in `tests/e2e` cover navigation and dark mode, docs sidebar and tabs, blog listing and tags,
-SEO endpoints and metadata, search, the full sign-up → dashboard → sign-out → sign-in flow,
-security headers, CSP violations and accessibility.
+Specs in `tests/e2e` cover the home page and dark mode, docs navigation, blog listing and tags,
+search, SEO endpoints and metadata, the contact form (including the honeypot), sign-up, sign-in
+and sign-out, account export and deletion, the admin area (inbox, roles, last-admin protection,
+health details), security headers, CSP violations and accessibility.
 
 <Callout type="tip" title="Waiting for islands">
   Interactive React islands hydrate asynchronously. Use the `waitForIslands(page)` helper before

@@ -2,6 +2,8 @@
 import AuthForm from '@/components/react/auth/AuthForm';
 import MagicLinkForm from '@/components/react/auth/MagicLinkForm';
 import SocialButtons from '@/components/react/auth/SocialButtons';
+import Alert from '@/components/ui/Alert.astro';
+import Divider from '@/components/ui/Divider.astro';
 import AuthLayout from '@/layouts/AuthLayout.astro';
 import { enabledAuthMethods } from '@/lib/auth';
 import { safeRedirectPath } from '@/lib/redirect';
@@ -36,12 +38,7 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
 >
   <div class="space-y-6">
     {linkError && (
-      <div
-        role="alert"
-        class="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
-      >
-        That link is invalid or has expired. Sign in again or request a new one.
-      </div>
+      <Alert>That link is invalid or has expired. Sign in again or request a new one.</Alert>
     )}
     <AuthForm
       client:load
@@ -51,19 +48,13 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
     />
     {methods.magicLink && (
       <>
-        <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
-          <span class="relative bg-card px-3">or</span>
-        </div>
+        <Divider label="or" />
         <MagicLinkForm client:load redirectTo={redirectTo} />
       </>
     )}
     {methods.social.length > 0 && (
       <>
-        {!methods.magicLink && (
-          <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
-            <span class="relative bg-card px-3">or</span>
-          </div>
-        )}
+        <Divider label="or" />
         <SocialButtons client:load providers={methods.social} redirectTo={redirectTo} />
       </>
     )}

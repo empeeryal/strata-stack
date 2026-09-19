@@ -8,8 +8,6 @@ export const DOCS_SECTIONS = [
   { id: 'reference', label: 'Reference' },
 ] as const;
 
-export type DocsSectionId = (typeof DOCS_SECTIONS)[number]['id'];
-
 export interface DocsNavItem {
   id: string;
   href: string;
@@ -25,10 +23,6 @@ export interface DocsSection {
   items: DocsNavItem[];
 }
 
-export function docsHref(id: string): string {
-  return `/docs/${id}`;
-}
-
 export function docsSectionOf(entry: CollectionEntry<'docs'>): string {
   return entry.id.includes('/') ? entry.id.split('/')[0]! : 'reference';
 }
@@ -36,6 +30,7 @@ export function docsSectionOf(entry: CollectionEntry<'docs'>): string {
 /** Group published docs by section, ordered by DOCS_SECTIONS then `sidebar.order`. */
 export function buildDocsTree(entries: CollectionEntry<'docs'>[]): DocsSection[] {
   const published = entries.filter((entry) => !entry.data.draft);
+  const order = new Map(published.map((entry) => [entry.id, entry.data.sidebar.order]));
 
   const sections: DocsSection[] = DOCS_SECTIONS.map((section) => ({
     id: section.id,
@@ -52,7 +47,7 @@ export function buildDocsTree(entries: CollectionEntry<'docs'>[]): DocsSection[]
     }
     const item: DocsNavItem = {
       id: entry.id,
-      href: docsHref(entry.id),
+      href: `/docs/${entry.id}`,
       label: entry.data.sidebar.label ?? entry.data.title,
       title: entry.data.title,
       description: entry.data.description,
@@ -62,11 +57,9 @@ export function buildDocsTree(entries: CollectionEntry<'docs'>[]): DocsSection[]
   }
 
   for (const section of sections) {
-    section.items.sort((a, b) => {
-      const orderA = published.find((entry) => entry.id === a.id)!.data.sidebar.order;
-      const orderB = published.find((entry) => entry.id === b.id)!.data.sidebar.order;
-      return orderA - orderB || a.label.localeCompare(b.label);
-    });
+    section.items.sort(
+      (a, b) => order.get(a.id)! - order.get(b.id)! || a.label.localeCompare(b.label),
+    );
   }
 
   return sections.filter((section) => section.items.length > 0);

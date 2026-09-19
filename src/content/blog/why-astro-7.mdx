@@ -13,8 +13,8 @@ reasons we standardised on it are mostly about predictability.
 ## What changed in 7.0
 
 - **The Rust compiler is the only compiler.** Builds are faster, and the compiler is stricter: it
-  no longer closes tags for you or reorders invalid HTML. That strictness caught three real bugs in
-  our older components during the migration.
+  no longer closes tags for you or reorders invalid HTML, so template mistakes surface at build
+  time instead of in the browser.
 - **Vite 8** drives both the dev server and the production bundler, with Rolldown under the hood.
 - **Sätteri is the default Markdown pipeline.** It parses Markdown and MDX in Rust and runs plugins
   in JavaScript. The template uses it as-is; the classic remark/rehype pipeline remains one import
@@ -51,9 +51,9 @@ a single CSS rule.
 
 ## Why it is the right default
 
-For sites that are mostly content with a few interactive islands, Astro 7 produces the smallest
-output of any mainstream framework, and it does so with a single mental model: everything is static
-unless you opt out. The tooling around it (adapters, integrations, the Container API for testing)
+For sites that are mostly content with a few interactive islands, Astro 7 ships no client
+JavaScript unless a component asks for it, and it does so with a single mental model: everything is
+static unless you opt out. The tooling around it (adapters, integrations, the Container API for testing)
 is mature enough that a template can encode good defaults once and keep them for years.
 
 The upgrade guides for [v6](https://docs.astro.build/en/guides/upgrade-to/v6/) and

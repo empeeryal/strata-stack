@@ -3,7 +3,7 @@ import { z } from 'astro/zod';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
-import { CONTACT_STATUSES, contactMessages } from '@/db/schema';
+import { CONTACT_STATUSES, contactMessages, type ContactStatus } from '@/db/schema';
 import {
   isAdmin,
   isLastActiveAdmin,
@@ -18,6 +18,7 @@ import {
   deliverContactMessage,
   submitContactMessage,
   type ContactDeps,
+  type DeliveryOutcome,
 } from '@/lib/contact';
 import { sendEmail } from '@/lib/email';
 import { getEnv } from '@/lib/env';
@@ -36,10 +37,7 @@ function clientAddress(context: ActionAPIContext): string | null {
   }
 }
 
-/**
- * Resolves the acting admin or throws the matching action error. The role comes from the
- * database (not the cookie cache), so a demotion, ban or revoked session applies at once.
- */
+/** Resolves the acting admin from the database session (src/lib/session.ts) or throws. */
 async function requireAdmin(context: ActionAPIContext) {
   const { user, session } = await getAuthoritativeSession(context.request.headers);
   context.locals.user = user;
@@ -73,10 +71,16 @@ function toActionError(error: unknown, fallback: string): ActionError {
 const userId = z.string().min(1);
 const messageId = z.string().min(1);
 
-const STATUS_NOTICE: Record<(typeof CONTACT_STATUSES)[number], AdminNotice> = {
+const STATUS_NOTICE: Record<ContactStatus, AdminNotice> = {
   new: 'message-unread',
   read: 'message-read',
   archived: 'message-archived',
+};
+
+const DELIVERY_NOTICE: Record<DeliveryOutcome, AdminNotice> = {
+  sent: 'delivery-sent',
+  failed: 'delivery-failed',
+  skipped: 'delivery-skipped',
 };
 
 export const server = {
@@ -121,9 +125,9 @@ export const server = {
    * Administrative actions. Authorization is enforced here, not in the pages. Each returns
    * a `notice` key the pages show after the redirect (see src/lib/admin-page.ts).
    *
-   * Message changes and their audit entries are written in one transaction, so neither can
-   * exist without the other. User operations go through Better Auth and cannot share a
-   * transaction; their audit entries are best-effort (`recordAudit`).
+   * Message status changes and deletions write the change and the audit entry in one
+   * transaction. Resending a notification and the user operations call email or Better
+   * Auth and cannot share a transaction; their audit entries are best-effort (`recordAudit`).
    */
   admin: {
     setMessageStatus: defineAction({
@@ -155,7 +159,7 @@ export const server = {
             details: { status },
           });
         });
-        return { ok: true as const, status, notice: STATUS_NOTICE[status] };
+        return { status, notice: STATUS_NOTICE[status] };
       },
     }),
 
@@ -180,7 +184,7 @@ export const server = {
             targetId: id,
           });
         });
-        return { ok: true as const, notice: 'message-deleted' satisfies AdminNotice };
+        return { notice: 'message-deleted' as AdminNotice };
       },
     }),
 
@@ -189,11 +193,9 @@ export const server = {
       input: z.object({ id: messageId }),
       handler: async ({ id }, context) => {
         const actor = await requireAdmin(context);
-        let delivery;
-        try {
-          delivery = await deliverContactMessage(id, contactDeps());
-        } catch (error) {
-          throw toActionError(error, 'Message not found.');
+        const delivery = await deliverContactMessage(id, contactDeps());
+        if (!delivery) {
+          throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
         }
         await recordAudit(db, {
           actorId: actor.id,
@@ -203,13 +205,7 @@ export const server = {
           targetId: id,
           details: { delivery },
         });
-        const notice: AdminNotice =
-          delivery === 'sent'
-            ? 'delivery-sent'
-            : delivery === 'skipped'
-              ? 'delivery-skipped'
-              : 'delivery-failed';
-        return { ok: true as const, delivery, notice };
+        return { delivery, notice: DELIVERY_NOTICE[delivery] };
       },
     }),
 
@@ -241,7 +237,7 @@ export const server = {
           targetId,
           details: { role },
         });
-        return { ok: true as const, notice: 'role-updated' satisfies AdminNotice };
+        return { notice: 'role-updated' as AdminNotice };
       },
     }),
 
@@ -270,7 +266,7 @@ export const server = {
           targetId,
           details: { reason: reason ?? null },
         });
-        return { ok: true as const, notice: 'user-banned' satisfies AdminNotice };
+        return { notice: 'user-banned' as AdminNotice };
       },
     }),
 
@@ -294,7 +290,7 @@ export const server = {
           targetType: 'user',
           targetId,
         });
-        return { ok: true as const, notice: 'user-unbanned' satisfies AdminNotice };
+        return { notice: 'user-unbanned' as AdminNotice };
       },
     }),
 
@@ -318,7 +314,7 @@ export const server = {
           targetType: 'user',
           targetId,
         });
-        return { ok: true as const, notice: 'sessions-revoked' satisfies AdminNotice };
+        return { notice: 'sessions-revoked' as AdminNotice };
       },
     }),
 
@@ -349,7 +345,7 @@ export const server = {
           targetType: 'user',
           targetId,
         });
-        return { ok: true as const, notice: 'user-deleted' satisfies AdminNotice };
+        return { notice: 'user-deleted' as AdminNotice };
       },
     }),
   },

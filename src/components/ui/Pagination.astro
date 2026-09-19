@@ -1,5 +1,4 @@
 ---
-import type { Page } from 'astro';
 import { Icon } from 'astro-icon/components';
 
 import { cn } from '@/lib/utils';
@@ -7,30 +6,34 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from './button-variants';
 
 interface Props {
-  page: Page<unknown>;
+  current: number;
+  total: number;
+  prev?: string | undefined;
+  next?: string | undefined;
+  /** Link labels; chronological lists use "Newer" and "Older". */
+  labels?: [string, string];
   class?: string;
 }
 
-const { page, class: className } = Astro.props;
-const { prev, next } = page.url;
+const { current, total, prev, next, labels = ['Previous', 'Next'], class: className } = Astro.props;
 ---
 
-{page.lastPage > 1 && (
+{total > 1 && (
   <nav aria-label="Pagination" class={cn('flex items-center justify-between gap-4', className)}>
     {prev ? (
       <a href={prev} rel="prev" class={buttonVariants({ variant: 'outline', size: 'sm' })}>
         <Icon name="lucide:arrow-left" aria-hidden="true" />
-        Newer
+        {labels[0]}
       </a>
     ) : (
       <span aria-hidden="true" />
     )}
     <p class="text-sm text-muted-foreground">
-      Page {page.currentPage} of {page.lastPage}
+      Page {current} of {total}
     </p>
     {next ? (
       <a href={next} rel="next" class={buttonVariants({ variant: 'outline', size: 'sm' })}>
-        Older
+        {labels[1]}
         <Icon name="lucide:arrow-right" aria-hidden="true" />
       </a>
     ) : (

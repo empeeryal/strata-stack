@@ -8,11 +8,15 @@ sidebar:
 
 ## Can I remove authentication?
 
-Yes. Delete `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/pages/api/auth`,
-`src/pages/login.astro`, `src/pages/signup.astro`, `src/pages/dashboard.astro`,
-`src/components/react/auth`, the session lookup in `src/middleware.ts` and the `App.Locals` types
-in `src/env.d.ts`. Remove `better-auth` and `@better-auth/drizzle-adapter` from `package.json`.
-If you also drop the contact action, the site becomes fully static and no adapter is needed.
+Yes, but the admin area, the dashboard and the account routes depend on it, so remove those
+together: `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/lib/session.ts`, `src/lib/admin*.ts`,
+`src/pages/api/auth`, `src/pages/api/account`, `src/pages/api/health.ts`, the `login`, `signup`,
+`forgot-password`, `reset-password`, `dashboard`, `account-deleted` and `admin` pages,
+`src/components/react/auth` and `react/account`, `src/components/site/AccountMenu.astro`, the
+`admin` actions, the session lookup in `src/middleware.ts` and the `App.Locals` types in
+`src/env.d.ts`. Drop `better-auth` and `@better-auth/drizzle-adapter` from `package.json` and
+regenerate the migrations. If you also remove the contact action, the site becomes fully static and
+no adapter is needed.
 
 ## Can I use PostgreSQL instead of libSQL?
 
@@ -35,7 +39,7 @@ accept. The pin keeps `pnpm check` and `pnpm lint` working; raise it once both s
 The Pagefind index is generated during `pnpm build`. Run a build once; the dev server then
 serves the last generated index.
 
-## The Rust compiler rejects my template
+## The compiler rejects my template
 
 Astro 7 no longer repairs invalid HTML. Close every non-void tag, avoid block elements inside
 `<p>`, and write `{' '}` where whitespace between inline elements matters.

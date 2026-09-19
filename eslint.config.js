@@ -20,7 +20,6 @@ export default defineConfig([
     'test-results/**',
     'public/**',
     'drizzle/**',
-    'worker-configuration.d.ts',
   ]),
 
   js.configs.recommended,
@@ -55,7 +54,7 @@ export default defineConfig([
     extends: [jsxA11y.flatConfigs.recommended, reactHooks.configs.flat['recommended-latest']],
   },
 
-  // Ambient type declarations.
+  // Ambient type declarations: `/// <reference>` and `import()` types keep the file global.
   {
     files: ['**/*.d.ts'],
     rules: {
@@ -66,7 +65,7 @@ export default defineConfig([
 
   // Scripts and config files run in Node and may log.
   {
-    files: ['scripts/**', '*.config.{js,ts,mjs}', 'integrations/**', 'config/**'],
+    files: ['scripts/**', '*.config.{js,ts,mjs}'],
     rules: {
       'no-console': 'off',
     },

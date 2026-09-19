@@ -1,6 +1,5 @@
 # build output
 dist/
-.output/
 .vercel/
 .netlify/
 .wrangler/
@@ -22,8 +21,9 @@ yarn-error.log*
 .dev.vars
 !.dev.vars.example
 
-# local database (contents only, so .data/.gitkeep keeps the directory)
+# local database (contents only; .data/.gitkeep keeps the directory)
 .data/*
+!.data/.gitkeep
 *.db
 *.db-journal
 *.db-shm
@@ -36,14 +36,8 @@ test-results/
 blob-report/
 .lighthouseci/
 
-# generated types
-worker-configuration.d.ts
-
 # editors / OS
 .DS_Store
 Thumbs.db
 .idea/
 *.swp
-
-# keep the local database directory
-!.data/.gitkeep

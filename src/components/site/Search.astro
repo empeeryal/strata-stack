@@ -31,7 +31,9 @@ import { cn } from '@/lib/utils';
       Search…
     </span>
     <span class="flex gap-1">
-      <Kbd>Ctrl</Kbd>
+      <Kbd>
+        <span data-modifier>Ctrl</span>
+      </Kbd>
       <Kbd>K</Kbd>
     </span>
   </button>
@@ -49,6 +51,10 @@ import { cn } from '@/lib/utils';
 <script>
   class SearchTrigger extends HTMLElement {
     connectedCallback() {
+      if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+        const modifier = this.querySelector('[data-modifier]');
+        if (modifier) modifier.textContent = '⌘';
+      }
       for (const button of this.querySelectorAll('button')) {
         button.addEventListener('click', () => {
           document.querySelector<HTMLButtonElement>('pagefind-modal-trigger button')?.click();

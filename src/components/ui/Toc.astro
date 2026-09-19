@@ -5,40 +5,33 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   headings: MarkdownHeading[];
-  minDepth?: number;
-  maxDepth?: number;
-  title?: string;
   class?: string;
 }
 
-const {
-  headings,
-  minDepth = 2,
-  maxDepth = 3,
-  title = 'On this page',
-  class: className,
-} = Astro.props;
-const items = headings.filter((heading) => heading.depth >= minDepth && heading.depth <= maxDepth);
+const { headings, class: className } = Astro.props;
+const items = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3);
 ---
 
 {items.length > 0 && (
   <table-of-contents class={cn('block text-sm', className)}>
-    <p class="mb-3 font-semibold">{title}</p>
-    <ul class="space-y-1 border-l">
-      {items.map((heading) => (
-        <li>
-          <a
-            href={`#${heading.slug}`}
-            class={cn(
-              '-ml-px block border-l-2 border-transparent py-1 pr-2 text-muted-foreground transition-colors hover:text-foreground aria-[current=true]:border-primary aria-[current=true]:font-medium aria-[current=true]:text-foreground',
-              heading.depth === minDepth ? 'pl-4' : 'pl-7',
-            )}
-          >
-            {heading.text}
-          </a>
-        </li>
-      ))}
-    </ul>
+    <nav aria-label="On this page">
+      <p class="mb-3 font-semibold">On this page</p>
+      <ul class="space-y-1 border-l">
+        {items.map((heading) => (
+          <li>
+            <a
+              href={`#${heading.slug}`}
+              class={cn(
+                '-ml-px block border-l-2 border-transparent py-1 pr-2 text-muted-foreground transition-colors hover:text-foreground aria-[current=true]:border-primary aria-[current=true]:font-medium aria-[current=true]:text-foreground',
+                heading.depth === 2 ? 'pl-4' : 'pl-7',
+              )}
+            >
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   </table-of-contents>
 )}
 

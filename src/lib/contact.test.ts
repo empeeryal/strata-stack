@@ -20,10 +20,7 @@ beforeEach(async () => {
   sendEmail = vi.fn().mockResolvedValue({ id: 'email-1' });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
-afterEach(() => {
-  testDb.close();
-  vi.restoreAllMocks();
-});
+afterEach(() => testDb.close());
 
 function deps(overrides: Partial<ContactDeps> = {}): ContactDeps {
   return {
@@ -46,7 +43,7 @@ describe('submitContactMessage', () => {
   it('stores the message and notifies the owner', async () => {
     const outcome = await submitContactMessage(input, ctx, deps());
 
-    expect(outcome).toEqual({ ok: true, delivery: 'sent' });
+    expect(outcome).toEqual({ delivery: 'sent' });
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'owner@example.com',
@@ -67,7 +64,7 @@ describe('submitContactMessage', () => {
   it('answers a filled honeypot with success without storing or sending anything', async () => {
     const outcome = await submitContactMessage({ ...input, website: 'http://spam' }, ctx, deps());
 
-    expect(outcome).toEqual({ ok: true, delivery: 'ignored' });
+    expect(outcome).toEqual({ delivery: 'ignored' });
     expect(sendEmail).not.toHaveBeenCalled();
     expect(await testDb.db.select().from(contactMessages)).toHaveLength(0);
   });
@@ -77,7 +74,7 @@ describe('submitContactMessage', () => {
 
     const outcome = await submitContactMessage(input, ctx, deps());
 
-    expect(outcome).toEqual({ ok: true, delivery: 'failed' });
+    expect(outcome).toEqual({ delivery: 'failed' });
     const [row] = await testDb.db.select().from(contactMessages);
     expect(row).toMatchObject({
       deliveryStatus: 'failed',
@@ -89,7 +86,7 @@ describe('submitContactMessage', () => {
   it('marks the notification as skipped when no recipient is configured', async () => {
     const outcome = await submitContactMessage(input, ctx, deps({ recipient: undefined }));
 
-    expect(outcome).toEqual({ ok: true, delivery: 'skipped' });
+    expect(outcome).toEqual({ delivery: 'skipped' });
     expect(sendEmail).not.toHaveBeenCalled();
     const [row] = await testDb.db.select().from(contactMessages);
     expect(row?.deliveryStatus).toBe('skipped');
@@ -147,7 +144,7 @@ describe('deliverContactMessage', () => {
     });
   });
 
-  it('rejects unknown ids', async () => {
-    await expect(deliverContactMessage('missing', deps())).rejects.toThrow(/not found/);
+  it('returns null for unknown ids', async () => {
+    expect(await deliverContactMessage('missing', deps())).toBeNull();
   });
 });

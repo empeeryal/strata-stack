@@ -6,8 +6,7 @@
     "types": ["@types/node"],
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "noUncheckedSideEffectImports": false
+    }
   },
   "include": [".astro/types.d.ts", "**/*"],
   "exclude": [
@@ -18,7 +17,6 @@
     ".wrangler",
     "coverage",
     "playwright-report",
-    "test-results",
-    "worker-configuration.d.ts"
+    "test-results"
   ]
 }

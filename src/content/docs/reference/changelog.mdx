@@ -39,7 +39,7 @@ Merging that pull request tags the release. Run the same steps locally with
 `## 1.2.0 (2026-10-01)`) is shown next to the release. Each release is rendered through Astro's
 Markdown pipeline, so links, code and lists work as they do elsewhere.
 
-## Version badge
+## Version in the health endpoint
 
-The current version appears in `/api/health` and in the footer of every OG image, both read from
-`package.json`, so the site always reports the release it was built from.
+`/api/health` reports the version from `package.json` to administrators and monitors, so a
+deployment always identifies the release it was built from.

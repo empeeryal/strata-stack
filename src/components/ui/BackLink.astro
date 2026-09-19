@@ -1,0 +1,22 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { cn } from '@/lib/utils';
+
+interface Props {
+  href: string;
+  class?: string;
+}
+const { href, class: className } = Astro.props;
+---
+
+<a
+  href={href}
+  class={cn(
+    'inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline',
+    className,
+  )}
+>
+  <Icon name="lucide:arrow-left" class="size-4" aria-hidden="true" />
+  <slot />
+</a>

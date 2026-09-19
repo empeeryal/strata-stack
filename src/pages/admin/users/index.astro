@@ -3,6 +3,7 @@ import { actions } from 'astro:actions';
 
 import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
+import Pagination from '@/components/ui/Pagination.astro';
 import AdminLayout from '@/layouts/AdminLayout.astro';
 import { isAdmin } from '@/lib/admin';
 import { guardAdminPage, summarizeActionResults, withNotice } from '@/lib/admin-page';
@@ -42,14 +43,14 @@ const { users, total } = await auth.api.listUsers({
   },
   headers: Astro.request.headers,
 });
-const { page, pages } = paginate(total, requested, PAGE_SIZE);
+const paging = paginate(total, requested, PAGE_SIZE);
 // A stale link past the last page lands on the last page instead of an empty one.
-if (page !== requested) return Astro.redirect(pageUrl(page));
+if (paging.page !== requested) return Astro.redirect(pageUrl(paging.page));
 ---
 
 <AdminLayout title="Users" description="Manage accounts, roles and bans." error={outcome.error}>
   <p class="text-sm text-muted-foreground">
-    {total} {total === 1 ? 'account' : 'accounts'}. Administrators are bootstrapped from
+    {total} {total === 1 ? 'account' : 'accounts'}. Administrators are bootstrapped from{' '}
     <code class="font-mono">ADMIN_EMAILS</code> and can be changed here.
   </p>
 
@@ -89,18 +90,18 @@ if (page !== requested) return Astro.redirect(pageUrl(page));
                 <p class="text-xs text-muted-foreground">{account.email}</p>
               </td>
               <td class="px-4 py-3 align-top">
-                <Badge variant={admin ? 'default' : 'outline'}>{admin ? 'admin' : 'user'}</Badge>
+                <Badge variant={admin ? 'default' : 'outline'}>{admin ? 'Admin' : 'User'}</Badge>
               </td>
               <td class="px-4 py-3 align-top">
                 <div class="flex flex-wrap gap-1">
                   {account.emailVerified ? (
-                    <Badge variant="success">verified</Badge>
+                    <Badge variant="success">Verified</Badge>
                   ) : (
-                    <Badge variant="muted">unverified</Badge>
+                    <Badge variant="muted">Unverified</Badge>
                   )}
                   {account.banned && (
                     <Badge variant="danger" title={account.banReason ?? undefined}>
-                      banned
+                      Banned
                     </Badge>
                   )}
                 </div>
@@ -163,25 +164,11 @@ if (page !== requested) return Astro.redirect(pageUrl(page));
     </table>
   </div>
 
-  {pages > 1 && (
-    <nav aria-label="Pagination" class="mt-4 flex items-center justify-between text-sm">
-      {page > 1 ? (
-        <a href={pageUrl(page - 1)} class="font-medium underline underline-offset-4">
-          Previous
-        </a>
-      ) : (
-        <span />
-      )}
-      <span class="text-muted-foreground">
-        Page {page} of {pages}
-      </span>
-      {page < pages ? (
-        <a href={pageUrl(page + 1)} class="font-medium underline underline-offset-4">
-          Next
-        </a>
-      ) : (
-        <span />
-      )}
-    </nav>
-  )}
+  <Pagination
+    current={paging.page}
+    total={paging.pages}
+    prev={paging.page > 1 ? pageUrl(paging.page - 1) : undefined}
+    next={paging.page < paging.pages ? pageUrl(paging.page + 1) : undefined}
+    class="mt-4"
+  />
 </AdminLayout>

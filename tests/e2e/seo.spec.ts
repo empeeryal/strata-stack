@@ -44,9 +44,12 @@ test.describe('SEO and discovery endpoints', () => {
       `${siteConfig.url}/og/docs/getting-started/introduction.png`,
     );
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /.+/);
-    expect(await page.locator('script[type="application/ld+json"]').count()).toBeGreaterThanOrEqual(
-      3,
-    );
+    const types = await page
+      .locator('script[type="application/ld+json"]')
+      .evaluateAll((scripts) =>
+        scripts.map((script) => JSON.parse(script.textContent ?? '{}')['@type'] as string),
+      );
+    expect(types).toEqual(expect.arrayContaining(['WebSite', 'BreadcrumbList', 'TechArticle']));
   });
 
   test('404 page is served with the right status', async ({ page }) => {

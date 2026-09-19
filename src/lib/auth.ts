@@ -12,19 +12,6 @@ import { isLastActiveAdmin, LAST_ADMIN_MESSAGE, recordAudit } from './admin';
 import { isEmailConfigured, sendEmail } from './email';
 import { getAdminEmails, getEnv, getSiteUrl, getTrustedOrigins } from './env';
 
-/**
- * Better Auth server instance.
- *
- * - Uses `better-auth/minimal` because the Drizzle adapter replaces the built-in
- *   Kysely layer, which keeps serverless bundles small.
- * - Reads configuration through `process.env` (see src/lib/env.ts) so the
- *   `auth generate` CLI can load this file and every runtime behaves the same.
- * - Social providers are only registered when their credentials exist, so the
- *   template works out of the box with email/password alone.
- * - Email verification, password reset and magic links depend on an email provider
- *   (`RESEND_API_KEY`). Verification is only *required* when one is configured, so a
- *   fresh clone can still sign in; see docs/guides/authentication.
- */
 const githubId = getEnv('GITHUB_CLIENT_ID');
 const githubSecret = getEnv('GITHUB_CLIENT_SECRET');
 const googleId = getEnv('GOOGLE_CLIENT_ID');
@@ -39,6 +26,19 @@ function sendInBackground(message: Parameters<typeof sendEmail>[0], what: string
   });
 }
 
+/**
+ * Better Auth server instance.
+ *
+ * - Uses `better-auth/minimal` because the Drizzle adapter replaces the built-in Kysely
+ *   layer, which keeps serverless bundles small.
+ * - Reads configuration through `process.env` (see src/lib/env.ts) so the `auth generate`
+ *   CLI can load this file and every runtime behaves the same.
+ * - Social providers are only registered when their credentials exist, so the template
+ *   works out of the box with email and password alone.
+ * - Email verification, password reset and magic links depend on an email provider
+ *   (`RESEND_API_KEY`). Verification is only *required* when one is configured, so a fresh
+ *   clone can still sign in; see docs/guides/authentication.
+ */
 export const auth = betterAuth({
   appName: siteConfig.name,
   baseURL: getSiteUrl(),
@@ -180,7 +180,7 @@ export const auth = betterAuth({
     max: 100,
     // The end-to-end suite creates several accounts from one address in parallel, which the
     // built-in sign-up/sign-in rule (3 per 10 s) would reject. Test runs only.
-    ...(process.env.NODE_ENV === 'test'
+    ...(getEnv('NODE_ENV') === 'test'
       ? {
           customRules: {
             '/sign-up/email': { window: 10, max: 50 },
@@ -195,10 +195,8 @@ export const auth = betterAuth({
   },
 });
 
-export type Auth = typeof auth;
-
 /** Social providers that are configured, used to render sign-in buttons. */
-export function enabledSocialProviders(): Array<'github' | 'google'> {
+function enabledSocialProviders(): Array<'github' | 'google'> {
   const providers: Array<'github' | 'google'> = [];
   if (githubId && githubSecret) providers.push('github');
   if (googleId && googleSecret) providers.push('google');

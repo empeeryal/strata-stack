@@ -20,8 +20,9 @@ Environment: copy `.env.example` to `.env`. The local database is `.data/local.d
 
 ## Architecture in one minute
 
-- `output: 'static'`; only `/api/*`, `/login`, `/signup`, `/dashboard` and actions are server
-  rendered (`export const prerender = false`).
+- `output: 'static'`; only the auth pages (`/login`, `/signup`, `/forgot-password`,
+  `/reset-password`), `/dashboard`, `/admin/*`, `/api/*` (auth, account export, health) and
+  actions are server rendered (`export const prerender = false`).
 - `config/adapter.ts` picks the adapter from `DEPLOY_TARGET` (`node | vercel | cloudflare |
 netlify`). Application code must not branch on the platform.
 - `src/site.config.ts` holds all branding and navigation.

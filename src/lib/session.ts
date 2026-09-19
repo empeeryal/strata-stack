@@ -1,11 +1,6 @@
 import { auth } from './auth';
 
-type Session = typeof auth.$Infer.Session;
-
-export interface AuthoritativeSession {
-  user: Session['user'] | null;
-  session: Session['session'] | null;
-}
+export type AuthoritativeSession = Pick<App.Locals, 'user' | 'session'>;
 
 /**
  * Resolves the session from the database instead of the signed cookie cache.

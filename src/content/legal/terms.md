@@ -16,8 +16,8 @@ and for all activity under your account.
 ## Acceptable use
 
 Do not attempt to disrupt the service, probe it for vulnerabilities without permission, or use
-it to send unsolicited messages. Responsible disclosure of security issues is welcome; see the
-`SECURITY.md` file in the repository.
+it to send unsolicited messages. Responsible disclosure of security issues is welcome; see
+[security.txt](/.well-known/security.txt) for the contact.
 
 ## Content and license
 
@@ -27,7 +27,7 @@ provided as-is without warranty of any kind.
 ## Termination
 
 We may suspend or delete accounts that violate these terms. You may delete your account at any
-time through the contact form.
+time from your account dashboard.
 
 ## Contact
 

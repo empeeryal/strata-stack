@@ -1,66 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { waitForIslands } from './helpers';
+import { serverEnv } from '../../playwright.config';
+import { E2E_PASSWORD, fillContactForm, signIn, signUp, submitAccountDeletion } from './helpers';
 
 // Auth requests share one rate-limit bucket (same client IP); run them one at a time.
 // Every test gets its own browser context, so each one signs in explicitly.
 test.describe.configure({ mode: 'serial' });
 
-// Both addresses are listed in ADMIN_EMAILS (playwright.config.ts).
-const ADMIN_EMAIL = 'admin-e2e@example.com';
-const SECOND_ADMIN_EMAIL = 'admin2-e2e@example.com';
-const PASSWORD = 'correct-horse-battery';
-const HEALTH_TOKEN = 'e2e-health-token';
+const [ADMIN_EMAIL, SECOND_ADMIN_EMAIL] = serverEnv.ADMIN_EMAILS.split(',') as [string, string];
+const HEALTH_TOKEN = serverEnv.HEALTH_TOKEN;
 
-async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await waitForIslands(page);
-  await page.getByLabel('Email').first().fill(email);
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
-}
-
-/** Signs up, or signs in when the account already exists (serial retries reuse the database). */
-async function ensureAccount(page: Page, name: string, email: string) {
-  await page.goto('/signup');
-  await waitForIslands(page);
-  await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
-  await page.getByRole('button', { name: 'Create account' }).click();
-
-  const alert = page.getByRole('alert');
-  const outcome = await Promise.race([
-    page.waitForURL(/\/dashboard$/).then(
-      () => 'signed-up' as const,
-      () => 'timeout' as const,
-    ),
-    alert.waitFor().then(
-      () => 'exists' as const,
-      () => 'timeout' as const,
-    ),
-  ]);
-  if (outcome === 'exists') {
-    await expect(alert).toContainText(/already exists/i);
-    await signIn(page, email);
-  } else {
-    expect(outcome).toBe('signed-up');
-  }
-}
-
-async function sendContactMessage(page: Page, sender: string, message: string, honeypot = false) {
-  await page.goto('/contact');
-  await waitForIslands(page);
-  await page.getByLabel('Name').fill(sender);
-  await page.getByLabel('Email').fill(`inbox-${Date.now()}@example.com`);
-  await page.getByLabel('Message').fill(message);
-  if (honeypot) {
-    await page.evaluate(() => {
-      const field = document.querySelector<HTMLInputElement>('input[name="website"]');
-      if (field) field.value = 'https://spam.example';
-    });
-  }
+async function sendContactMessage(page: Page, name: string, message: string, honeypot = false) {
+  await fillContactForm(page, { name, message, honeypot });
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'your message' })).toContainText(
     'has been received',
@@ -81,23 +32,36 @@ test.describe('admin area', () => {
   // Unique per run so retries and the parallel contact spec never affect the counts below.
   const sender = `Inbox Tester ${Date.now()}`;
 
+  // Both addresses are listed in ADMIN_EMAILS, so they get the admin role on sign-up.
+  test.beforeAll(async ({ request }) => {
+    for (const [name, email] of [
+      ['E2E Admin', ADMIN_EMAIL],
+      ['Second Admin', SECOND_ADMIN_EMAIL],
+    ]) {
+      const response = await request.post('/api/auth/sign-up/email', {
+        data: { name, email, password: E2E_PASSWORD },
+      });
+      expect([200, 422]).toContain(response.status()); // 422: already exists from a retry
+    }
+  });
+
   test('redirects anonymous visitors to the login page', async ({ request }) => {
     const response = await request.get('/admin', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
     expect(response.headers()['location']).toContain('/login?next=%2Fadmin');
   });
 
-  test('bootstraps the admin from ADMIN_EMAILS and manages the inbox', async ({ page }) => {
+  test('manages the inbox', async ({ page }) => {
     const genuine = `Genuine question ${Date.now()}: does the template support Turso?`;
     const spam = `Spam attempt ${Date.now()}: this must never reach the inbox.`;
 
-    await ensureAccount(page, 'E2E Admin', ADMIN_EMAIL);
+    await signIn(page, ADMIN_EMAIL);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('link', { name: 'Admin' }).first()).toBeVisible();
 
     await sendContactMessage(page, sender, genuine);
     await sendContactMessage(page, sender, spam, true);
 
-    // Overview and inbox
     await page.goto('/admin');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Overview');
 
@@ -105,7 +69,7 @@ test.describe('admin area', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Messages');
     await expect(page.getByText(genuine)).toBeVisible();
     await expect(page.getByText(spam)).toHaveCount(0);
-    await expect(page.getByText('sent').first()).toBeVisible();
+    await expect(page.getByText('Sent').first()).toBeVisible();
 
     // Search narrows the list by sender name or address.
     await page.goto(`/admin/messages?status=new&q=${encodeURIComponent(sender)}`);
@@ -113,8 +77,8 @@ test.describe('admin area', () => {
     await expect(page.getByText(genuine)).toBeVisible();
 
     // Listing is a plain GET and must not touch the message: even after link prefetching
-    // had time to run, the message is still new.
-    await page.waitForTimeout(1500);
+    // has run, the message is still new.
+    await page.waitForLoadState('networkidle');
     await page.reload();
     await expect(page.locator('[data-list-summary]')).toHaveText(/Showing 1–1 of 1/);
     await expect(page.getByRole('link', { name: sender })).toBeVisible();
@@ -127,7 +91,7 @@ test.describe('admin area', () => {
     await page.getByRole('link', { name: sender }).click();
     await expect(page.getByRole('heading', { level: 1 })).toContainText(`Message from ${sender}`);
     await expect(page.getByText(genuine)).toBeVisible();
-    await expect(page.locator('[data-message-status]')).toHaveText('read');
+    await expect(page.locator('[data-message-status]')).toHaveText('Read');
     await expect(page.getByRole('button', { name: 'Mark as unread' })).toBeVisible();
 
     // Mark as unread returns to the inbox with a confirmation; the message is new again.
@@ -142,15 +106,14 @@ test.describe('admin area', () => {
     await page.getByRole('button', { name: 'Archive' }).click();
     await expect(page).toHaveURL(/\/admin\/messages\/[^/?]+\?notice=message-archived$/);
     await expect(notice(page)).toHaveText('Message archived.');
-    await expect(page.locator('[data-message-status]')).toHaveText('archived');
+    await expect(page.locator('[data-message-status]')).toHaveText('Archived');
 
     await page.goto(`/admin/messages?status=archived&q=${encodeURIComponent(sender)}`);
     await expect(page.getByText(genuine)).toBeVisible();
 
-    // Users and audit log
     await page.goto('/admin/users');
     await expect(userRow(page, ADMIN_EMAIL)).toContainText('(you)');
-    await expect(userRow(page, ADMIN_EMAIL)).toContainText('admin');
+    await expect(userRow(page, ADMIN_EMAIL)).toContainText('Admin');
 
     await page.goto('/admin/audit');
     await expect(page.getByText('message.status').first()).toBeVisible();
@@ -158,8 +121,9 @@ test.describe('admin area', () => {
 
   test('the last administrator cannot delete their own account', async ({ page }) => {
     await signIn(page, ADMIN_EMAIL);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
-    // Make this account the only administrator (a retry may have created another one).
+    // Make this account the only administrator.
     await page.goto('/admin/users');
     while ((await page.getByRole('button', { name: 'Remove admin' }).count()) > 0) {
       await page.getByRole('button', { name: 'Remove admin' }).first().click();
@@ -167,13 +131,7 @@ test.describe('admin area', () => {
     }
 
     await page.goto('/dashboard');
-    await page.getByRole('button', { name: 'Delete my account' }).scrollIntoViewIfNeeded();
-    await waitForIslands(page);
-    await page.getByRole('button', { name: 'Delete my account' }).click();
-    const form = page.getByRole('form', { name: 'Delete account' });
-    await form.getByLabel('Current password').fill(PASSWORD);
-    await form.getByLabel('Type DELETE to confirm').fill('DELETE');
-    await form.getByRole('button', { name: 'Permanently delete account' }).click();
+    const form = await submitAccountDeletion(page);
     await expect(form.getByRole('alert')).toContainText('only administrator');
     await expect(page).toHaveURL(/\/dashboard$/);
   });
@@ -185,8 +143,10 @@ test.describe('admin area', () => {
     const anonymous = await (await request.get('/api/health')).json();
     expect(anonymous.status).toBe('ok');
     expect(anonymous.checks).toBeUndefined();
+    expect(anonymous.version).toBeUndefined();
 
     await signIn(page, ADMIN_EMAIL);
+    await expect(page).toHaveURL(/\/dashboard$/);
     const asAdmin = await (await page.request.get('/api/health')).json();
     expect(asAdmin.checks).toMatchObject({ database: 'ok' });
     expect(asAdmin.target).toBe('node');
@@ -203,7 +163,8 @@ test.describe('admin area', () => {
   });
 
   test('hides the admin area from regular users', async ({ page }) => {
-    await ensureAccount(page, 'Regular User', `regular-${Date.now()}@example.com`);
+    await signUp(page, 'Regular User', `regular-${Date.now()}@example.com`);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
 
     const response = await page.goto('/admin');
@@ -214,23 +175,22 @@ test.describe('admin area', () => {
       form: { id: 'anything' },
       headers: { Origin: new URL(page.url()).origin },
     });
-    expect([401, 403]).toContain(forbidden.status());
+    expect(forbidden.status()).toBe(403);
   });
 
   test('role changes take effect on the next request', async ({ page, browser }) => {
     await signIn(page, ADMIN_EMAIL);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
-    // A second administrator signs up in a separate browser (ADMIN_EMAILS grants the role;
-    // the previous test may have removed it on a retry, so restore it if needed).
+    // Restore the second admin's role (the last-admin test above removed it).
+    await page.goto('/admin/users');
+    await userRow(page, SECOND_ADMIN_EMAIL).getByRole('button', { name: 'Make admin' }).click();
+    await expect(notice(page)).toHaveText('Role updated.');
+
     const other = await browser.newContext();
     const otherPage = await other.newPage();
-    await ensureAccount(otherPage, 'Second Admin', SECOND_ADMIN_EMAIL);
-    await page.goto('/admin/users');
-    const promote = userRow(page, SECOND_ADMIN_EMAIL).getByRole('button', { name: 'Make admin' });
-    if ((await promote.count()) > 0) {
-      await promote.click();
-      await expect(notice(page)).toHaveText('Role updated.');
-    }
+    await signIn(otherPage, SECOND_ADMIN_EMAIL);
+    await expect(otherPage).toHaveURL(/\/dashboard$/);
 
     // The first admin has access and a freshly cached session cookie.
     expect((await page.goto('/admin'))?.status()).toBe(200);
@@ -248,15 +208,27 @@ test.describe('admin area', () => {
     });
     expect(forbidden.status()).toBe(403);
 
-    // The second admin is now the last one; the users page offers no controls for oneself.
+    // The users page offers no controls for oneself, so the last admin cannot be removed.
     await expect(userRow(otherPage, SECOND_ADMIN_EMAIL)).toContainText('(you)');
     await expect(userRow(otherPage, SECOND_ADMIN_EMAIL).getByRole('button')).toHaveCount(0);
 
-    // Promotion is just as immediate, which also restores the state for retries.
+    // Promotion is just as immediate.
     await userRow(otherPage, ADMIN_EMAIL).getByRole('button', { name: 'Make admin' }).click();
     await expect(notice(otherPage)).toHaveText('Role updated.');
     expect((await page.goto('/admin'))?.status()).toBe(200);
 
     await other.close();
+  });
+
+  test('shows the signed-in state on prerendered pages', async ({ page }) => {
+    await signIn(page, ADMIN_EMAIL);
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    // The home page is static; the header resolves the session after the page loads.
+    await page.goto('/');
+    const header = page.getByRole('banner');
+    await expect(header.getByRole('link', { name: 'E2E Admin' })).toBeVisible();
+    await expect(header.getByRole('link', { name: 'Admin', exact: true })).toBeVisible();
+    await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0);
   });
 });

@@ -2,7 +2,13 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { securityHeaders, toHeadersFile } from './security-headers';
+import { securityHeaders } from './security-headers';
+
+/** The map in Netlify/Cloudflare `_headers` file syntax. */
+function toHeadersFile(headers: Readonly<Record<string, string>>): string {
+  const lines = Object.entries(headers).map(([name, value]) => `  ${name}: ${value}`);
+  return ['/*', ...lines].join('\n') + '\n';
+}
 
 describe('security headers', () => {
   it('keeps public/_headers in sync with the shared header map', async () => {

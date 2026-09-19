@@ -3,12 +3,8 @@ import type { AstroIntegration } from 'astro';
 import { THEME_SCRIPT } from '../src/lib/theme-script';
 
 /**
- * Injects the anti-flash theme script as an inline <script> in <head>.
- *
- * Why an integration instead of `<script is:inline>` in the layout?
- * Astro's CSP support hashes scripts injected at the `head-inline` stage, but it
- * does NOT hash raw `is:inline` scripts written in templates. Using the
- * integration keeps the CSP hash in sync with the script automatically.
+ * Injects THEME_SCRIPT at the `head-inline` stage, which Astro hashes for the Content
+ * Security Policy. A raw `<script is:inline>` in a template would not be hashed.
  */
 export function themeScript(): AstroIntegration {
   return {

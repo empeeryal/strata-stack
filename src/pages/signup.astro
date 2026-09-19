@@ -1,6 +1,7 @@
 ---
 import AuthForm from '@/components/react/auth/AuthForm';
 import SocialButtons from '@/components/react/auth/SocialButtons';
+import Divider from '@/components/ui/Divider.astro';
 import AuthLayout from '@/layouts/AuthLayout.astro';
 import { enabledAuthMethods } from '@/lib/auth';
 import { safeRedirectPath } from '@/lib/redirect';
@@ -14,6 +15,10 @@ if (Astro.locals.user) {
 }
 
 const methods = enabledAuthMethods();
+const subheading =
+  methods.social.length > 0
+    ? 'Use your email and a password, or continue with a connected account.'
+    : 'Use your email and a password.';
 const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redirectTo)}` : '';
 ---
 
@@ -21,15 +26,13 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
   title="Create an account"
   description="Create an account to access the dashboard."
   heading="Create your account"
-  subheading="It takes less than a minute."
+  subheading={subheading}
 >
   <div class="space-y-6">
     <AuthForm client:load mode="signup" redirectTo={redirectTo} />
     {methods.social.length > 0 && (
       <>
-        <div class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t">
-          <span class="relative bg-card px-3">or</span>
-        </div>
+        <Divider label="or" />
         <SocialButtons client:load providers={methods.social} redirectTo={redirectTo} />
       </>
     )}

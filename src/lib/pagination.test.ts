@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { escapeLike, listQuery, paginate } from './pagination';
+import { listQuery, paginate } from './pagination';
 
 describe('paginate', () => {
   it('computes the window for a page', () => {
@@ -30,13 +30,6 @@ describe('paginate', () => {
 
   it('ends the last page at the total', () => {
     expect(paginate(26, '2', 25)).toMatchObject({ from: 26, to: 26, pages: 2 });
-  });
-});
-
-describe('escapeLike', () => {
-  it('escapes wildcards and the escape character itself', () => {
-    expect(escapeLike('100% sure_thing\\')).toBe('100\\% sure\\_thing\\\\');
-    expect(escapeLike('plain')).toBe('plain');
   });
 });
 

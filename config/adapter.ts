@@ -12,8 +12,8 @@ export function isDeployTarget(value: string): value is DeployTarget {
  *
  * Priority:
  * 1. Explicit `DEPLOY_TARGET` (recommended in CI and in the platform dashboard)
- * 2. Platform-provided variables: Vercel sets `VERCEL=1`, Netlify sets
- *    `NETLIFY=true`, Cloudflare Workers Builds sets `WORKERS_CI=1`
+ * 2. Platform-provided variables: Vercel sets `VERCEL=1`, Netlify sets `NETLIFY=true`,
+ *    Cloudflare Workers Builds sets `WORKERS_CI=1` (Pages sets `CF_PAGES=1`)
  * 3. Fallback to the Node standalone server (also used for Docker and local e2e)
  */
 export function resolveDeployTarget(env: NodeJS.ProcessEnv = process.env): DeployTarget {

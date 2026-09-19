@@ -4,7 +4,7 @@ description: The built-in administration pages for contact messages, users and t
 publishedDate: 2026-09-18
 updatedDate: 2026-09-19
 sidebar:
-  order: 5.5
+  order: 6
   badge: new
 ---
 
@@ -12,10 +12,9 @@ Signed-in users with the `admin` role get an **Admin** link in the header that o
 Everything there is server rendered, works without JavaScript and is authorized twice: in the
 page (`guardAdminPage()`) and in every action (`requireAdmin()` in `src/actions/index.ts`).
 
-Both checks read the role from the **database**, not from the five-minute session cookie cache
-the rest of the site uses (`getAuthoritativeSession()` in `src/lib/session.ts`). Removing the
-role, banning an account or signing someone out everywhere therefore applies to that person's
-very next request. See [sessions and cookies](/docs/guides/authentication#sessions-and-cookies).
+Both checks read the role from the database rather than from the session cookie cache, so
+removing the role, banning an account or signing someone out everywhere applies to that
+person's next request. See [sessions and cookies](/docs/guides/authentication#sessions-and-cookies).
 
 ## Becoming an administrator
 
@@ -25,33 +24,30 @@ very next request. See [sessions and cookies](/docs/guides/authentication#sessio
 - Administrators can promote or demote each other from the users page, but never themselves.
 - The **last active administrator** cannot be demoted, banned or deleted, and cannot delete
   their own account from the dashboard: the site would be left without anyone who can reach
-  `/admin`. `pnpm admin:promote --revoke` refuses for the same reason unless you pass `--force`,
-  which is the break-glass path together with `pnpm admin:promote <email>`.
+  `/admin`. `pnpm admin:promote --revoke` refuses for the same reason unless you pass `--force`.
 - `pnpm db:seed` creates `admin@example.com` / `password123` for local development.
 
 ## Pages
 
-| Route                  | What it does                                                                                                    |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `/admin`               | Counts, configuration health (email delivery, contact recipient), latest messages and activity                  |
-| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete |
-| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete    |
-| `/admin/users`         | Every account with role and status; make or remove admin, ban, unban, sign out everywhere, delete               |
-| `/admin/audit`         | The last 200 audit entries                                                                                      |
+| Route                  | What it does                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity    |
+| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk |
+| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete            |
+| `/admin/users`         | Every account with role and status; make or remove admin, ban, unban, sign out everywhere, delete                       |
+| `/admin/audit`         | The last 200 audit entries                                                                                              |
 
 Destructive buttons ask for confirmation through a small processed script (inline handlers
 are blocked by the CSP). After a successful action the page redirects with `?notice=<key>` and
 `AdminLayout` shows the matching confirmation; only the keys listed in `src/lib/admin-page.ts`
 are ever rendered.
 
-### Reading a message never happens by accident
+### Rendering never changes data
 
-Rendering an admin page never changes data. Opening a new message marks it read by calling the
-`setMessageStatus` action from a script in `src/pages/admin/messages/[id].astro`, and the inbox
-links carry `data-astro-prefetch="false"`. Astro's link prefetching, link previews and
-security scanners only issue plain GETs, so they leave messages untouched (before this change,
-scrolling through the inbox marked every visible message read). Without JavaScript the
-**Mark as read** button posts the same action.
+Opening a new message marks it read by calling the `setMessageStatus` action from a script in
+`src/pages/admin/messages/[id].astro`, and the inbox links carry `data-astro-prefetch="false"`.
+Link prefetching, link previews and security scanners only issue plain GETs, so they leave
+messages untouched. Without JavaScript the **Mark as read** button posts the same action.
 
 ## Actions
 
@@ -80,12 +76,13 @@ confirmation.
 actor, action, target and small JSON details. Entries never contain message bodies, passwords
 or tokens. The guarantee differs by kind of change:
 
-- **Message actions** run the change and `writeAudit()` in one database transaction, so
-  neither exists without the other.
-- **User operations, exports and account deletions** go through Better Auth and cannot share a
-  transaction. They use `recordAudit()`, which is best-effort: the change stands even if the
-  entry cannot be written, and the failure is logged as `[audit] could not record entry`. Watch
-  for that line in your platform's logs or log drain.
+- **Message status changes and deletions** run the change and `writeAudit()` in one database
+  transaction, so neither exists without the other.
+- **Everything else** (notification retries, user operations, exports and account deletions)
+  goes through Better Auth or an external service and cannot share a transaction. These use
+  `recordAudit()`, which is best-effort: the change stands even if the entry cannot be written,
+  and the failure is logged as `[audit] could not record entry`. Watch for that line in your
+  platform's logs.
 
 ## Extending
 

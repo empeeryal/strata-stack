@@ -40,11 +40,12 @@ const stats = [
   {
     label: 'Failed notifications',
     value: failedDeliveries?.value ?? 0,
-    href: '/admin/messages?status=all',
+    href: '/admin/messages?delivery=failed',
   },
 ];
 
-const health = [
+const recipient = getEnv('CONTACT_TO_EMAIL');
+const configuration = [
   {
     label: 'Email delivery',
     ok: isEmailConfigured(),
@@ -54,32 +55,34 @@ const health = [
   },
   {
     label: 'Contact notifications',
-    ok: Boolean(getEnv('CONTACT_TO_EMAIL')),
-    detail: getEnv('CONTACT_TO_EMAIL')
-      ? `New messages are forwarded to ${getEnv('CONTACT_TO_EMAIL')}.`
+    ok: Boolean(recipient),
+    detail: recipient
+      ? `New messages are forwarded to ${recipient}.`
       : 'CONTACT_TO_EMAIL is not set. Messages are only visible in this inbox.',
   },
 ];
 ---
 
 <AdminLayout title="Overview" description="Site administration overview.">
-  <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {stats.map((stat) => (
-      <a
-        href={stat.href}
-        class="rounded-xl border bg-card p-5 shadow-soft transition-colors hover:bg-muted/50"
-      >
-        <dt class="text-sm text-muted-foreground">{stat.label}</dt>
-        <dd class="mt-1 text-3xl font-bold tracking-tight">{stat.value}</dd>
-      </a>
+      <li>
+        <a
+          href={stat.href}
+          class="block rounded-xl border bg-card p-5 shadow-soft transition-colors hover:bg-muted/50"
+        >
+          <span class="block text-sm text-muted-foreground">{stat.label}</span>
+          <span class="mt-1 block text-3xl font-bold tracking-tight">{stat.value}</span>
+        </a>
+      </li>
     ))}
-  </dl>
+  </ul>
 
   <div class="mt-8 grid gap-6 lg:grid-cols-2">
     <Card>
       <h2 class="font-semibold">Configuration</h2>
       <ul class="mt-4 space-y-3 text-sm">
-        {health.map((item) => (
+        {configuration.map((item) => (
           <li class="flex items-start gap-3">
             <Badge variant={item.ok ? 'success' : 'muted'}>{item.ok ? 'OK' : 'Off'}</Badge>
             <div>

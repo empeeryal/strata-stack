@@ -21,9 +21,8 @@ export interface ThrottleResult {
 /**
  * Counts one request against `key` and reports whether it is within `rule`.
  *
- * Implemented as a single upsert so concurrent requests on serverless platforms cannot
- * race: the window is reset atomically when it has expired, otherwise the counter is
- * incremented. Works on any libSQL/SQLite backend.
+ * A single upsert, so concurrent requests on serverless platforms cannot race: the window is
+ * reset atomically when it has expired, otherwise the counter is incremented.
  */
 export async function consumeThrottle(
   db: Database,
@@ -45,19 +44,13 @@ export async function consumeThrottle(
       },
     })
     .returning({ count: throttle.count, resetAt: throttle.resetAt });
+  if (!row) throw new Error('Throttle upsert returned no row.');
 
-  const count = row?.count ?? 1;
-  const resetAt = row?.resetAt ?? new Date(nextResetMs);
   return {
-    allowed: count <= rule.limit,
-    remaining: Math.max(0, rule.limit - count),
-    resetAt,
+    allowed: row.count <= rule.limit,
+    remaining: Math.max(0, rule.limit - row.count),
+    resetAt: row.resetAt,
   };
-}
-
-/** Deletes expired counters; called opportunistically by maintenance scripts. */
-export async function pruneThrottle(db: Database, now: Date = new Date()): Promise<void> {
-  await db.delete(throttle).where(sql`${throttle.resetAt} <= ${now.getTime()}`);
 }
 
 /** SHA-256 hex digest so throttle keys never store raw addresses or IPs. */

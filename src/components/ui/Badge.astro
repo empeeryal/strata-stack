@@ -25,7 +25,7 @@ const badge = cva(
 type Props = VariantProps<typeof badge> & HTMLAttributes<'span'> & { href?: string };
 
 const { variant, class: className, href, ...rest } = Astro.props;
-const classes = cn(badge({ variant }), href && 'hover:bg-muted', className);
+const classes = cn(badge({ variant }), href && 'hover:opacity-80', className);
 ---
 
 {href ? (

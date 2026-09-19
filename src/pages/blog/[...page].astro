@@ -6,12 +6,12 @@ import PostCard from '@/components/site/PostCard.astro';
 import Badge from '@/components/ui/Badge.astro';
 import Pagination from '@/components/ui/Pagination.astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { POSTS_PER_PAGE, collectTags, getPublishedPosts, tagHref } from '@/lib/content';
+import { collectTags, getPublishedPosts, tagHref } from '@/lib/content';
 import { siteConfig } from '@/site.config';
 
 export const getStaticPaths = (async ({ paginate }) => {
   const posts = await getPublishedPosts();
-  return paginate(posts, { pageSize: POSTS_PER_PAGE });
+  return paginate(posts, { pageSize: siteConfig.blog.postsPerPage });
 }) satisfies GetStaticPaths;
 
 const { page } = Astro.props;
@@ -21,7 +21,7 @@ const isFirstPage = page.currentPage === 1;
 
 <BaseLayout
   title={
-    isFirstPage ? siteConfig.blog.title : `${siteConfig.blog.title} – page ${page.currentPage}`
+    isFirstPage ? siteConfig.blog.title : `${siteConfig.blog.title} · Page ${page.currentPage}`
   }
   description={siteConfig.blog.description}
   canonical={isFirstPage ? '/blog' : `/blog/${page.currentPage}`}
@@ -54,12 +54,23 @@ const isFirstPage = page.currentPage === 1;
       </nav>
     )}
 
-    <ul class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {page.data.map((post, index) => (
-        <PostCard post={post} eager={index < 3} />
-      ))}
-    </ul>
+    {page.data.length === 0 ? (
+      <p class="mt-10 text-muted-foreground">No posts yet.</p>
+    ) : (
+      <ul class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {page.data.map((post, index) => (
+          <PostCard post={post} eager={index < 3} />
+        ))}
+      </ul>
+    )}
 
-    <Pagination page={page} class="mt-12" />
+    <Pagination
+      current={page.currentPage}
+      total={page.lastPage}
+      prev={page.url.prev}
+      next={page.url.next}
+      labels={['Newer', 'Older']}
+      class="mt-12"
+    />
   </div>
 </BaseLayout>

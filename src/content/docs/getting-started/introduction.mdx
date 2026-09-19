@@ -13,25 +13,21 @@ is running on this page.
 
 ## What ships in the box
 
-| Area      | What you get                                                                            |
-| --------- | --------------------------------------------------------------------------------------- |
-| Rendering | Astro 7.3, static-first output, on-demand routes where needed, Vite 8, Rust compiler    |
-| UI        | React 19 islands, Motion animations, Tailwind CSS 4, OKLCH design tokens, dark mode     |
-| Content   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, RSS      |
-| Auth      | Better Auth with email/password, GitHub, Google and magic-link sign-in                  |
-| Data      | Drizzle ORM with libSQL: a file database locally, Turso over HTTP in production         |
-| SEO       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, llms.txt     |
-| Search    | Pagefind static search index and modal UI                                               |
-| Security  | Hash-based Content Security Policy, hardened headers, CSRF origin checks, rate limiting |
-| Quality   | TypeScript strict, ESLint 10, Prettier, Vitest, Playwright + axe, Lighthouse CI         |
-| Delivery  | Vercel, Cloudflare, Netlify and Node adapters behind one `DEPLOY_TARGET` switch         |
+Astro 7.3 with static-first output, React 19 islands animated with Motion, Tailwind CSS 4 with
+OKLCH design tokens and dark mode, MDX docs and blog collections, Better Auth with email and
+password, GitHub, Google and magic-link sign-in, Drizzle ORM with libSQL, an admin area with a
+contact inbox, user management and an audit log, generated Open Graph images, JSON-LD, sitemap,
+RSS, `llms.txt`, Pagefind search, a hash-based Content Security Policy, hardened response headers,
+Vitest, Playwright with axe, Lighthouse budgets, and adapters for Vercel, Cloudflare, Netlify and
+Node behind one `DEPLOY_TARGET` switch. The guides describe each of these in turn.
 
 ## Principles
 
 <Steps>
 
-1. **Static first.** Pages are prerendered by default. Only the auth API, the dashboard and form
-   actions run on a server, and they opt in explicitly with `export const prerender = false`.
+1. **Static first.** Pages are prerendered by default. Only the auth and account routes, the
+   dashboard, the admin area, the API and form actions run on a server, and each opts in with
+   `export const prerender = false`.
 
 2. **One codebase, any host.** Platform differences live in `config/adapter.ts` and a handful of
    platform config files. The application code never checks which host it runs on.
@@ -47,10 +43,11 @@ is running on this page.
 ## How to read these docs
 
 - **Getting started** walks through installation, the project layout and configuration.
-- **Guides** explain each subsystem: styling, content, authentication, database, SEO, security,
-  testing and CI.
+- **Guides** explain each subsystem: styling, content, authentication, database, actions and
+  forms, the admin area, privacy and data, SEO, security, testing, CI and environment variables.
 - **Deploy** has one page per platform with the exact settings that platform needs.
-- **Reference** lists scripts, configuration keys and frequently asked questions.
+- **Reference** lists configuration keys, scripts, the changelog process and frequently asked
+  questions.
 
 <Callout type="tip" title="Copying the template">
   The fastest way to start a new project is to clone the repository and change `src/site.config.ts`.

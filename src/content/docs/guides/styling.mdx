@@ -90,10 +90,11 @@ fonts at build time.
 
 ## Components
 
-`src/components/ui` contains the design-system primitives used across the site: `Button`,
-`Badge`, `Card`, `Callout`, `Tabs`/`TabItem`, `Steps`, `Breadcrumbs`, `Pagination`, `Toc`,
-`Prose`, `CodeBlock` and `Kbd`. Variants are described with `class-variance-authority` so the
-React islands (`src/components/react/primitives.tsx`) can share the exact same class recipes.
+`src/components/ui` contains the design-system primitives used across the site: `Alert`,
+`Badge`, `Button`, `Card`, `Callout`, `Tabs`/`TabItem`, `Steps`, `Breadcrumbs`, `Pagination`,
+`BackLink`, `Divider`, `Toc`, `Prose`, `CodeBlock`, `Kbd` and `SkipLink`. Variants are described
+with `class-variance-authority` in `*-variants.ts` files so the React islands
+(`src/components/react/primitives.tsx`) share the same class recipes as the Astro components.
 
 `Prose.astro` wraps rendered Markdown, adds anchor links to headings at render time and attaches
 a copy button to every code block.

@@ -12,19 +12,17 @@ import { securityHeaders } from './integrations/security-headers';
 import { themeScript } from './integrations/theme-script';
 import { siteConfig } from './src/site.config';
 
-/** Platform we are building for: node | vercel | cloudflare | netlify (see config/adapter.ts). */
 const deployTarget = resolveDeployTarget();
 
 /**
  * Canonical site URL: `SITE_URL`, else the production URL Vercel/Netlify inject, else
- * `siteConfig.url`. Empty or scheme-less values no longer abort the build (config/site-url.ts).
+ * `siteConfig.url` (config/site-url.ts).
  */
 const { url: site, source: siteSource } = resolveSiteUrl(process.env, siteConfig.url);
 console.info(`[site] ${site} (from ${siteSource})`);
 
-/** Routes that must never appear in the sitemap. */
-// Anchored to the start of the pathname so e.g. /docs/guides/admin stays indexable; the
-// trailing group accepts the trailing slash the sitemap integration emits.
+// Kept out of the sitemap. Anchored to the start of the pathname so e.g. /docs/guides/admin
+// stays indexable; the trailing group accepts the trailing slash the sitemap integration emits.
 const SITEMAP_EXCLUDE = [
   /^\/dashboard(\/|$)/,
   /^\/admin(\/|$)/,
@@ -41,8 +39,6 @@ const SITEMAP_EXCLUDE = [
 export default defineConfig({
   site,
   output: 'static',
-  // Default `directory` format + `trailingSlash: 'ignore'` works on every host's static
-  // server (Vercel, Netlify, Cloudflare and the Node adapter) without redirect loops.
   build: {
     inlineStylesheets: 'auto',
   },

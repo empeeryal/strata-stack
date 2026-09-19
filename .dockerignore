@@ -8,12 +8,15 @@ dist
 .env
 .env.*
 !.env.example
+.dev.vars
 coverage
 playwright-report
 test-results
+.lighthouseci
 .git
 .github
 .husky
 .vscode
 *.md
 !README.md
+!CHANGELOG.md

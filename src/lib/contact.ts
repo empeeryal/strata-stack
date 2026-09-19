@@ -28,16 +28,18 @@ export interface ContactDeps {
   now?: () => Date;
 }
 
-export type ContactOutcome = {
-  ok: true;
+/** Result of a notification attempt for a stored message. */
+export type DeliveryOutcome = Exclude<DeliveryStatus, 'pending'>;
+
+export interface ContactOutcome {
   /**
    * - `sent`: stored and the owner was notified
    * - `failed`: stored, notification failed (retry from the admin inbox)
    * - `skipped`: stored, no recipient configured
    * - `ignored`: honeypot triggered, nothing stored
    */
-  delivery: DeliveryStatus | 'ignored';
-};
+  delivery: DeliveryOutcome | 'ignored';
+}
 
 /** Thrown when a sender exceeds the contact limits. */
 export class ContactThrottledError extends Error {
@@ -67,8 +69,8 @@ function describeError(error: unknown): string {
  * 2. per-IP and per-address throttles are applied (persistent, so they work on serverless);
  * 3. the message is stored, which is the authoritative success;
  * 4. the owner notification is attempted and its result recorded on the row. Delivery
- *    failures never fail the request, so a failed notification no longer makes visitors
- *    resend a message that was already stored.
+ *    failures never fail the request: the message is already stored and the owner can
+ *    resend the notification from the admin inbox.
  *
  * Submissions are not idempotent: if the success response is lost in transit and the
  * visitor submits again, a second row is stored. The throttles bound how often that can
@@ -79,19 +81,16 @@ export async function submitContactMessage(
   context: ContactRequestContext,
   deps: ContactDeps,
 ): Promise<ContactOutcome> {
-  if (input.website && input.website.trim() !== '') {
-    return { ok: true, delivery: 'ignored' };
-  }
+  if (input.website?.trim()) return { delivery: 'ignored' };
 
   const now = deps.now ?? (() => new Date());
   const email = input.email.trim().toLowerCase();
 
-  const checks: Array<[string, ThrottleRule]> = [
-    [`contact:email:${await hashThrottleKey(email)}`, CONTACT_LIMITS.perEmail],
-  ];
+  const checks: Array<[string, ThrottleRule]> = [];
   if (context.ip) {
-    checks.unshift([`contact:ip:${await hashThrottleKey(context.ip)}`, CONTACT_LIMITS.perIp]);
+    checks.push([`contact:ip:${await hashThrottleKey(context.ip)}`, CONTACT_LIMITS.perIp]);
   }
+  checks.push([`contact:email:${await hashThrottleKey(email)}`, CONTACT_LIMITS.perEmail]);
   for (const [key, rule] of checks) {
     const result = await consumeThrottle(deps.db, key, rule, now());
     if (!result.allowed) throw new ContactThrottledError(result.resetAt);
@@ -107,26 +106,26 @@ export async function submitContactMessage(
     createdAt: now(),
   });
 
-  if (!deps.recipient) return { ok: true, delivery: 'skipped' };
+  if (!deps.recipient) return { delivery: 'skipped' };
   const delivery = await deliverContactMessage(id, deps);
-  return { ok: true, delivery };
+  return { delivery: delivery ?? 'failed' };
 }
 
 /**
  * Sends (or re-sends) the owner notification for a stored message and records the
- * outcome. Used by the initial submission and by the admin "retry" action.
+ * outcome. Returns null when no message has that id.
  */
 export async function deliverContactMessage(
   id: string,
   deps: ContactDeps,
-): Promise<DeliveryStatus> {
+): Promise<DeliveryOutcome | null> {
   const now = deps.now ?? (() => new Date());
   const [row] = await deps.db
     .select()
     .from(contactMessages)
     .where(eq(contactMessages.id, id))
     .limit(1);
-  if (!row) throw new Error(`Contact message ${id} not found.`);
+  if (!row) return null;
   if (!deps.recipient) {
     await deps.db
       .update(contactMessages)

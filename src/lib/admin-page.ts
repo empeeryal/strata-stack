@@ -1,15 +1,15 @@
 import type { AstroGlobal } from 'astro';
 
+import type { ContactStatus, DeliveryStatus } from '../db/schema/app';
+
 import { isAdmin } from './admin';
 import { getAuthoritativeSession } from './session';
 
 /**
- * Authorization for `/admin` pages, kept in the page rather than the middleware so it
- * cannot be bypassed by unusual URL encodings (see docs/guides/authentication).
- *
- * The role is read from the database, not from the cookie cache the middleware used, so a
- * demotion, a ban or "sign out everywhere" applies immediately. `Astro.locals` is updated
- * with the fresh values for the rest of the render.
+ * Authorization for `/admin` pages. It lives in the page rather than the middleware so it
+ * cannot be bypassed by unusual URL encodings, and it reads the session through
+ * `getAuthoritativeSession()` (src/lib/session.ts). `Astro.locals` is updated with the fresh
+ * values for the rest of the render.
  *
  * Returns a response to send instead of the page: a redirect to the login page for
  * anonymous visitors and the 404 page for signed-in users without the admin role, so the
@@ -52,7 +52,7 @@ export const ADMIN_NOTICES = {
 
 export type AdminNotice = keyof typeof ADMIN_NOTICES;
 
-export function isAdminNotice(value: unknown): value is AdminNotice {
+function isAdminNotice(value: unknown): value is AdminNotice {
   return typeof value === 'string' && Object.hasOwn(ADMIN_NOTICES, value);
 }
 
@@ -97,3 +97,17 @@ export function summarizeActionResults(
   }
   return { completed, error, notice };
 }
+
+/** Display labels for the enum values stored on messages. */
+export const MESSAGE_STATUS_LABELS: Record<ContactStatus, string> = {
+  new: 'New',
+  read: 'Read',
+  archived: 'Archived',
+};
+
+export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
+  pending: 'Pending',
+  sent: 'Sent',
+  failed: 'Failed',
+  skipped: 'Skipped',
+};

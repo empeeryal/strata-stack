@@ -1,0 +1,14 @@
+---
+/** Horizontal rule with a centred word, for "or" between sign-in methods inside a card. */
+interface Props {
+  label: string;
+}
+const { label } = Astro.props;
+---
+
+<div
+  class="relative text-center text-xs text-muted-foreground before:absolute before:inset-x-0 before:top-1/2 before:border-t"
+  aria-hidden="true"
+>
+  <span class="relative bg-card px-3">{label}</span>
+</div>

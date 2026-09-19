@@ -5,14 +5,8 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { cn } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
-interface Props {
-  /** Display name of the signed-in user, if any. */
-  userName?: string | null;
-  /** Whether the signed-in user may open the admin area. */
-  admin?: boolean;
-}
+import AccountMenu from './AccountMenu.astro';
 
-const { userName = null, admin = false } = Astro.props;
 const pathname = Astro.url.pathname;
 const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 ---
@@ -43,7 +37,7 @@ const isActive = (href: string) => pathname === href || pathname.startsWith(`${h
         <Icon name="lucide:x" class="size-5" aria-hidden="true" />
       </button>
     </div>
-    <nav aria-label="Mobile" class="flex flex-1 flex-col gap-1 p-4">
+    <nav aria-label="Main" class="flex flex-1 flex-col gap-1 p-4">
       {siteConfig.nav.map((item) => (
         <a
           href={item.href}
@@ -57,23 +51,7 @@ const isActive = (href: string) => pathname === href || pathname.startsWith(`${h
         Search
       </a>
       <div class="mt-auto flex flex-col gap-2 border-t pt-4">
-        {userName ? (
-          <>
-            {admin && (
-              <a href="/admin" class={cn(buttonVariants({ variant: 'ghost' }), 'w-full')}>
-                <Icon name="lucide:shield" aria-hidden="true" />
-                Admin
-              </a>
-            )}
-            <a href="/dashboard" class={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
-              {userName}
-            </a>
-          </>
-        ) : (
-          <a href="/login" class={cn(buttonVariants({ variant: 'primary' }), 'w-full')}>
-            Sign in
-          </a>
-        )}
+        <AccountMenu placement="drawer" />
         <a
           href={siteConfig.social.github}
           target="_blank"

@@ -2,10 +2,9 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
-import { isAdmin } from '@/lib/admin';
-import { cn } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
+import AccountMenu from './AccountMenu.astro';
 import Logo from './Logo.astro';
 import MobileNav from './MobileNav.astro';
 import Search from './Search.astro';
@@ -13,8 +12,6 @@ import ThemeToggle from './ThemeToggle.astro';
 
 const pathname = Astro.url.pathname;
 const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-// Only populated on server-rendered routes (see src/middleware.ts); static pages show "Sign in".
-const user = Astro.locals.user ?? null;
 ---
 
 <header class="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -24,7 +21,7 @@ const user = Astro.locals.user ?? null;
       class="mr-2 flex items-center gap-2 font-semibold"
       aria-label={`${siteConfig.name} home`}
     >
-      <Logo class="size-7" />
+      <Logo id="header" class="size-7" />
       <span class="hidden sm:inline">{siteConfig.name}</span>
     </a>
 
@@ -52,34 +49,8 @@ const user = Astro.locals.user ?? null;
         <Icon name="simple-icons:github" class="size-5" aria-hidden="true" />
       </a>
       <ThemeToggle />
-      {user ? (
-        <>
-          {isAdmin(user) && (
-            <a
-              href="/admin"
-              class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden md:inline-flex')}
-            >
-              <Icon name="lucide:shield" aria-hidden="true" />
-              Admin
-            </a>
-          )}
-          <a
-            href="/dashboard"
-            class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'hidden md:inline-flex')}
-          >
-            <Icon name="lucide:user" aria-hidden="true" />
-            {user.name}
-          </a>
-        </>
-      ) : (
-        <a
-          href="/login"
-          class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'hidden md:inline-flex')}
-        >
-          Sign in
-        </a>
-      )}
-      <MobileNav userName={user?.name ?? null} admin={isAdmin(user)} />
+      <AccountMenu placement="header" />
+      <MobileNav />
     </div>
   </div>
 </header>

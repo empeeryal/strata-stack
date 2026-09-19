@@ -38,7 +38,6 @@ updates:
             'husky',
             'lint-staged',
             '@changesets/*',
-            '@lhci/*',
             'globals',
             'happy-dom',
             '@testing-library/*',
@@ -48,7 +47,7 @@ updates:
       - dependency-name: typescript
         versions: ['>=7.0.0']
   - package-ecosystem: github-actions
-    directory: /
+    directories: ['/', '/.github/actions/setup']
     schedule:
       interval: weekly
       day: monday

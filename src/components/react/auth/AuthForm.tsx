@@ -102,7 +102,7 @@ export default function AuthForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate={false}>
+    <form onSubmit={onSubmit} className="space-y-4">
       {error && (
         <Alert>
           {error}

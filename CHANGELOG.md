@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- e126ecd: Admin hardening from the follow-up audit.
+- e126ecd: Admin hardening.
   
   - **Authorization is read from the database** for the admin pages, the admin actions and the
     account export (`getAuthoritativeSession()`), instead of the five-minute session cookie
@@ -29,7 +29,7 @@
 
 ### Minor Changes
 
-- 9097054: Operational completeness after the security audit:
+- 9097054: Operational completeness:
   
   - **Email safety.** Without `RESEND_API_KEY`, production requests now fail instead of printing sign-in links to the logs; the magic-link and password-reset UI is hidden until email is configured. Production deployments also validate `BETTER_AUTH_SECRET` at startup.
   - **Contact flow.** The honeypot works as documented, submissions are throttled per address and per IP with a persistent store, messages are stored before the owner notification is attempted, delivery status is recorded and retries never duplicate a message.

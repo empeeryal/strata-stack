@@ -12,6 +12,7 @@ describe('resolveDeployTarget', () => {
     expect(resolveDeployTarget({ VERCEL: '1' })).toBe('vercel');
     expect(resolveDeployTarget({ NETLIFY: 'true' })).toBe('netlify');
     expect(resolveDeployTarget({ WORKERS_CI: '1' })).toBe('cloudflare');
+    expect(resolveDeployTarget({ CF_PAGES: '1' })).toBe('cloudflare');
   });
 
   it('falls back to node', () => {

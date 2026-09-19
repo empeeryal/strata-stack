@@ -4,14 +4,13 @@
  *   pnpm db:seed                      # demo@example.com and admin@example.com / password123
  *   SEED_EMAIL=me@x.dev SEED_PASSWORD=secret-pass pnpm db:seed
  *
- * Talks to the database directly with @libsql/client and hashes the password with
- * Better Auth's own algorithm, so no Astro or path-alias resolution is needed.
+ * Talks to the database directly and hashes the password with Better Auth's own algorithm,
+ * so no Astro or path-alias resolution is needed.
  */
-import { createClient } from '@libsql/client';
 import { hashPassword } from 'better-auth/crypto';
 
-const url = process.env.DATABASE_URL ?? 'file:./.data/local.db';
-const authToken = process.env.DATABASE_AUTH_TOKEN;
+import { openDatabase } from './lib/db.ts';
+
 const password = process.env.SEED_PASSWORD ?? 'password123';
 
 const seeds = [
@@ -27,7 +26,7 @@ const seeds = [
   },
 ];
 
-const client = createClient(authToken ? { url, authToken } : { url });
+const client = openDatabase();
 
 for (const seed of seeds) {
   const existing = await client.execute({

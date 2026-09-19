@@ -16,7 +16,7 @@ export default function SignOutButton({ redirectTo = '/' }: { redirectTo?: strin
       const result = await authClient.signOut();
       if (result.error) {
         // The server session is still valid; say so instead of pretending to be signed out.
-        setError(result.error.message ?? 'Sign-out failed. Please try again.');
+        setError(result.error.message ?? 'Sign-out failed. Try again.');
         return;
       }
       window.location.assign(redirectTo);

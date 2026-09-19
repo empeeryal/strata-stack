@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createTestDb } from '../../tests/unit/db';
 
-import { consumeThrottle, hashThrottleKey, pruneThrottle } from './throttle';
+import { consumeThrottle, hashThrottleKey } from './throttle';
 
 let testDb: Awaited<ReturnType<typeof createTestDb>>;
 
@@ -44,14 +44,6 @@ describe('consumeThrottle', () => {
     await consumeThrottle(testDb.db, 'a', rule, now);
     await consumeThrottle(testDb.db, 'a', rule, now);
     expect((await consumeThrottle(testDb.db, 'b', rule, now)).allowed).toBe(true);
-  });
-
-  it('prunes expired counters', async () => {
-    const start = new Date('2026-09-18T12:00:00Z');
-    await consumeThrottle(testDb.db, 'old', rule, start);
-    await pruneThrottle(testDb.db, new Date(start.getTime() + rule.windowMs));
-    // A fresh window starts at 1 again.
-    expect((await consumeThrottle(testDb.db, 'old', rule, start)).remaining).toBe(1);
   });
 });
 

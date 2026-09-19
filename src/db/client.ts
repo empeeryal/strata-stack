@@ -15,7 +15,7 @@ import * as schema from './schema/index';
 const url = process.env.DATABASE_URL ?? 'file:./.data/local.db';
 const authToken = process.env.DATABASE_AUTH_TOKEN;
 
-export const client = createClient(authToken ? { url, authToken } : { url });
+const client = createClient(authToken ? { url, authToken } : { url });
 
 if (url.startsWith('file:')) {
   // Local SQLite: WAL allows concurrent readers while a writer is active, and the busy
@@ -35,5 +35,3 @@ export type Database = typeof db;
  * transaction (e.g. `writeAudit`) accept this instead of `Database`.
  */
 export type DbExecutor = Pick<Database, 'select' | 'insert' | 'update' | 'delete'>;
-
-export { schema };

@@ -1,16 +1,11 @@
 /**
- * Anti-flash theme bootstrap.
+ * Anti-flash theme bootstrap, injected into <head> by integrations/theme-script.ts. It runs
+ * before the body renders on every page, so it stays dependency-free and tiny.
  *
- * Injected into <head> by `integrations/theme-script.ts` via
- * `injectScript('head-inline', …)`, which Astro hashes automatically for the
- * Content Security Policy. Keep this dependency-free and tiny: it runs before
- * the body renders on every page.
- *
- * Contract shared with `ThemeToggle.astro`:
- * - `localStorage.theme` is `"light" | "dark"` when the visitor chose explicitly,
- *   otherwise absent (follow the OS preference).
- * - `<html data-theme>` is always resolved to `"light" | "dark"`.
- * - `<html data-theme-preference>` is `"light" | "dark" | "system"`.
+ * - `localStorage.theme` is "light" | "dark" when the visitor chose explicitly, otherwise
+ *   absent (follow the OS preference).
+ * - `<html data-theme>` is the resolved "light" | "dark"; `data-theme-preference` is
+ *   "light" | "dark" | "system". ThemeToggle.astro reads and writes the same values.
  */
 export const THEME_STORAGE_KEY = 'theme';
 

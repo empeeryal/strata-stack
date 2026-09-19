@@ -1,6 +1,7 @@
 ---
 import { Icon } from 'astro-icon/components';
 
+import Alert from '@/components/ui/Alert.astro';
 import { noticeMessage } from '@/lib/admin-page';
 
 import BaseLayout from './BaseLayout.astro';
@@ -8,14 +9,14 @@ import BaseLayout from './BaseLayout.astro';
 interface Props {
   title: string;
   description?: string;
-  /** Error message from a failed admin action, rendered as an alert. */
+  /** Error message from a failed admin action. */
   error?: string | null;
 }
 
 const { title, description = 'Administration', error = null } = Astro.props;
 const pathname = Astro.url.pathname;
-// Confirmation after a successful action (POST → redirect → GET with `?notice=<key>`).
-// Only known keys render, so the query string cannot inject text.
+// Confirmation after a successful action (POST → redirect → GET with `?notice=<key>`);
+// only known keys render, so the query string cannot inject text.
 const notice = noticeMessage(Astro.url.searchParams.get('notice'));
 
 const links = [
@@ -54,22 +55,11 @@ const isActive = (href: string) =>
     </nav>
   </div>
 
-  {error && (
-    <div
-      role="alert"
-      class="mt-6 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
-    >
-      {error}
-    </div>
-  )}
+  {error && <Alert class="mt-6">{error}</Alert>}
   {notice && (
-    <div
-      role="status"
-      data-admin-notice
-      class="mt-6 rounded-md border border-success/40 bg-success/10 p-3 text-sm text-foreground"
-    >
+    <Alert variant="success" class="mt-6" data-admin-notice>
       {notice}
-    </div>
+    </Alert>
   )}
 
   <div class="mt-8">
