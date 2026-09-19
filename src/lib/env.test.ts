@@ -4,6 +4,7 @@ import {
   assertProductionConfig,
   checkProductionConfig,
   getAdminEmails,
+  getContactMaxAgeDays,
   getContactRetentionDays,
 } from './env';
 
@@ -79,5 +80,15 @@ describe('getContactRetentionDays', () => {
     expect(getContactRetentionDays({ CONTACT_RETENTION_DAYS: '90' })).toBe(90);
     expect(getContactRetentionDays({ CONTACT_RETENTION_DAYS: '-5' })).toBe(365);
     expect(getContactRetentionDays({ CONTACT_RETENTION_DAYS: 'soon' })).toBe(365);
+  });
+});
+
+describe('getContactMaxAgeDays', () => {
+  it('is off unless set to a positive number of days', () => {
+    expect(getContactMaxAgeDays({})).toBeNull();
+    expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: '' })).toBeNull();
+    expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: '0' })).toBeNull();
+    expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: 'never' })).toBeNull();
+    expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: '730.5' })).toBe(730);
   });
 });

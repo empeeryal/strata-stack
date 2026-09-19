@@ -5,8 +5,9 @@ import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
 import AdminLayout from '@/layouts/AdminLayout.astro';
 import { isAdmin } from '@/lib/admin';
-import { guardAdminPage, summarizeActionResults } from '@/lib/admin-page';
+import { guardAdminPage, summarizeActionResults, withNotice } from '@/lib/admin-page';
 import { auth } from '@/lib/auth';
+import { listQuery, paginate } from '@/lib/pagination';
 import { formatDate, toISODate } from '@/lib/utils';
 
 export const prerender = false;
@@ -16,8 +17,8 @@ if (denied) return denied;
 const me = Astro.locals.user!;
 
 const PAGE_SIZE = 25;
-const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? 1) || 1);
-const pageUrl = `/admin/users?page=${page}`;
+const requestedPage = Astro.url.searchParams.get('page');
+const pageUrl = (page: number) => `/admin/users${listQuery({ page: page > 1 ? page : null })}`;
 
 const outcome = summarizeActionResults([
   Astro.getActionResult(actions.admin.setUserRole),
@@ -26,19 +27,24 @@ const outcome = summarizeActionResults([
   Astro.getActionResult(actions.admin.revokeUserSessions),
   Astro.getActionResult(actions.admin.removeUser),
 ]);
-if (outcome.completed) return Astro.redirect(pageUrl);
+if (outcome.completed) {
+  return Astro.redirect(withNotice(pageUrl(Number(requestedPage) || 1), outcome.notice));
+}
 
 // Better Auth's admin plugin enforces the role again on this call.
+const requested = Math.max(1, Math.floor(Number(requestedPage)) || 1);
 const { users, total } = await auth.api.listUsers({
   query: {
     limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
+    offset: (requested - 1) * PAGE_SIZE,
     sortBy: 'createdAt',
     sortDirection: 'desc',
   },
   headers: Astro.request.headers,
 });
-const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+const { page, pages } = paginate(total, requested, PAGE_SIZE);
+// A stale link past the last page lands on the last page instead of an empty one.
+if (page !== requested) return Astro.redirect(pageUrl(page));
 ---
 
 <AdminLayout title="Users" description="Manage accounts, roles and bans." error={outcome.error}>
@@ -160,7 +166,7 @@ const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   {pages > 1 && (
     <nav aria-label="Pagination" class="mt-4 flex items-center justify-between text-sm">
       {page > 1 ? (
-        <a href={`/admin/users?page=${page - 1}`} class="font-medium underline underline-offset-4">
+        <a href={pageUrl(page - 1)} class="font-medium underline underline-offset-4">
           Previous
         </a>
       ) : (
@@ -170,7 +176,7 @@ const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
         Page {page} of {pages}
       </span>
       {page < pages ? (
-        <a href={`/admin/users?page=${page + 1}`} class="font-medium underline underline-offset-4">
+        <a href={pageUrl(page + 1)} class="font-medium underline underline-offset-4">
           Next
         </a>
       ) : (

@@ -52,7 +52,8 @@ Magic links, verification emails and password resets are sent through `src/lib/e
 
 The middleware also runs `assertProductionConfig()` once per server instance: a missing or
 short `BETTER_AUTH_SECRET` stops on-demand requests with a clear error, and a missing email
-provider or contact recipient is logged as a warning. `/api/health` reports the same facts.
+provider or contact recipient is logged as a warning. `/api/health` reports the same facts to
+administrators and to monitors that send `Authorization: Bearer <HEALTH_TOKEN>`.
 
 ## Email verification
 
@@ -112,7 +113,8 @@ if (!user) {
 ```
 
 Admin pages use `guardAdminPage()` from `src/lib/admin-page.ts`, which redirects anonymous
-visitors and renders the 404 page for signed-in users without the role.
+visitors and renders the 404 page for signed-in users without the role. It re-reads the session
+from the database (see below) and refreshes `Astro.locals` with the result.
 
 <Callout type="warning" title="Do not guard by pathname in middleware">
   Astro's docs warn that the pathname a middleware sees is not guaranteed to match the route Astro
@@ -148,6 +150,20 @@ Sessions live in the `session` table and are cached in a signed cookie for five 
 (`session.cookieCache`), so most requests never touch the database. Cookies are `HttpOnly`,
 `SameSite=Lax` and `Secure` in production. Astro's own session storage is disabled
 (`session: false`); enable it per platform if you need `Astro.session` for unrelated state.
+
+The cache is a display optimisation: the header or the dashboard may show a stale name or
+role for up to five minutes after a change. Anything that _decides_ access must not rely on
+it, because a revoked session or a removed role would otherwise keep working until the cache
+expires. `getAuthoritativeSession()` in `src/lib/session.ts` (Better Auth's `getSession` with
+`disableCookieCache: true`) reads the database instead; the admin pages, the admin actions and
+the account export use it, and Better Auth's own admin endpoints already do the same. Call it
+in your own privileged routes:
+
+```ts
+import { getAuthoritativeSession } from '@/lib/session';
+
+const { user } = await getAuthoritativeSession(Astro.request.headers);
+```
 
 ## Rate limiting and CSRF
 

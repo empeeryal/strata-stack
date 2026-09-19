@@ -29,4 +29,11 @@ if (url.startsWith('file:')) {
 export const db = drizzle({ client, schema });
 
 export type Database = typeof db;
+
+/**
+ * Either the database or a transaction handle. Helpers that must take part in a caller's
+ * transaction (e.g. `writeAudit`) accept this instead of `Database`.
+ */
+export type DbExecutor = Pick<Database, 'select' | 'insert' | 'update' | 'delete'>;
+
 export { schema };

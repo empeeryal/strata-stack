@@ -8,7 +8,7 @@ import Card from '@/components/ui/Card.astro';
 import { db } from '@/db/client';
 import { contactMessages } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
-import { guardAdminPage, summarizeActionResults } from '@/lib/admin-page';
+import { guardAdminPage, summarizeActionResults, withNotice } from '@/lib/admin-page';
 import { formatDate, toISODate } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
@@ -22,26 +22,26 @@ const outcome = summarizeActionResults([
   Astro.getActionResult(actions.admin.setMessageStatus),
   Astro.getActionResult(actions.admin.retryMessageDelivery),
 ]);
-if (outcome.completed) return Astro.redirect(Astro.url.pathname);
+if (outcome.completed) {
+  // "Mark as unread" goes back to the inbox: reopening the page would mark it read again.
+  const target = outcome.notice === 'message-unread' ? '/admin/messages' : Astro.url.pathname;
+  return Astro.redirect(withNotice(target, outcome.notice));
+}
 
 const deleteResult = Astro.getActionResult(actions.admin.deleteMessage);
-if (deleteResult && !deleteResult.error) return Astro.redirect('/admin/messages');
+if (deleteResult && !deleteResult.error) {
+  return Astro.redirect(withNotice('/admin/messages', 'message-deleted'));
+}
 
+// Rendering never changes state: a GET can come from link prefetching, a link preview or
+// a scanner. Marking the message read is a POST action, triggered by the script below
+// when a person actually opens the page, or by the explicit button.
 const [message] = await db
   .select()
   .from(contactMessages)
   .where(eq(contactMessages.id, id))
   .limit(1);
 if (!message) return new Response(null, { status: 404 });
-
-// Opening a new message marks it as read.
-if (message.status === 'new') {
-  await db
-    .update(contactMessages)
-    .set({ status: 'read', readAt: new Date() })
-    .where(eq(contactMessages.id, id));
-  message.status = 'read';
-}
 
 const replySubject = encodeURIComponent(`Re: your message to ${siteConfig.name}`);
 const replyBody = encodeURIComponent(`\n\n> ${message.message.split('\n').join('\n> ')}`);
@@ -51,6 +51,8 @@ const deliveryVariant = {
   pending: 'muted',
   skipped: 'muted',
 } as const;
+const timestamp = (value: Date | null) =>
+  value ? formatDate(value, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 ---
 
 <AdminLayout
@@ -85,16 +87,36 @@ const deliveryVariant = {
           <div class="flex justify-between gap-2">
             <dt class="text-muted-foreground">Workflow</dt>
             <dd>
-              <Badge variant="outline">{message.status}</Badge>
+              <Badge variant="outline">
+                <span data-message-status>{message.status}</span>
+              </Badge>
             </dd>
           </div>
           <div class="flex justify-between gap-2">
+            <dt class="text-muted-foreground">Read</dt>
+            <dd data-message-read-at>{timestamp(message.readAt)}</dd>
+          </div>
+          {message.archivedAt && (
+            <div class="flex justify-between gap-2">
+              <dt class="text-muted-foreground">Archived</dt>
+              <dd>{timestamp(message.archivedAt)}</dd>
+            </div>
+          )}
+          <div class="flex justify-between gap-2 border-t pt-2">
             <dt class="text-muted-foreground">Notification</dt>
             <dd>
               <Badge variant={deliveryVariant[message.deliveryStatus]}>
                 {message.deliveryStatus}
               </Badge>
             </dd>
+          </div>
+          <div class="flex justify-between gap-2">
+            <dt class="text-muted-foreground">Attempts</dt>
+            <dd>{message.deliveryAttempts}</dd>
+          </div>
+          <div class="flex justify-between gap-2">
+            <dt class="text-muted-foreground">Delivered</dt>
+            <dd>{timestamp(message.deliveredAt)}</dd>
           </div>
           {message.deliveryError && (
             <div>
@@ -117,6 +139,30 @@ const deliveryVariant = {
           >
             Reply by email
           </Button>
+          <form
+            method="POST"
+            action={actions.admin.setMessageStatus}
+            data-mark-read
+            hidden={message.status !== 'new'}
+          >
+            <input type="hidden" name="id" value={message.id} />
+            <input type="hidden" name="status" value="read" />
+            <Button type="submit" variant="outline" size="sm" class="w-full">
+              Mark as read
+            </Button>
+          </form>
+          <form
+            method="POST"
+            action={actions.admin.setMessageStatus}
+            data-mark-unread
+            hidden={message.status !== 'read'}
+          >
+            <input type="hidden" name="id" value={message.id} />
+            <input type="hidden" name="status" value="new" />
+            <Button type="submit" variant="outline" size="sm" class="w-full">
+              Mark as unread
+            </Button>
+          </form>
           {message.status !== 'archived' ? (
             <form method="POST" action={actions.admin.setMessageStatus}>
               <input type="hidden" name="id" value={message.id} />
@@ -157,3 +203,25 @@ const deliveryVariant = {
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  // Opening a new message marks it read through the same audited action the "Mark as read"
+  // button posts to. Running it from a script (not while rendering) means a prefetch or a
+  // link preview, which only fetch the HTML, never change the message.
+  const markRead = document.querySelector<HTMLFormElement>('form[data-mark-read]');
+  if (markRead && !markRead.hidden) {
+    void actions.admin.setMessageStatus(new FormData(markRead)).then(({ error }) => {
+      if (error) return; // The button stays available for a manual retry.
+      document.querySelectorAll<HTMLElement>('[data-message-status]').forEach((element) => {
+        element.textContent = 'read';
+      });
+      const readAt = document.querySelector<HTMLElement>('[data-message-read-at]');
+      if (readAt) readAt.textContent = 'just now';
+      markRead.hidden = true;
+      const markUnread = document.querySelector<HTMLFormElement>('form[data-mark-unread]');
+      if (markUnread) markUnread.hidden = false;
+    });
+  }
+</script>

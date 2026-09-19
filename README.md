@@ -89,6 +89,7 @@ command can simply be `astro build`. See the [deploy guides](https://astro-frame
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                                                 |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links, verification, password resets, contact notifications                      |
 | `ADMIN_EMAILS`                                     | no         | Addresses that get the `admin` role on sign-up (or `pnpm admin:promote`)               |
+| `HEALTH_TOKEN`                                     | no         | Bearer token that unlocks the detailed `/api/health` response for monitors             |
 | `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                           |
 
 The full list with platform notes lives in [`.env.example`](.env.example) and the

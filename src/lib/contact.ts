@@ -67,7 +67,12 @@ function describeError(error: unknown): string {
  * 2. per-IP and per-address throttles are applied (persistent, so they work on serverless);
  * 3. the message is stored, which is the authoritative success;
  * 4. the owner notification is attempted and its result recorded on the row. Delivery
- *    failures never fail the request, so a retry cannot create duplicates.
+ *    failures never fail the request, so a failed notification no longer makes visitors
+ *    resend a message that was already stored.
+ *
+ * Submissions are not idempotent: if the success response is lost in transit and the
+ * visitor submits again, a second row is stored. The throttles bound how often that can
+ * happen; add a client-generated key with a unique index if exactly-once matters to you.
  */
 export async function submitContactMessage(
   input: ContactSubmission,

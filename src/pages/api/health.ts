@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 
 import pkg from '../../../package.json';
 import { db } from '@/db/client';
+import { isAdmin } from '@/lib/admin';
 import { isEmailConfigured } from '@/lib/email';
 import { getEnv } from '@/lib/env';
 
@@ -11,12 +12,13 @@ export const prerender = false;
 /**
  * Liveness and readiness endpoint for uptime checks and deploy verification.
  *
- * `status` is `ok` when the database answers, `degraded` (HTTP 503) otherwise. `checks`
- * also reports whether optional integrations are configured so a deployment that stores
- * messages nobody reads, or cannot send sign-in links, is visible without digging through
- * logs. No secrets are exposed.
+ * Everyone gets `status` (`ok` when the database answers, `degraded` with HTTP 503
+ * otherwise) and the time. The details, which reveal how the deployment is configured
+ * (version, target, whether email and contact notifications are set up), are only included
+ * for a signed-in administrator or a request carrying `Authorization: Bearer <HEALTH_TOKEN>`,
+ * so the public route does not double as reconnaissance. No secrets are ever exposed.
  */
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ request, locals }) => {
   let database: 'ok' | 'error' = 'ok';
   try {
     await db.run(sql`select 1`);
@@ -25,21 +27,43 @@ export const GET: APIRoute = async () => {
     database = 'error';
   }
 
-  const body = {
-    status: database === 'ok' ? 'ok' : 'degraded',
-    name: pkg.name,
-    version: pkg.version,
-    target: __DEPLOY_TARGET__,
-    time: new Date().toISOString(),
-    checks: {
-      database,
-      email: isEmailConfigured() ? 'configured' : 'not-configured',
-      contactNotifications: getEnv('CONTACT_TO_EMAIL') ? 'configured' : 'not-configured',
-    },
-  } as const;
+  const status = database === 'ok' ? 'ok' : 'degraded';
+  const time = new Date().toISOString();
+  const detailed = isAdmin(locals.user) || hasHealthToken(request);
+
+  const body = detailed
+    ? {
+        status,
+        time,
+        name: pkg.name,
+        version: pkg.version,
+        target: __DEPLOY_TARGET__,
+        checks: {
+          database,
+          email: isEmailConfigured() ? 'configured' : 'not-configured',
+          contactNotifications: getEnv('CONTACT_TO_EMAIL') ? 'configured' : 'not-configured',
+        },
+      }
+    : { status, time };
 
   return Response.json(body, {
     status: database === 'ok' ? 200 : 503,
     headers: { 'Cache-Control': 'no-store' },
   });
 };
+
+/** Constant-time comparison of the bearer token with `HEALTH_TOKEN` (unset: never matches). */
+function hasHealthToken(request: Request): boolean {
+  const expected = getEnv('HEALTH_TOKEN');
+  const header = request.headers.get('authorization') ?? '';
+  const provided = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
+  if (!expected || !provided) return false;
+
+  const a = new TextEncoder().encode(expected);
+  const b = new TextEncoder().encode(provided);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    diff |= (a[i % a.length] ?? 0) ^ (b[i % b.length] ?? 0);
+  }
+  return diff === 0;
+}

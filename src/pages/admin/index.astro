@@ -101,6 +101,7 @@ const health = [
             <li class="flex items-center justify-between gap-3 py-2">
               <a
                 href={`/admin/messages/${message.id}`}
+                data-astro-prefetch="false"
                 class="min-w-0 truncate font-medium hover:underline"
               >
                 {message.name}

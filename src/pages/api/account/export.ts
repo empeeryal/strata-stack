@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { account, contactMessages, session } from '@/db/schema';
 import { recordAudit } from '@/lib/admin';
+import { getAuthoritativeSession } from '@/lib/session';
 
 export const prerender = false;
 
@@ -12,8 +13,10 @@ export const prerender = false;
  * linked sign-in methods and sessions without any tokens or secrets, plus contact messages
  * sent from the address when it has been verified as the user's own.
  */
-export const GET: APIRoute = async ({ locals }) => {
-  const user = locals.user;
+export const GET: APIRoute = async ({ request }) => {
+  // Personal data leaves the system here, so the session is verified against the database
+  // rather than the cookie cache (a revoked session must not be able to export).
+  const { user } = await getAuthoritativeSession(request.headers);
   if (!user) {
     return Response.json({ error: 'Sign in to export your data.' }, { status: 401 });
   }

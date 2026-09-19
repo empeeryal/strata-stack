@@ -17,8 +17,11 @@ const entries = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt
 
 <AdminLayout title="Audit log" description="Privileged and privacy-relevant actions.">
   <p class="text-sm text-muted-foreground">
-    Every administrative change, account deletion and data export is recorded here with the acting
-    account. Entries never contain message bodies or secrets.
+    Administrative changes, account deletions and data exports are recorded here with the acting
+    account. Message actions are stored together with their entry in one transaction. Entries for
+    user operations, exports and deletions are best-effort: the change still happens if the entry
+    cannot be written, and the failure is logged on the server. Entries never contain message bodies
+    or secrets.
   </p>
 
   {entries.length === 0 ? (

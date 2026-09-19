@@ -18,7 +18,8 @@ updatedDate: 2026-09-18
   with the name and email address you provide so we can reply. Their workflow state (new,
   read, archived) and whether the notification to us was delivered are stored as well.
 - **Audit log.** Administrative actions, data exports and account deletions are recorded with
-  the acting account so we can show what happened to your data. The log never contains
+  the acting account so we can show what happened to your data. Entries for changes made
+  through the account system are written on a best-effort basis. The log never contains
   message text or passwords.
 - **Server logs.** Our hosting provider records standard request logs (IP address, user agent,
   requested URL) for security and debugging. Logs are retained for a limited time.
@@ -46,7 +47,8 @@ notifications. GitHub or Google only receive data when you choose to sign in wit
 - Accounts and their sessions are kept until you delete the account. Expired sessions are
   removed automatically.
 - Contact messages are kept while they are open. Archived messages are deleted after one year
-  (or the retention period configured for this deployment).
+  (or the retention period configured for this deployment). Where a maximum age is configured,
+  messages are deleted after it regardless of their state.
 - Audit log entries are kept for as long as the related account or message exists, plus the
   time needed to demonstrate compliance.
 
