@@ -2,6 +2,7 @@
 title: 'One codebase, four platforms: how the adapter switch works'
 description: 'How a single astro.config.ts builds for Vercel, Cloudflare Workers, Netlify and a Node server, and what each platform needs from you.'
 pubDate: 2026-09-10
+updatedDate: 2026-09-19
 author: empeeryal
 tags: [deployment, vercel, cloudflare, netlify, node]
 ---
@@ -14,8 +15,8 @@ differences it hides.
 ## The switch
 
 `config/adapter.ts` exports two functions. `resolveDeployTarget()` reads `DEPLOY_TARGET` and
-falls back to the variables each platform sets during a build: `VERCEL=1`, `NETLIFY=true` and
-`WORKERS_CI=1`. When none match, it returns `node`.
+falls back to the variables each platform sets during a build: `VERCEL=1`, `NETLIFY=true`, and
+`WORKERS_CI=1` or `CF_PAGES=1` on Cloudflare. When none match, it returns `node`.
 
 `resolveAdapter(target)` dynamically imports only the adapter that was chosen, so the other three
 never load, and returns it with the options that make the template's features work:
@@ -37,7 +38,8 @@ case 'node':
 
 Most of the codebase never knows which platform it is on:
 
-- Pages are prerendered by default; the auth API and dashboard opt in to server rendering.
+- Pages are prerendered by default; the auth and account routes, the dashboard, the admin area
+  and the API opt in to server rendering.
 - The libSQL client picks its HTTP build on Workers and edge runtimes automatically, so database
   code is identical everywhere.
 - Better Auth runs on standard `Request` and `Response` objects.

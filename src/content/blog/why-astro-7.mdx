@@ -2,6 +2,7 @@
 title: 'Why we standardised on Astro 7 for every new site'
 description: 'Astro 7 shipped a Rust compiler, Vite 8, a native Markdown pipeline and stable route caching. Here is what changed, what broke, and why it is the right default for content-heavy sites in 2026.'
 pubDate: 2026-09-14
+updatedDate: 2026-09-19
 author: empeeryal
 tags: [astro, architecture]
 ---
@@ -29,13 +30,13 @@ reasons we standardised on it are mostly about predictability.
 
 Several features the template depends on landed in 6.0 and matured through 7.x:
 
-| Feature                                 | Used for                                                              |
-| --------------------------------------- | --------------------------------------------------------------------- |
-| Fonts API                               | Self-hosting Inter and JetBrains Mono with generated fallback metrics |
-| Content Security Policy                 | Per-page script and style hashes without a nonce server               |
-| Live and build-time content collections | Docs, blog, legal pages and the changelog loader                      |
-| Responsive images                       | `layout: 'constrained'` with build-time styles that survive CSP       |
-| `astro:env`                             | Type-safe public environment variables                                |
+| Feature                                      | Used for                                                              |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| Fonts API                                    | Self-hosting Inter and JetBrains Mono with generated fallback metrics |
+| Content Security Policy                      | Per-page script and style hashes without a nonce server               |
+| Content Layer collections and custom loaders | Docs, blog, legal pages and the changelog loader                      |
+| Responsive images                            | `layout: 'constrained'` with build-time styles that survive CSP       |
+| `astro:env`                                  | Type-safe public environment variables                                |
 
 ## The trade-offs we accepted
 

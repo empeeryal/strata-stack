@@ -1,7 +1,8 @@
 ---
 title: 'Introducing Astro Framework: a template that documents itself'
-description: 'Why we built a complete Astro 7 starter, what ships in the first release, and how this site is generated from the template it describes.'
+description: 'Why we built a complete Astro 7 starter, what ships in the box, and how this site is generated from the template it describes.'
 pubDate: 2026-09-18
+updatedDate: 2026-09-19
 author: empeeryal
 tags: [announcement, template, astro]
 ---
@@ -20,8 +21,13 @@ decided and wired together:
 - **Astro 7.3** with static-first output and the new Rust compiler.
 - **React 19 islands** animated with Motion, hydrated only where a page needs interactivity.
 - **Tailwind CSS 4** with OKLCH design tokens and a dark mode that never flashes.
-- **Better Auth** with email/password, GitHub, Google and magic-link sign-in.
+- **Better Auth** with email/password, GitHub, Google and magic-link sign-in, email verification,
+  password reset, data export and account deletion.
 - **Drizzle ORM + libSQL**, using a local file in development and Turso in production.
+- **A contact form** with a honeypot and per-sender throttling that stores every message before
+  the owner is notified.
+- **An admin area** with the contact inbox, user management and an audit log, authorised against
+  the database on every request.
 - **MDX documentation and blog collections**, including tabs, callouts, steps and a table of
   contents.
 - **SEO endpoints**: sitemap, robots.txt, RSS, generated OG images, JSON-LD and llms.txt.
@@ -37,14 +43,16 @@ versions from `pnpm-lock.yaml` at build time; the search dialog queries a Pagefi
 during the build. When the template changes, this site changes with it, which keeps the docs honest.
 
 <Callout type="tip" title="Try it">
-  Clone the repository, run `pnpm install && pnpm db:migrate && pnpm dev`, and you have this exact
-  site running locally, including sign-up and the protected dashboard.
+  Clone the repository, run `cp .env.example .env && pnpm install && pnpm db:migrate && pnpm dev`,
+  and you have this exact site running locally, including sign-up and the dashboard. `pnpm db:seed`
+  adds an administrator account for the admin area.
 </Callout>
 
 ## Design decisions worth knowing
 
-**Static first.** Only the auth API, the dashboard and form actions opt into server rendering.
-Everything else is prerendered HTML served from a CDN, which is faster and cheaper on every host.
+**Static first.** Only the auth and account routes, the dashboard, the admin area, the API and
+form actions run on a server. Everything else is prerendered HTML served from a CDN, which is
+faster and cheaper on every host.
 
 **One database client everywhere.** The libSQL client resolves to its HTTP build on Cloudflare
 Workers and edge runtimes and to the native build on Node, so the same `src/db/client.ts` works
