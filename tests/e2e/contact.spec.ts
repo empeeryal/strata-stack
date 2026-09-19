@@ -1,18 +1,13 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-import { waitForIslands } from './helpers';
-
-async function fillContactForm(page: Page, message: string) {
-  await page.goto('/contact');
-  await waitForIslands(page);
-  await page.getByLabel('Name').fill('E2E Sender');
-  await page.getByLabel('Email').fill(`contact-${Date.now()}@example.com`);
-  await page.getByLabel('Message').fill(message);
-}
+import { fillContactForm, waitForIslands } from './helpers';
 
 test.describe('contact form', () => {
   test('stores a message and confirms receipt without promising a reply', async ({ page }) => {
-    await fillContactForm(page, 'Hello from the end-to-end suite, this is a real message.');
+    await fillContactForm(page, {
+      name: 'E2E Sender',
+      message: 'Hello from the end-to-end suite, this is a real message.',
+    });
     await page.getByRole('button', { name: 'Send message' }).click();
 
     const status = page.getByRole('status').filter({ hasText: 'your message' });
@@ -21,11 +16,10 @@ test.describe('contact form', () => {
   });
 
   test('answers a filled honeypot with the same success message', async ({ page }) => {
-    await fillContactForm(page, 'Buy cheap watches now, this is definitely not spam at all.');
-    // The field is off-screen for people; bots fill it programmatically.
-    await page.evaluate(() => {
-      const field = document.querySelector<HTMLInputElement>('input[name="website"]');
-      if (field) field.value = 'https://spam.example';
+    await fillContactForm(page, {
+      name: 'E2E Sender',
+      message: 'Buy cheap watches now, this is definitely not spam at all.',
+      honeypot: true,
     });
     await page.getByRole('button', { name: 'Send message' }).click();
 

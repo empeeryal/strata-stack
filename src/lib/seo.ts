@@ -112,6 +112,7 @@ export function techArticleJsonLd(input: ArticleJsonLdInput): WithContext<TechAr
 }
 
 function articleFields(input: ArticleJsonLdInput) {
+  const modified = input.dateModified ?? input.datePublished;
   return {
     headline: input.title,
     description: input.description,
@@ -119,9 +120,7 @@ function articleFields(input: ArticleJsonLdInput) {
     url: absolute(input.url, input.site),
     mainEntityOfPage: absolute(input.url, input.site),
     ...(input.datePublished ? { datePublished: input.datePublished.toISOString() } : {}),
-    ...((input.dateModified ?? input.datePublished)
-      ? { dateModified: (input.dateModified ?? input.datePublished)!.toISOString() }
-      : {}),
+    ...(modified ? { dateModified: modified.toISOString() } : {}),
     inLanguage: siteConfig.locale,
     ...(input.tags && input.tags.length > 0 ? { keywords: input.tags.join(', ') } : {}),
     author: {

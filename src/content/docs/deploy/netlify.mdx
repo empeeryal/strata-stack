@@ -45,7 +45,9 @@ site with `netlify link`. Nothing else is required.
 
 ## Netlify CLI
 
+The Netlify CLI is not a dependency of the template, so run it through `pnpm dlx`:
+
 ```bash
 pnpm build:netlify
-pnpm exec netlify deploy --prod
+pnpm dlx netlify-cli deploy --prod
 ```

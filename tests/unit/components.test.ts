@@ -21,23 +21,25 @@ describe('<Button>', () => {
     expect(html).toContain('<a');
     expect(html).toContain('href="/docs"');
     expect(html).toContain('Read the docs');
-    expect(html).toContain('border');
+    expect(html).toContain('border-input');
   });
 
-  it('renders a button element otherwise and adds safe rel for external links', async () => {
-    const button = await container.renderToString(Button, {
+  it('renders a button element otherwise', async () => {
+    const html = await container.renderToString(Button, {
       props: { type: 'submit' },
       slots: { default: 'Go' },
     });
-    expect(button).toContain('<button');
-    expect(button).toContain('type="submit"');
+    expect(html).toContain('<button');
+    expect(html).toContain('type="submit"');
+  });
 
-    const external = await container.renderToString(Button, {
+  it('adds a safe rel and target for external links', async () => {
+    const html = await container.renderToString(Button, {
       props: { href: 'https://example.com', external: true },
       slots: { default: 'Out' },
     });
-    expect(external).toContain('rel="noopener noreferrer"');
-    expect(external).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain('target="_blank"');
   });
 });
 
@@ -53,12 +55,13 @@ describe('<Badge>', () => {
 });
 
 describe('<Callout>', () => {
-  it('renders the title, icon and content', async () => {
+  it('renders the title, icon and content as a note', async () => {
     const html = await container.renderToString(Callout, {
       props: { type: 'warning', title: 'Careful' },
       slots: { default: '<p>Mind the gap.</p>' },
     });
-    expect(html).toContain('aria-label="Careful"');
+    expect(html).toContain('role="note"');
+    expect(html).toContain('Careful');
     expect(html).toContain('Mind the gap.');
     expect(html).toContain('<svg');
   });

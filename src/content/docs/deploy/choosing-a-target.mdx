@@ -12,7 +12,7 @@ target from `DEPLOY_TARGET`, or from the variables each platform sets during a b
 
 ```bash
 pnpm build:vercel      # DEPLOY_TARGET=vercel astro build
-pnpm build:cloudflare  # wrangler types && DEPLOY_TARGET=cloudflare astro build
+pnpm build:cloudflare  # DEPLOY_TARGET=cloudflare astro build
 pnpm build:netlify     # DEPLOY_TARGET=netlify astro build
 pnpm build:node        # DEPLOY_TARGET=node astro build (default)
 ```
@@ -33,8 +33,8 @@ pnpm build:node        # DEPLOY_TARGET=node astro build (default)
 ## Recommendations
 
 - **Vercel** is the reference deployment for this repository and needs no configuration.
-- **Cloudflare** has the lowest latency at the edge; remember that on-demand code runs in
-  workerd, so avoid Node-only packages in server routes.
+- **Cloudflare** runs on-demand code in workerd at the edge; keep Node-only packages out of
+  server routes.
 - **Netlify** is a good fit if you already use Netlify Forms, Blobs or Identity.
 - **Node** is for containers and VPS hosts (Fly.io, Railway, Render, Kubernetes). The included
   Dockerfile produces a small image with a health check.

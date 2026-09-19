@@ -6,13 +6,13 @@ import { getViteConfig } from 'astro/config';
 export default getViteConfig({
   test: {
     environment: 'node',
+    restoreMocks: true,
     include: [
       'src/**/*.test.{ts,tsx}',
       'tests/unit/**/*.test.{ts,tsx}',
       'config/**/*.test.ts',
       'integrations/**/*.test.ts',
     ],
-    exclude: ['node_modules', 'dist', '.astro', 'tests/e2e/**'],
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',

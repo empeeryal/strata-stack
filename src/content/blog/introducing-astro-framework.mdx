@@ -1,6 +1,6 @@
 ---
 title: 'Introducing Astro Framework: a template that documents itself'
-description: 'Why we built a production-ready Astro 7 starter, what ships in the first release, and how this site is generated from the template it describes.'
+description: 'Why we built a complete Astro 7 starter, what ships in the first release, and how this site is generated from the template it describes.'
 pubDate: 2026-09-18
 author: empeeryal
 tags: [announcement, template, astro]
@@ -32,8 +32,8 @@ decided and wired together:
 ## A site about itself
 
 The page you are reading is rendered from the template's own blog collection. The header, footer
-and metadata come from `src/site.config.ts`; the stack table on the home page reads dependency
-versions from `package.json` at build time; the search dialog queries a Pagefind index generated
+and metadata come from `src/site.config.ts`; the stack table on the home page reads installed
+versions from `pnpm-lock.yaml` at build time; the search dialog queries a Pagefind index generated
 during the build. When the template changes, this site changes with it, which keeps the docs honest.
 
 <Callout type="tip" title="Try it">

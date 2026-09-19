@@ -8,10 +8,12 @@ import { defineConfig, devices } from '@playwright/test';
  * The web server command first resets and migrates an isolated SQLite database
  * (.data/e2e.db) and then starts the built server, so the schema exists before the first
  * request. Playwright launches the web server *before* `globalSetup`, which is why the reset
- * lives in the command rather than in tests/e2e/global-setup.ts.
+ * lives in the command rather than in tests/e2e/global-setup.ts. Set E2E_BASE_URL to run the
+ * suite against a server that is already running elsewhere.
  */
 const PORT = Number(process.env.E2E_PORT ?? 4321);
-const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
+const externalBaseUrl = process.env.E2E_BASE_URL;
+const baseURL = externalBaseUrl ?? `http://127.0.0.1:${PORT}`;
 
 export const serverEnv = {
   HOST: '127.0.0.1',
@@ -45,16 +47,18 @@ export default defineConfig({
       ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } }
       : {}),
   },
-  webServer: {
-    // Reset + migrate the e2e database, then start the built server (both get `env`).
-    command: 'node scripts/reset-db.ts && node ./dist/server/entry.mjs',
-    url: `${baseURL}/api/health`,
-    // Always start a fresh server so the reset above runs on every invocation and a stray
-    // `astro dev` on the same port is never tested by mistake.
-    reuseExistingServer: false,
-    timeout: 60_000,
-    env: serverEnv,
-  },
+  ...(externalBaseUrl
+    ? {}
+    : {
+        webServer: {
+          command: 'node scripts/reset-db.ts && node ./dist/server/entry.mjs',
+          url: `${baseURL}/api/health`,
+          // Always start fresh so the reset above runs on every invocation.
+          reuseExistingServer: false,
+          timeout: 60_000,
+          env: serverEnv,
+        },
+      }),
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     {

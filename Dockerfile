@@ -2,6 +2,7 @@
 # Multi-stage build for the Node standalone target (DEPLOY_TARGET=node).
 #   docker build -t astro-framework .
 #   docker run -p 4321:4321 --env-file .env astro-framework
+#   docker run --rm --env-file .env astro-framework node scripts/migrate.ts   # apply migrations
 
 FROM node:24-slim AS base
 ENV PNPM_HOME=/pnpm
@@ -10,7 +11,7 @@ RUN corepack enable
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -25,14 +26,17 @@ FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
-# Install production dependencies only (sharp, libsql and friends need native binaries).
-COPY package.json pnpm-lock.yaml .npmrc ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
+# Production dependencies only. `--ignore-scripts` skips the husky `prepare` hook (a dev
+# dependency); sharp, libsql and resvg ship prebuilt binaries as optional dependencies.
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/scripts/migrate.ts ./scripts/migrate.ts
+COPY --from=build /app/scripts/lib/db.ts ./scripts/lib/db.ts
 RUN mkdir -p /app/.data && chown -R node:node /app
 USER node
 EXPOSE 4321
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD node -e "fetch('http://127.0.0.1:4321/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "./dist/server/entry.mjs"]

@@ -8,8 +8,8 @@ sidebar:
 
 ## Prerequisites
 
-- **Node.js 24.x.** The repository pins the version in `.nvmrc` and `.node-version`, and the
-  `engines` field in `package.json` tells Vercel and Netlify which runtime to use.
+- **Node.js 24.x.** The repository pins the version in `.nvmrc`, and the `engines` field in
+  `package.json` tells Vercel and Netlify which runtime to use.
 - **pnpm 10.** Enabled through the `packageManager` field; run `corepack enable` if pnpm is not
   installed.
 - **Git.** Husky installs a pre-commit hook that runs lint-staged.
@@ -57,15 +57,19 @@ sidebar:
 Everything that identifies the site lives in a few files. Work through this list once when you
 start a new project:
 
-1. `src/site.config.ts` – name, tagline, description, canonical URL, author, repository, navigation
-   and footer links.
-2. `package.json` – the `name`, `description` and `version` fields.
-3. `wrangler.jsonc` – the Worker `name` (Cloudflare only).
-4. `public/favicon.svg` – replace the mark, then run `node scripts/generate-icons.ts` to regenerate
-   the PNG icons.
-5. `src/content/authors/*.json` – your author profile.
-6. `LICENSE`, `SECURITY.md` and `src/content/legal/*` – legal text and contact details.
-7. `CHANGELOG.md` and `.changeset/config.json` – start your own release history.
+1. `src/site.config.ts`: name, tagline, description, canonical URL, author, repository, social
+   links, navigation and footer links.
+2. `package.json`: the `name`, `description` and `version` fields. `wrangler.jsonc`: the Worker
+   `name` (Cloudflare only).
+3. `public/favicon.svg`: replace the mark, then run `node scripts/generate-icons.ts` to regenerate
+   the PNG icons. Update the mark in `src/components/site/Logo.astro` and `src/lib/og-template.tsx`
+   too.
+4. `src/styles/global.css`: the primary and accent hues in both colour sets, and `themeColor` in
+   the site config so the browser UI matches.
+5. `src/content/authors/*.json`: your author profile.
+6. `LICENSE`, `SECURITY.md`, `public/.well-known/security.txt` and `src/content/legal/*`: legal
+   text and contact details.
+7. `CHANGELOG.md`: start your own release history.
 
 ## Verifying the setup
 

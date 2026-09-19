@@ -68,14 +68,14 @@ The components in `src/components/content/mdx-components.ts` are available in ev
 without an import: `Callout`, `Tabs` + `TabItem`, `Steps`, `Card`, `Badge` and `Kbd`.
 
 <Tabs syncKey="package-manager">
-  <TabItem label="pnpm">```bash pnpm add some-package ```</TabItem>
-  <TabItem label="npm">```bash npm install some-package ```</TabItem>
+  <TabItem label="pnpm">Install with `pnpm add some-package`.</TabItem>
+  <TabItem label="npm">Install with `npm install some-package`.</TabItem>
 </Tabs>
 
 ```mdx
 <Tabs syncKey="package-manager">
-  <TabItem label="pnpm">…</TabItem>
-  <TabItem label="npm">…</TabItem>
+  <TabItem label="pnpm">Install with `pnpm add some-package`.</TabItem>
+  <TabItem label="npm">Install with `npm install some-package`.</TabItem>
 </Tabs>
 ```
 
@@ -106,7 +106,7 @@ same themes.
 
 Put images next to the content file and reference them relatively. Astro optimises local images
 and, when `heroImage` is set, renders responsive `srcset` variants. Cards and social previews fall
-back to the generated Open Graph image, so posts look good without any artwork.
+back to the generated Open Graph image.
 
 ## Changelog
 

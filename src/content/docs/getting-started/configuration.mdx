@@ -14,7 +14,7 @@ is safe to import from `astro.config.ts`, from components and from Node scripts.
 ```ts
 export const siteConfig = {
   name: 'Astro Framework',
-  tagline: 'The production-ready Astro 7 starter for the modern web.',
+  tagline: 'An Astro 7 starter with auth, content, search and security built in.',
   url: 'https://astro-framework-v2.vercel.app',
   nav: [{ label: 'Docs', href: '/docs' } /* … */],
   // …
@@ -22,7 +22,8 @@ export const siteConfig = {
 ```
 
 Changing `name`, `tagline` or `description` updates the header, footer, `<title>` template,
-Open Graph tags, JSON-LD and the web manifest in one go.
+Open Graph tags, JSON-LD and the web manifest in one go. Every field is listed in the
+[site configuration reference](/docs/reference/site-config).
 
 ## `astro.config.ts`
 
@@ -39,46 +40,21 @@ The Astro configuration is annotated inline. The parts you are most likely to to
 | `env.schema`           | Type-safe public environment variables.                                                                      |
 | `session`              | Disabled; Better Auth stores sessions in the database.                                                       |
 
-<Callout type="warning" title="Rust compiler strictness">
-  Astro 7 no longer auto-closes tags or repairs invalid nesting. Close every non-void element and
-  avoid placing block elements inside `<p>`. Whitespace between inline elements follows JSX rules,
-  so write `{' '}` where a space matters.
-</Callout>
-
 ## Environment variables
 
 Copy `.env.example` to `.env`. Variables fall into two groups.
 
-### Public variables (`astro:env/client`)
-
-Declared in `env.schema` and validated at build time. They are inlined into the client bundle,
-so never put secrets here.
+**Public variables** are declared in `env.schema`, validated at build time and imported from
+`astro:env/client`. They are inlined into the client bundle, so never put secrets here.
 
 ```ts
 import { PUBLIC_ANALYTICS } from 'astro:env/client';
 ```
 
-### Server variables (`src/lib/env.ts`)
+**Server variables** (database URLs, auth secrets, API keys) are read through `process.env` by
+`src/lib/env.ts`. This keeps the Better Auth CLI, which loads `src/lib/auth.ts` outside Astro,
+working, and behaves identically on Node, Vercel, Netlify and Cloudflare Workers with
+`nodejs_compat`.
 
-Database URLs, auth secrets and API keys are read through `process.env` with a small typed
-helper. This keeps the Better Auth CLI (which loads `src/lib/auth.ts` outside Astro) working and
-behaves identically on Node, Vercel, Netlify and Cloudflare Workers with `nodejs_compat`.
-
-| Variable                                    | Required | Description                                                                                   |
-| ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
-| `DEPLOY_TARGET`                             | No       | `node`, `vercel`, `cloudflare` or `netlify`. Auto-detected on each platform.                  |
-| `SITE_URL`                                  | No       | Overrides the canonical URL; otherwise the Vercel/Netlify production URL or `siteConfig.url`. |
-| `DATABASE_URL`                              | Yes      | `file:./.data/local.db` locally, `libsql://…` for Turso.                                      |
-| `DATABASE_AUTH_TOKEN`                       | Prod     | Turso auth token.                                                                             |
-| `BETTER_AUTH_SECRET`                        | Yes      | 32+ random bytes. Generate with `openssl rand -base64 32`.                                    |
-| `BETTER_AUTH_URL`                           | Yes      | The URL visitors use, e.g. `https://example.com`.                                             |
-| `BETTER_AUTH_TRUSTED_ORIGINS`               | No       | Extra allowed origins, comma separated, wildcards allowed.                                    |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | No       | Enables "Continue with GitHub".                                                               |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No       | Enables "Continue with Google".                                                               |
-| `RESEND_API_KEY`                            | No       | Magic links, verification, resets, notifications. Console in dev, disabled in production.     |
-| `EMAIL_FROM`                                | No       | Sender shown on outgoing email.                                                               |
-| `CONTACT_TO_EMAIL`                          | No       | Recipient of contact notifications; messages are always visible in `/admin/messages`.         |
-| `ADMIN_EMAILS`                              | No       | Comma-separated addresses that get the `admin` role on sign-up.                               |
-| `PUBLIC_ANALYTICS`                          | No       | `none` (default) or `vercel`.                                                                 |
-
-See [Environment variables](/docs/guides/environment-variables) for platform-specific notes.
+The [environment variables guide](/docs/guides/environment-variables) lists every variable and
+where to set it on each platform.

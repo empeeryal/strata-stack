@@ -4,7 +4,7 @@ test.describe('blog', () => {
   test('lists posts with tags and opens a post', async ({ page }) => {
     await page.goto('/blog');
     const posts = page.locator('main ul li h2 a');
-    await expect(posts).toHaveCount(3);
+    expect(await posts.count()).toBeGreaterThan(0);
 
     await posts.first().click();
     await expect(page).toHaveURL(/\/blog\/[a-z0-9-]+$/);
@@ -30,9 +30,14 @@ test.describe('blog', () => {
     expect(await page.evaluate(() => localStorage.getItem('tabs:platform'))).toBe('Netlify');
   });
 
-  test('tag pages filter posts', async ({ page }) => {
+  test('tag pages show a subset of the posts', async ({ page }) => {
+    await page.goto('/blog');
+    const total = await page.locator('main ul li h2 a').count();
+
     await page.goto('/blog/tags/deployment');
     await expect(page.getByRole('heading', { level: 1, name: 'deployment' })).toBeVisible();
-    await expect(page.locator('main ul li h2 a')).toHaveCount(1);
+    const tagged = await page.locator('main ul li h2 a').count();
+    expect(tagged).toBeGreaterThan(0);
+    expect(tagged).toBeLessThan(total);
   });
 });

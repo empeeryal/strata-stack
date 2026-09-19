@@ -1,6 +1,7 @@
 ---
 import { Icon } from 'astro-icon/components';
 
+import { deployTargetLabel } from '@/lib/deploy-target';
 import { siteConfig } from '@/site.config';
 
 import Logo from './Logo.astro';
@@ -12,7 +13,7 @@ const year = new Date().getFullYear();
   <div class="container grid gap-10 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
     <div class="space-y-4">
       <a href="/" class="flex items-center gap-2 font-semibold">
-        <Logo class="size-7" />
+        <Logo id="footer" class="size-7" />
         <span>{siteConfig.name}</span>
       </a>
       <p class="max-w-xs text-sm text-muted-foreground">{siteConfig.tagline}</p>
@@ -60,7 +61,7 @@ const year = new Date().getFullYear();
         <a href="https://astro.build" class="underline underline-offset-4 hover:text-foreground">
           Astro
         </a>{' '}
-        and deployed on {__DEPLOY_TARGET__}.
+        and deployed on {deployTargetLabel}.
       </p>
     </div>
   </div>

@@ -21,7 +21,7 @@ export default function MagicLinkForm({ redirectTo = '/dashboard' }: MagicLinkFo
     try {
       const result = await authClient.signIn.magicLink({ email, callbackURL: redirectTo });
       if (result.error) {
-        setError(result.error.message ?? 'Could not send the link. Please try again.');
+        setError(result.error.message ?? 'The link could not be sent. Try again.');
         setStatus('idle');
         return;
       }

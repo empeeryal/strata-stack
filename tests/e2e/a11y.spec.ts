@@ -13,7 +13,7 @@ const PAGES = [
 ];
 
 for (const path of PAGES) {
-  test(`${path} has no detectable accessibility violations @a11y`, async ({ page }) => {
+  test(`no accessibility violations on ${path}`, { tag: '@a11y' }, async ({ page }) => {
     await page.goto(path);
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

@@ -12,9 +12,5 @@ export default {
       files: '*.astro',
       options: { parser: 'astro' },
     },
-    {
-      files: ['*.md', '*.mdx'],
-      options: { proseWrap: 'preserve' },
-    },
   ],
 };

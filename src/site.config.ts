@@ -1,9 +1,7 @@
 /**
- * Single source of truth for site-wide metadata, navigation and branding.
- * Change these values to rebrand the template for a new project.
+ * Site-wide metadata, navigation and branding; change these values to rebrand.
  *
- * This file must stay free of `astro:*` virtual imports because it is also
- * imported by `astro.config.ts` and by Node scripts.
+ * Must stay free of `astro:*` virtual imports: `astro.config.ts` and Node scripts import it.
  */
 export const siteConfig = {
   /** Public product name shown in the header, titles and Open Graph cards. */
@@ -11,10 +9,10 @@ export const siteConfig = {
   /** Short name used in compact UI such as the web manifest. */
   shortName: 'Framework',
   /** One-line value proposition used on the home page and as the default OG title. */
-  tagline: 'The production-ready Astro 7 starter for the modern web.',
+  tagline: 'An Astro 7 starter with auth, content, search and security built in.',
   /** Default meta description (max ~160 characters). */
   description:
-    'A batteries-included Astro 7 template with React 19, Motion, Tailwind CSS 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, strict CSP and tests. Deploys to Vercel, Cloudflare, Netlify or Node.',
+    'An Astro 7 template with React 19, Motion, Tailwind CSS 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, a strict CSP and tests. Deploys to Vercel, Cloudflare, Netlify or Node.',
   /** Canonical production URL. Override at build time with SITE_URL. */
   url: 'https://astro-framework-v2.vercel.app',
   /** BCP 47 language tag used for <html lang> and Open Graph locale. */
@@ -84,5 +82,3 @@ export const siteConfig = {
     description: 'Engineering notes, release write-ups and guides for building with the template.',
   },
 } as const;
-
-export type SiteConfig = typeof siteConfig;

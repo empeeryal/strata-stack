@@ -5,7 +5,7 @@
 <h1 align="center">Astro Framework</h1>
 
 <p align="center">
-  The production-ready <a href="https://astro.build">Astro 7</a> starter for the modern web.<br />
+  An <a href="https://astro.build">Astro 7</a> starter with auth, content, search and security built in.<br />
   Clone it, rename it, deploy it to Vercel, Cloudflare, Netlify or Node.
 </p>
 
@@ -74,7 +74,7 @@ Optional: `pnpm db:seed` creates `demo@example.com` and `admin@example.com` (pas
 | Node / Docker      | `pnpm build:node && pnpm start` | Multi-stage `Dockerfile` with health check                          |
 
 `DEPLOY_TARGET` is inferred from `VERCEL`, `NETLIFY` and `WORKERS_CI`, so the platform build
-command can simply be `astro build`. See the [deploy guides](https://astro-framework-v2.vercel.app/docs/deploy/choosing-a-target).
+command can stay `astro build`. See the [deploy guides](https://astro-framework-v2.vercel.app/docs/deploy/choosing-a-target).
 
 ## Environment variables
 
@@ -134,11 +134,9 @@ A full tour is in the [project structure docs](https://astro-framework-v2.vercel
 
 ## Renaming for a new project
 
-1. Edit `src/site.config.ts` (name, tagline, URL, author, repository, navigation).
-2. Update `package.json` `name` and `wrangler.jsonc` `name`.
-3. Replace `public/favicon.svg` and run `node scripts/generate-icons.ts`.
-4. Update `LICENSE`, `SECURITY.md`, `public/.well-known/security.txt` and `src/content/legal/*`.
-5. Reset `CHANGELOG.md` and start your own release history with `pnpm changeset`.
+Start with `src/site.config.ts` (name, tagline, URL, author, repository, navigation), then work
+through the [rename checklist](https://astro-framework-v2.vercel.app/docs/getting-started/installation#rename-checklist)
+for the icons, legal pages and changelog.
 
 ## Contributing
 

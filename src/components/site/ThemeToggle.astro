@@ -2,18 +2,12 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
-import { cn } from '@/lib/utils';
-
-interface Props {
-  class?: string;
-}
-const { class: className } = Astro.props;
 ---
 
 <theme-toggle class="contents">
   <button
     type="button"
-    class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), className)}
+    class={buttonVariants({ variant: 'ghost', size: 'icon' })}
     aria-label="Switch theme"
     title="Switch theme"
   >

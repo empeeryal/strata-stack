@@ -13,7 +13,7 @@ layouts, components, endpoints and scripts, so it must stay free of Astro virtua
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `name`                                                | Header, footer, `<title>` suffix, Open Graph site name, JSON-LD, manifest, OG images |
 | `shortName`                                           | Web manifest `short_name`, default OG label                                          |
-| `tagline`                                             | Home page title, default OG image, RSS and llms.txt                                  |
+| `tagline`                                             | Home page title and hero, default OG image, RSS and llms.txt                         |
 | `description`                                         | Default meta description, home hero copy, manifest                                   |
 | `url`                                                 | Canonical origin when `SITE_URL` is not set                                          |
 | `locale`, `ogLocale`                                  | `<html lang>`, `og:locale`, RSS language, JSON-LD `inLanguage`                       |
@@ -26,11 +26,5 @@ layouts, components, endpoints and scripts, so it must stay free of Astro virtua
 | `blog.postsPerPage`, `blog.title`, `blog.description` | Blog listing, pagination, RSS                                                        |
 
 The object is declared `as const`, so TypeScript knows the exact shape everywhere it is used.
-
-## Rebrand checklist
-
-1. Update `name`, `shortName`, `tagline`, `description` and `url`.
-2. Update `author`, `repo` and `social`.
-3. Replace `public/favicon.svg`, run `node scripts/generate-icons.ts`, and update the mark in
-   `src/components/site/Logo.astro` and `src/lib/og-template.tsx`.
-4. Adjust the primary and accent hues in `src/styles/global.css` and `themeColor` here.
+The [rename checklist](/docs/getting-started/installation#rename-checklist) lists the other
+files to touch when starting a new project.

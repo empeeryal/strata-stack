@@ -5,6 +5,7 @@ import { Image } from 'astro:assets';
 import { Icon } from 'astro-icon/components';
 
 import Badge from '@/components/ui/Badge.astro';
+import BackLink from '@/components/ui/BackLink.astro';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import Prose from '@/components/ui/Prose.astro';
 import Toc from '@/components/ui/Toc.astro';
@@ -134,7 +135,7 @@ const crumbs = [
       />
     )}
 
-    <div class="mt-10 lg:hidden" data-pagefind-ignore>
+    <div class="mt-10" data-pagefind-ignore>
       <Toc headings={headings} class="rounded-lg border p-4" />
     </div>
 
@@ -163,13 +164,9 @@ const crumbs = [
           </div>
         </div>
       )}
-      <a
-        href="/blog"
-        class="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-      >
-        <Icon name="lucide:arrow-left" class="size-4" aria-hidden="true" />
+      <BackLink href="/blog" class="mt-6">
         All posts
-      </a>
+      </BackLink>
     </footer>
   </article>
 </BaseLayout>

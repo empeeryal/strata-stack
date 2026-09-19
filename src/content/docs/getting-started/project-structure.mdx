@@ -11,24 +11,25 @@ sidebar:
 ├── astro.config.ts          # Adapter switch, CSP, fonts, integrations
 ├── config/                  # Build-time configuration shared by tooling
 │   ├── adapter.ts           # DEPLOY_TARGET resolution and adapter options
-│   └── security-headers.ts  # Response headers used by middleware and adapters
+│   ├── security-headers.ts  # Response headers used by middleware and adapters
+│   └── site-url.ts          # Canonical URL resolution
 ├── integrations/            # Small local Astro integrations
 ├── drizzle/                 # Generated SQL migrations (commit these)
 ├── public/                  # Static files copied as-is (_headers, icons, security.txt)
-├── scripts/                 # Node scripts: icons, seeding, cleanup
+├── scripts/                 # Node scripts: icons, migrations, seeding, retention, admin role
 ├── src/
-│   ├── actions/             # Astro Actions (type-safe form handlers)
+│   ├── actions/             # Astro Actions (contact form, admin operations)
 │   ├── assets/              # Fonts and images processed by Astro
 │   ├── components/
 │   │   ├── content/         # MDX component map
-│   │   ├── react/           # React islands (Motion, auth forms)
+│   │   ├── react/           # React islands (contact form, auth and account forms)
 │   │   ├── seo/             # <Head> and structured data
 │   │   ├── site/            # Header, footer, navigation, search, theme toggle
 │   │   └── ui/              # Design-system primitives (Button, Card, Tabs, …)
 │   ├── content/             # Markdown/MDX collections and JSON data
 │   ├── content.config.ts    # Collection schemas
 │   ├── db/                  # Drizzle client and schema
-│   ├── layouts/             # Base, docs, blog and auth layouts
+│   ├── layouts/             # Base, docs, blog, auth and admin layouts
 │   ├── lib/                 # Framework-agnostic helpers (auth, email, seo, utils)
 │   ├── middleware.ts        # Session lookup and security headers
 │   ├── pages/               # File-based routes and endpoints
@@ -71,5 +72,5 @@ middleware. Do not create a `src/fetch.ts` for unrelated code.
 ## Generated files
 
 The following are produced by tooling and are ignored by Git: `dist/`, `.astro/`, `.vercel/`,
-`.netlify/`, `.wrangler/`, `worker-configuration.d.ts`, `.data/` (local database),
-`coverage/`, `playwright-report/` and `test-results/`.
+`.netlify/`, `.wrangler/`, `coverage/`, `playwright-report/`, `test-results/` and the database
+files in `.data/` (the directory itself is tracked through `.data/.gitkeep`).

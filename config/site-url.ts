@@ -1,17 +1,8 @@
 /**
- * Canonical site URL resolution for `astro.config.ts`.
- *
- * Astro validates `site` strictly and aborts the build with a terse "Invalid URL" when the
- * value is empty or has no scheme, which is easy to hit when environment variables are added
- * to a hosting dashboard after the first deploy. This resolver:
- *
- * 1. prefers an explicit `SITE_URL`,
- * 2. falls back to the production URL the platform injects (Vercel's
- *    `VERCEL_PROJECT_PRODUCTION_URL`, Netlify's `URL`),
- * 3. and finally uses `siteConfig.url`.
- *
- * Bare hostnames get `https://`, trailing slashes are removed, and unusable values are
- * skipped with a warning instead of failing the build.
+ * Canonical site URL for `astro.config.ts`: an explicit `SITE_URL`, else the production URL
+ * the platform injects (Vercel's `VERCEL_PROJECT_PRODUCTION_URL`, Netlify's `URL`), else
+ * `siteConfig.url`. Bare hostnames get `https://`, trailing slashes are removed, and values
+ * that are not http(s) URLs are skipped with a warning instead of failing the build.
  */
 
 export interface ResolvedSiteUrl {

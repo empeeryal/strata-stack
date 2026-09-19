@@ -3,7 +3,7 @@ title: SEO and discoverability
 description: Metadata, Open Graph images, structured data, sitemap, RSS, robots.txt, llms.txt and search.
 publishedDate: 2026-09-18
 sidebar:
-  order: 6
+  order: 8
 ---
 
 Every page is rendered through `src/components/seo/Head.astro`, which produces consistent
@@ -38,22 +38,22 @@ page types.
 `src/pages/og/[...slug].png.ts` renders a 1200×630 PNG for the home page, docs index, blog
 index, changelog and every docs page and blog post. The template is a small JSX component in
 `src/lib/og-template.tsx` rendered by Satori and rasterised by resvg at build time, so no image
-service is needed at runtime. Fonts come from the same self-hosted files as the site.
-
-Blog cards reuse these images, which means posts look polished without custom artwork.
+service is needed at runtime. Fonts come from the same self-hosted files as the site. Blog cards
+without a hero image reuse them.
 
 ## Sitemap, RSS, robots and manifest
 
-| Endpoint                         | Source                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------- |
-| `/sitemap-index.xml`             | `@astrojs/sitemap`, excluding `/dashboard`, `/api`, `/login`, `/signup`, `/500` |
-| `/rss.xml`                       | `src/pages/rss.xml.ts` with `@astrojs/rss`                                      |
-| `/robots.txt`                    | `src/pages/robots.txt.ts`, points at the sitemap                                |
-| `/manifest.webmanifest`          | `src/pages/manifest.webmanifest.ts`, reads `siteConfig`                         |
-| `/llms.txt` and `/llms-full.txt` | `src/pages/llms*.txt.ts`, an LLM-friendly map and full docs text                |
+| Endpoint                         | Source                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `/sitemap-index.xml`             | `@astrojs/sitemap`; excludes `/admin`, `/api`, `/dashboard`, the auth and account pages and `/500` |
+| `/rss.xml`                       | `src/pages/rss.xml.ts` with `@astrojs/rss`                                                         |
+| `/robots.txt`                    | `src/pages/robots.txt.ts`, points at the sitemap                                                   |
+| `/manifest.webmanifest`          | `src/pages/manifest.webmanifest.ts`, reads `siteConfig`                                            |
+| `/llms.txt` and `/llms-full.txt` | `src/pages/llms*.txt.ts`, an LLM-friendly map and full docs text                                   |
 
-All of them read the canonical URL from `site` in `astro.config.ts`, which is why `SITE_URL`
-must be correct for production builds.
+All of them read the canonical URL from `site` in `astro.config.ts`, which is resolved from
+`SITE_URL`, the platform's production URL or `siteConfig.url` (see
+[configuration](/docs/getting-started/configuration#astroconfigts)).
 
 ## Search
 
@@ -64,11 +64,8 @@ and navigation, tables of contents and auth pages are excluded with `data-pagefi
 `searchable={false}`.
 
 The header uses Pagefind's modal component (also available with <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>),
-and `/search` renders an inline results page that understands `?q=`.
-
-<Callout type="note">
-  The index is only produced by `pnpm build`. In development the last built index is served.
-</Callout>
+and `/search` renders an inline results page that understands `?q=`. The index is only produced
+by `pnpm build`; in development the last built index is served.
 
 ## Performance
 

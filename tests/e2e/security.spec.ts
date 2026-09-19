@@ -41,7 +41,7 @@ test.describe('security', () => {
       await page.waitForLoadState('networkidle');
       if (path === '/search') {
         await page.locator('search pagefind-input input').fill('astro');
-        await page.waitForTimeout(500);
+        await expect(page.locator('pagefind-results a').first()).toBeVisible();
       }
       expect(violations).toEqual([]);
     });

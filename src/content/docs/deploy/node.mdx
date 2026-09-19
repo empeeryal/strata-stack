@@ -23,9 +23,9 @@ build time) through your platform.
 
 ## Docker
 
-The multi-stage `Dockerfile` installs dependencies with pnpm, builds the site, then copies only
-the build output and production dependencies into a `node:24-slim` image running as the
-unprivileged `node` user, with a health check against `/api/health`.
+The multi-stage `Dockerfile` installs dependencies with pnpm, builds the site, then copies the
+build output, the migrations and the production dependencies into a `node:24-slim` image running
+as the unprivileged `node` user, with a health check against `/api/health`.
 
 ```bash
 docker build --build-arg SITE_URL=https://example.com -t astro-framework .
@@ -36,10 +36,11 @@ docker run -p 4321:4321 --env-file .env astro-framework
 restarts. For production prefer Turso or another hosted libSQL/SQLite service so the database is
 not tied to one container.
 
-Run migrations before starting a new version:
+Run migrations before starting a new version. The image ships `scripts/migrate.ts`, which
+applies the SQL files in `drizzle/` with Drizzle's migrator and needs no dev dependencies:
 
 ```bash
-docker run --rm --env-file .env astro-framework pnpm exec drizzle-kit migrate
+docker run --rm --env-file .env astro-framework node scripts/migrate.ts
 ```
 
 ## Reverse proxy

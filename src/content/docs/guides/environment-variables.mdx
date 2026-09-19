@@ -3,7 +3,7 @@ title: Environment variables
 description: Every variable the template reads, where to set it on each platform, and the two access patterns.
 publishedDate: 2026-09-18
 sidebar:
-  order: 10
+  order: 12
 ---
 
 ## Two access patterns
@@ -46,8 +46,9 @@ where the server code runs.
 
 <Tabs syncKey="platform">
   <TabItem label="Local">
-    Copy `.env.example` to `.env`. Astro loads it automatically; `drizzle.config.ts` and the scripts
-    load it with `process.loadEnvFile()`.
+    Copy `.env.example` to `.env`. Astro loads it automatically, `drizzle.config.ts` loads it with
+    `process.loadEnvFile()` and the `pnpm db:*` and `admin:promote` scripts run Node with
+    `--env-file-if-exists=.env`.
   </TabItem>
   <TabItem label="Vercel">
     Project → Settings → Environment Variables. Mark secrets as sensitive. Preview URLs are trusted
@@ -70,5 +71,5 @@ where the server code runs.
 ## Adding a variable
 
 1. Add it to `.env.example` with a comment.
-2. Public: declare it in `env.schema`. Server: read it with `getEnv()` or `requireEnv()`.
+2. Public: declare it in `env.schema`. Server: read it with `getEnv()` from `src/lib/env.ts`.
 3. Document it in this table and, if the platform needs it at build time, in the deploy guide.

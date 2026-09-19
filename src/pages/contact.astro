@@ -16,31 +16,27 @@ import { siteConfig } from '@/site.config';
       <p class="text-sm font-semibold text-primary">Contact</p>
       <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">Send us a message</h1>
       <p class="mt-4 text-pretty text-muted-foreground">
-        Questions, bug reports and ideas are welcome. For security issues, please follow the
-        responsible disclosure process in <code class="font-mono text-sm">SECURITY.md</code> instead
-        of this form.
+        Questions, bug reports and ideas are welcome. For security issues, follow the{' '}
+        <a
+          href={`${siteConfig.repo.url}/security/policy`}
+          class="font-medium text-foreground underline underline-offset-4"
+        >
+          security policy
+        </a>{' '}
+        instead of this form.
       </p>
-      <ul class="mt-8 space-y-4 text-sm">
-        <li class="flex gap-3">
-          <Icon name="simple-icons:github" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>
-            Prefer GitHub?{' '}
-            <a
-              href={`${siteConfig.repo.url}/issues`}
-              class="font-medium underline underline-offset-4"
-            >
-              Open an issue
-            </a>
-          </span>
-        </li>
-        <li class="flex gap-3">
-          <Icon name="lucide:shield-check" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>
-            This form is an Astro Action with server-side validation, a honeypot field and database
-            persistence. Messages are emailed when Resend is configured.
-          </span>
-        </li>
-      </ul>
+      <p class="mt-8 flex gap-3 text-sm">
+        <Icon name="simple-icons:github" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span>
+          Prefer GitHub?{' '}
+          <a
+            href={`${siteConfig.repo.url}/issues`}
+            class="font-medium underline underline-offset-4"
+          >
+            Open an issue
+          </a>
+        </span>
+      </p>
     </div>
     <div class="rounded-xl border bg-card p-6 shadow-soft">
       <ContactForm client:visible />

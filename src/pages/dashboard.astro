@@ -25,11 +25,18 @@ if (!user || !session) {
   );
 }
 
+const PROVIDER_LABELS: Record<string, string> = {
+  credential: 'Password',
+  github: 'GitHub',
+  google: 'Google',
+};
+
 const accounts = await auth.api.listUserAccounts({ headers: Astro.request.headers });
 const hasPassword = accounts.some((account) => account.providerId === 'credential');
-const providers = accounts.map((account) => account.providerId).filter((id) => id !== 'credential');
+const signInMethods =
+  accounts.map((account) => PROVIDER_LABELS[account.providerId] ?? account.providerId).join(', ') ||
+  'Magic link';
 const emailConfigured = isEmailConfigured();
-const admin = isAdmin(user);
 ---
 
 <BaseLayout
@@ -43,12 +50,10 @@ const admin = isAdmin(user);
     <div>
       <p class="text-sm font-semibold text-primary">Dashboard</p>
       <h1 class="mt-2 text-3xl font-bold tracking-tight">Hello, {user.name}</h1>
-      <p class="mt-2 text-muted-foreground">
-        This page is rendered on the server for every request and only for signed-in users.
-      </p>
+      <p class="mt-2 text-muted-foreground">Manage your account, password and data.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      {admin && (
+      {isAdmin(user) && (
         <Button href="/admin" variant="secondary">
           <Icon name="lucide:shield" aria-hidden="true" />
           Admin
@@ -85,10 +90,7 @@ const admin = isAdmin(user);
         </div>
         <div class="flex justify-between gap-4">
           <dt class="text-muted-foreground">Sign-in methods</dt>
-          <dd class="font-medium">
-            {[hasPassword ? 'password' : null, ...providers].filter(Boolean).join(', ') ||
-              'magic link'}
-          </dd>
+          <dd class="font-medium">{signInMethods}</dd>
         </div>
         <div class="flex justify-between gap-4">
           <dt class="text-muted-foreground">Member since</dt>
@@ -117,6 +119,14 @@ const admin = isAdmin(user);
       </h2>
       <dl class="mt-4 space-y-3 text-sm">
         <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Signed in</dt>
+          <dd>
+            <time datetime={toISODate(session.createdAt)}>
+              {formatDate(session.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+            </time>
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
           <dt class="text-muted-foreground">Expires</dt>
           <dd>
             <time datetime={toISODate(session.expiresAt)}>
@@ -124,14 +134,9 @@ const admin = isAdmin(user);
             </time>
           </dd>
         </div>
-        <div class="flex justify-between gap-4">
-          <dt class="text-muted-foreground">Rendered on</dt>
-          <dd class="font-mono text-xs">{__DEPLOY_TARGET__}</dd>
-        </div>
       </dl>
       <p class="mt-4 text-xs text-pretty text-muted-foreground">
-        Sessions are stored in the database by Better Auth and cached in a signed cookie for five
-        minutes to avoid a database read on every request.
+        Changing your password or deleting your account signs out every other session.
       </p>
     </Card>
   </div>
@@ -165,16 +170,5 @@ const admin = isAdmin(user);
       </Button>
       <DeleteAccountForm client:visible hasPassword={hasPassword} />
     </div>
-  </Card>
-
-  <Card class="mt-6">
-    <h2 class="font-semibold">How this route is protected</h2>
-    <p class="mt-2 text-sm text-pretty text-muted-foreground">
-      <code class="font-mono">src/middleware.ts</code> resolves the session for every on-demand
-      request and stores it in <code class="font-mono">Astro.locals</code>. This page opts out of
-      prerendering and redirects to <code class="font-mono">/login</code> when no user is present.
-      Because the check lives in the page itself, it cannot be bypassed with an unusual URL encoding
-      of the path.
-    </p>
   </Card>
 </BaseLayout>

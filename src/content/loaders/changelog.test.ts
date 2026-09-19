@@ -22,9 +22,10 @@ const sample = `# my-site
 - Initial release.
 `;
 
-async function runLoader(contents: string) {
+/** Runs the loader against a temporary project root; without `contents` there is no file. */
+async function runLoader(contents?: string) {
   const dir = await mkdtemp(path.join(tmpdir(), 'changelog-'));
-  await writeFile(path.join(dir, 'CHANGELOG.md'), contents);
+  if (contents !== undefined) await writeFile(path.join(dir, 'CHANGELOG.md'), contents);
 
   const entries = new Map<string, unknown>();
   const store = {
@@ -58,9 +59,14 @@ describe('changelogLoader', () => {
     expect((entries[0]!.rendered as { html: string }).html).toContain('<p>');
   });
 
-  it('handles a missing file gracefully', async () => {
-    const { entries, logs } = await runLoader('');
+  it('loads nothing from an empty file', async () => {
+    const { entries } = await runLoader('');
     expect(entries).toHaveLength(0);
-    expect(logs.join(' ')).toContain('Loaded 0');
+  });
+
+  it('warns and loads nothing when the file is missing', async () => {
+    const { entries, logs } = await runLoader();
+    expect(entries).toHaveLength(0);
+    expect(logs.join(' ')).toContain('No changelog found');
   });
 });

@@ -2,13 +2,20 @@
 import { actions } from 'astro:actions';
 import { eq } from 'drizzle-orm';
 
+import BackLink from '@/components/ui/BackLink.astro';
 import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
 import Card from '@/components/ui/Card.astro';
 import { db } from '@/db/client';
 import { contactMessages } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
-import { guardAdminPage, summarizeActionResults, withNotice } from '@/lib/admin-page';
+import {
+  DELIVERY_STATUS_LABELS,
+  guardAdminPage,
+  MESSAGE_STATUS_LABELS,
+  summarizeActionResults,
+  withNotice,
+} from '@/lib/admin-page';
 import { formatDate, toISODate } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
@@ -60,11 +67,9 @@ const timestamp = (value: Date | null) =>
   description="Contact message details."
   error={outcome.error ?? deleteResult?.error?.message ?? null}
 >
-  <a href="/admin/messages" class="text-sm font-medium text-muted-foreground hover:text-foreground">
-    ← Back to messages
-  </a>
+  <BackLink href="/admin/messages">Back to messages</BackLink>
 
-  <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+  <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
     <Card as="article">
       <header class="flex flex-wrap items-start justify-between gap-3 border-b pb-4">
         <div>
@@ -88,7 +93,7 @@ const timestamp = (value: Date | null) =>
             <dt class="text-muted-foreground">Workflow</dt>
             <dd>
               <Badge variant="outline">
-                <span data-message-status>{message.status}</span>
+                <span data-message-status>{MESSAGE_STATUS_LABELS[message.status]}</span>
               </Badge>
             </dd>
           </div>
@@ -106,7 +111,7 @@ const timestamp = (value: Date | null) =>
             <dt class="text-muted-foreground">Notification</dt>
             <dd>
               <Badge variant={deliveryVariant[message.deliveryStatus]}>
-                {message.deliveryStatus}
+                {DELIVERY_STATUS_LABELS[message.deliveryStatus]}
               </Badge>
             </dd>
           </div>
@@ -134,7 +139,6 @@ const timestamp = (value: Date | null) =>
         <div class="mt-3 flex flex-col gap-2">
           <Button
             href={`mailto:${message.email}?subject=${replySubject}&body=${replyBody}`}
-            variant="primary"
             size="sm"
           >
             Reply by email
@@ -215,7 +219,7 @@ const timestamp = (value: Date | null) =>
     void actions.admin.setMessageStatus(new FormData(markRead)).then(({ error }) => {
       if (error) return; // The button stays available for a manual retry.
       document.querySelectorAll<HTMLElement>('[data-message-status]').forEach((element) => {
-        element.textContent = 'read';
+        element.textContent = 'Read';
       });
       const readAt = document.querySelector<HTMLElement>('[data-message-read-at]');
       if (readAt) readAt.textContent = 'just now';

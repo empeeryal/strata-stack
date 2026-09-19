@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { authClient } from '@/lib/auth-client';
 
-import { Alert, Button } from '../primitives';
+import { Alert, Button, UNEXPECTED_ERROR } from '../primitives';
 
 type Provider = 'github' | 'google';
 
@@ -57,9 +57,15 @@ export default function SocialButtons({
   async function signIn(provider: Provider) {
     setError(null);
     setPending(provider);
-    const result = await authClient.signIn.social({ provider, callbackURL: redirectTo });
-    if (result.error) {
-      setError(result.error.message ?? 'Sign-in failed. Please try again.');
+    try {
+      const result = await authClient.signIn.social({ provider, callbackURL: redirectTo });
+      if (result.error) {
+        setError(result.error.message ?? 'Sign-in failed. Try again.');
+        setPending(null);
+      }
+      // On success the browser navigates to the provider; the button stays busy until then.
+    } catch {
+      setError(UNEXPECTED_ERROR);
       setPending(null);
     }
   }

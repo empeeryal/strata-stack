@@ -3,7 +3,7 @@ title: Privacy and data
 description: What personal data the template stores, the self-service export and deletion flows, retention, and the checklist for adapting the legal pages.
 publishedDate: 2026-09-18
 sidebar:
-  order: 5.6
+  order: 7
   badge: new
 ---
 
@@ -20,22 +20,21 @@ must adapt before launch.
 | Sessions (IP, user agent)           | `session`         | With the user; expired rows are removed by Better Auth                      |
 | Contact messages                    | `contact_message` | Archived ones are pruned; open ones too if a maximum age is set (see below) |
 | Throttle counters (hashed IP/email) | `throttle`        | Expire after 15 minutes / 1 hour, pruned by `db:prune`                      |
-| Audit log                           | `audit_log`       | Kept; contains no message bodies or secrets                                 |
+| Audit log                           | `audit_log`       | Kept indefinitely; contains no message bodies or secrets                    |
 
 ## Self-service
 
 From the dashboard a signed-in user can:
 
-- **Export** their data: `/api/account/export` returns profile, sign-in methods, sessions and,
-  when the address is verified, contact messages from that address. Tokens and hashes are
-  never included.
-- **Delete** their account. Password accounts confirm with the password; social-only accounts
-  need a fresh session (younger than a day). Contact messages from a verified address are
-  removed with it and the deletion is recorded in the audit log.
+- **Export** their data: `src/pages/api/account/export.ts` returns profile, sign-in methods,
+  sessions and, when the address is verified, contact messages from that address. Tokens and
+  hashes are never included.
+- **Delete** their account through Better Auth's `deleteUser`. Password accounts confirm with
+  the password; social-only accounts need a fresh session (younger than a day). The
+  `beforeDelete` hook in `src/lib/auth.ts` refuses to remove the last administrator, and
+  `afterDelete` removes contact messages from a verified address and records the deletion in
+  the audit log.
 - **Change** their password, which signs out other sessions.
-
-Both export and deletion are implemented with Better Auth (`deleteUser`) and the
-`afterDelete` hook in `src/lib/auth.ts`.
 
 ## Requests from people without an account
 
@@ -56,10 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with: { node-version-file: .nvmrc, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm db:prune
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -71,9 +67,9 @@ By default open (new or read) messages are never deleted automatically, so
 set `CONTACT_MAX_AGE_DAYS` as well: the same job then deletes every message older than that,
 whatever its status, and says so in its output. Both values belong in the privacy policy.
 
-The audit log records message actions together with the change (one transaction) and Better
-Auth user operations on a best-effort basis; see the [admin area](/docs/guides/admin#audit-log)
-before promising more than that in your policy.
+The audit log records message status changes and deletions together with the change (one
+transaction); entries for everything else are best-effort. See the
+[admin area](/docs/guides/admin#audit-log) before promising more than that in your policy.
 
 ## Launch checklist
 

@@ -5,5 +5,3 @@ import { createAuthClient } from 'better-auth/react';
 export const authClient = createAuthClient({
   plugins: [magicLinkClient(), adminClient()],
 });
-
-export const { signIn, signUp, signOut, useSession } = authClient;

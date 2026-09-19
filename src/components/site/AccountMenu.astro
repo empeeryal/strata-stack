@@ -1,0 +1,80 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { buttonVariants } from '@/components/ui/button-variants';
+import { isAdmin } from '@/lib/admin';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  /** Header row (desktop only) or the mobile drawer (full-width buttons). */
+  placement: 'header' | 'drawer';
+}
+
+const { placement } = Astro.props;
+const inHeader = placement === 'header';
+
+// Server-rendered pages already know the visitor. Prerendered pages are built without a
+// session, so they render the signed-out state and the script below asks the auth API.
+const user = Astro.locals.user ?? null;
+const resolved = !Astro.isPrerendered;
+
+const link = (variant: 'outline' | 'ghost' | 'primary') =>
+  inHeader
+    ? cn(buttonVariants({ variant, size: 'sm' }), 'hidden md:inline-flex')
+    : cn(buttonVariants({ variant }), 'w-full');
+---
+
+<account-menu class="contents" data-resolved={resolved ? '' : undefined}>
+  <a href="/admin" class={link('ghost')} hidden={!isAdmin(user)} data-admin>
+    <Icon name="lucide:shield" aria-hidden="true" />
+    Admin
+  </a>
+  <a href="/dashboard" class={link('outline')} hidden={!user} data-account>
+    {inHeader && <Icon name="lucide:user" aria-hidden="true" />}
+    <span data-name>{user?.name}</span>
+  </a>
+  <a
+    href="/login"
+    class={link(inHeader ? 'outline' : 'primary')}
+    hidden={Boolean(user)}
+    data-sign-in
+  >
+    Sign in
+  </a>
+</account-menu>
+
+<script>
+  interface SessionUser {
+    name: string;
+    role?: string | null;
+  }
+
+  // One request per page load, shared by the header and the drawer.
+  let lookup: Promise<SessionUser | null> | undefined;
+  function currentUser(): Promise<SessionUser | null> {
+    lookup ??= fetch('/api/auth/get-session', { headers: { accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { user?: SessionUser } | null) => data?.user ?? null)
+      .catch(() => null);
+    return lookup;
+  }
+
+  class AccountMenu extends HTMLElement {
+    async connectedCallback() {
+      if (this.hasAttribute('data-resolved')) return;
+      const user = await currentUser();
+      if (!user) return;
+
+      const name = this.querySelector('[data-name]');
+      if (name) name.textContent = user.name;
+      this.querySelector('[data-sign-in]')?.setAttribute('hidden', '');
+      this.querySelector('[data-account]')?.removeAttribute('hidden');
+      const admin = (user.role ?? '').split(',').some((role) => role.trim() === 'admin');
+      if (admin) this.querySelector('[data-admin]')?.removeAttribute('hidden');
+    }
+  }
+
+  if (!customElements.get('account-menu')) {
+    customElements.define('account-menu', AccountMenu);
+  }
+</script>

@@ -1,8 +1,6 @@
 import { type CollectionEntry, getCollection } from 'astro:content';
 import readingTime from 'reading-time';
 
-import { siteConfig } from '@/site.config';
-
 export type BlogPost = CollectionEntry<'blog'>;
 
 /** Published blog posts, newest first. Drafts are included in development only. */
@@ -46,5 +44,3 @@ export function postOgImage(post: BlogPost): string {
 export function docsOgImage(id: string): string {
   return `/og/docs/${id}.png`;
 }
-
-export const POSTS_PER_PAGE = siteConfig.blog.postsPerPage;

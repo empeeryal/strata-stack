@@ -1,0 +1,15 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+import { cn } from '@/lib/utils';
+
+import { alertRole, alertVariants, type AlertVariant } from './alert-variants';
+
+type Props = HTMLAttributes<'div'> & { variant?: AlertVariant };
+
+const { variant = 'danger', class: className, ...rest } = Astro.props;
+---
+
+<div role={alertRole(variant)} class={cn(alertVariants[variant], className)} {...rest}>
+  <slot />
+</div>

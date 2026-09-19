@@ -1,9 +1,9 @@
 ---
 title: Security
-description: The Content Security Policy, response headers, CSRF protection and secrets handling that ship enabled.
+description: The Content Security Policy, response headers, CSRF protection, production checks and secrets handling that ship enabled.
 publishedDate: 2026-09-18
 sidebar:
-  order: 7
+  order: 9
 ---
 
 ## Content Security Policy
@@ -76,26 +76,23 @@ logged as warnings and reported by `/api/health`. Anonymous callers of that rout
 `Authorization: Bearer <HEALTH_TOKEN>`, so the route does not describe the deployment to
 everyone.
 
-## Email safety
-
-Sign-in links, verification links and reset tokens are bearer credentials. Without
-`RESEND_API_KEY`, `sendEmail()` prints messages only outside production; in production it
-throws, and the login page hides the magic-link form and the reset link. See
-[authentication](/docs/guides/authentication#email-delivery-and-the-production-rule).
-
 ## Abuse controls and audit
 
 - Better Auth rate limits every auth endpoint with database storage; sign-in, sign-up, magic
   link and password endpoints have stricter built-in limits.
 - The contact form is throttled per address and per IP (`src/lib/throttle.ts`) and protected
   by a honeypot.
+- Sign-in links, verification links and reset tokens are bearer credentials. Without
+  `RESEND_API_KEY`, `sendEmail()` prints messages only outside production; in production it
+  throws and the login page hides the magic-link form and the reset link (see
+  [authentication](/docs/guides/authentication#email-delivery-and-the-production-rule)).
 - Administrative actions, account deletions and data exports are recorded in `audit_log`.
-  Message actions and their entries are one transaction; entries for Better Auth user
-  operations are best-effort and a failed write is logged (see the
-  [admin area](/docs/guides/admin#audit-log)).
+  Message status changes and deletions share a transaction with their entries; everything else
+  is best-effort and a failed write is logged (see the [admin area](/docs/guides/admin#audit-log)).
 - Access decisions (`/admin`, the admin actions, the account export) read the session from the
   database instead of the cookie cache, so demotion, bans and "sign out everywhere" apply
-  immediately. The last active administrator cannot be removed.
+  immediately (see [sessions and cookies](/docs/guides/authentication#sessions-and-cookies)).
+  The last active administrator cannot be removed.
 - Admin pages never change data while rendering: marking a message read is a POST action, so
   link prefetching and previews cannot alter state.
 

@@ -39,17 +39,17 @@ const variants: Record<Variant, { icon: string; label: string; classes: string }
 const variant = variants[type];
 ---
 
-<aside
+<div
+  role="note"
   class={cn(
     'callout my-6 flex gap-3 rounded-lg border p-4 text-sm leading-relaxed [&_p]:my-1 [&_:first-child]:mt-0 [&_:last-child]:mb-0',
     variant.classes,
     className,
   )}
-  aria-label={title ?? variant.label}
 >
   <Icon name={variant.icon} class="callout-icon mt-0.5 size-5 shrink-0" aria-hidden="true" />
   <div class="min-w-0 flex-1">
     <p class="font-semibold">{title ?? variant.label}</p>
     <slot />
   </div>
-</aside>
+</div>

@@ -7,13 +7,15 @@
  * 2. Second step
  * </Steps>
  */
+import { cn } from '@/lib/utils';
+
 interface Props {
   class?: string;
 }
 const { class: className } = Astro.props;
 ---
 
-<div class:list={['steps', className]}>
+<div class={cn('steps', className)}>
   <slot />
 </div>
 

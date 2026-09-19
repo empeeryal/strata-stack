@@ -1,15 +1,4 @@
-dist/
-.astro/
-.vercel/
-.netlify/
-.wrangler/
-node_modules/
-coverage/
-playwright-report/
-test-results/
 pnpm-lock.yaml
 drizzle/
-worker-configuration.d.ts
 CHANGELOG.md
 .changeset/*.md
-public/pagefind/

@@ -15,9 +15,10 @@ export interface SecurityHeadersOptions {
  * build-time configuration.
  *
  * - **Vercel**: prepends a header route to `.vercel/output/config.json` (Build Output
- *   API). The adapter runs before this integration, so the file already exists.
+ *   API). The adapter writes that file in its own `build:done` hook, which runs first
+ *   because adapters are always the first integration.
  * - **Netlify / Cloudflare**: read `_headers` from the publish directory, which is
- *   copied from `public/_headers` automatically – nothing to do here.
+ *   copied from `public/_headers` automatically; nothing to do here.
  * - **Node**: the standalone server has no static header config; on-demand routes get
  *   headers from `src/middleware.ts`, static files should be fronted by a reverse proxy.
  *
@@ -35,9 +36,6 @@ export function securityHeaders({ target }: SecurityHeadersOptions): AstroIntegr
       'astro:build:done': async ({ logger }) => {
         if (target !== 'vercel' || !root) return;
 
-        // The Vercel adapter writes the Build Output API config to
-        // <root>/.vercel/output/config.json in its own build:done hook, which runs
-        // before this one because adapters are always the first integration.
         const configUrl = new URL('.vercel/output/config.json', root);
         let raw: string;
         try {

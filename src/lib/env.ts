@@ -15,26 +15,20 @@ export function getEnv(name: string): string | undefined {
   return value === undefined || value === '' ? undefined : value;
 }
 
-export function requireEnv(name: string): string {
-  const value = getEnv(name);
-  if (!value) {
-    throw new Error(`Missing required environment variable "${name}". See .env.example.`);
-  }
-  return value;
-}
-
 export const isProduction = process.env.NODE_ENV === 'production';
+
+const stripSlash = (url: string) => url.replace(/\/+$/, '');
 
 /** Public origin visitors use, e.g. https://example.com. */
 export function getSiteUrl(): string {
   const explicit = getEnv('BETTER_AUTH_URL') ?? getEnv('SITE_URL');
-  if (explicit) return explicit.replace(/\/+$/, '');
+  if (explicit) return stripSlash(explicit);
 
   // Platform-provided hosts (no protocol).
   const vercel = getEnv('VERCEL_PROJECT_PRODUCTION_URL') ?? getEnv('VERCEL_URL');
   if (vercel) return `https://${vercel}`;
   const netlify = getEnv('URL') ?? getEnv('DEPLOY_PRIME_URL');
-  if (netlify) return netlify.replace(/\/+$/, '');
+  if (netlify) return stripSlash(netlify);
 
   return 'http://localhost:4321';
 }
@@ -59,7 +53,7 @@ export function getTrustedOrigins(): string[] {
     if (host) origins.add(`https://${host}`);
   }
   for (const url of [getEnv('URL'), getEnv('DEPLOY_PRIME_URL'), getEnv('DEPLOY_URL')]) {
-    if (url) origins.add(url.replace(/\/+$/, ''));
+    if (url) origins.add(stripSlash(url));
   }
 
   if (!isProduction) {

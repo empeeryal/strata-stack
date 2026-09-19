@@ -4,31 +4,16 @@ import { auditLog, user } from '@/db/schema';
 
 import { createTestDb } from '../../tests/unit/db';
 
-import {
-  countActiveAdmins,
-  hasRole,
-  isAdmin,
-  isLastActiveAdmin,
-  recordAudit,
-  rolesOf,
-  writeAudit,
-} from './admin';
+import { isAdmin, isLastActiveAdmin, recordAudit, writeAudit } from './admin';
 
-describe('roles', () => {
-  it('parses comma-separated roles', () => {
-    expect(rolesOf({ role: 'admin,editor' })).toEqual(['admin', 'editor']);
-    expect(rolesOf({ role: ' user ' })).toEqual(['user']);
-    expect(rolesOf({ role: null })).toEqual([]);
-    expect(rolesOf(undefined)).toEqual([]);
-  });
-
-  it('recognises administrators', () => {
+describe('isAdmin', () => {
+  it('recognises the admin role in a comma-separated list', () => {
     expect(isAdmin({ role: 'admin' })).toBe(true);
-    expect(isAdmin({ role: 'user,admin' })).toBe(true);
+    expect(isAdmin({ role: 'user, admin' })).toBe(true);
     expect(isAdmin({ role: 'user' })).toBe(false);
     expect(isAdmin({ role: 'administrator' })).toBe(false);
+    expect(isAdmin({ role: null })).toBe(false);
     expect(isAdmin(null)).toBe(false);
-    expect(hasRole({ role: 'editor' }, 'editor')).toBe(true);
   });
 });
 
@@ -37,10 +22,7 @@ describe('audit log', () => {
   beforeEach(async () => {
     testDb = await createTestDb();
   });
-  afterEach(() => {
-    testDb.close();
-    vi.restoreAllMocks();
-  });
+  afterEach(() => testDb.close());
 
   it('stores the entry with JSON details', async () => {
     await recordAudit(testDb.db, {
@@ -88,7 +70,7 @@ describe('audit log', () => {
   });
 });
 
-describe('last administrator protection', () => {
+describe('isLastActiveAdmin', () => {
   let testDb: Awaited<ReturnType<typeof createTestDb>>;
   beforeEach(async () => {
     testDb = await createTestDb();
@@ -109,20 +91,10 @@ describe('last administrator protection', () => {
     });
   }
 
-  it('counts only unbanned accounts whose roles include admin', async () => {
+  it('is true only for an active admin with no other active admin', async () => {
     await addUser('alice', 'admin');
-    await addUser('bob', 'user,admin');
     await addUser('carol', 'administrator'); // not the admin role
     await addUser('dave', 'admin', true); // banned
-    await addUser('erin', 'user');
-
-    expect(await countActiveAdmins(testDb.db)).toBe(2);
-    expect(await countActiveAdmins(testDb.db, { excludeUserId: 'alice' })).toBe(1);
-  });
-
-  it('identifies the last active administrator', async () => {
-    await addUser('alice', 'admin');
-    await addUser('dave', 'admin', true);
     await addUser('erin', 'user');
 
     expect(await isLastActiveAdmin(testDb.db, 'alice')).toBe(true);
@@ -130,7 +102,8 @@ describe('last administrator protection', () => {
     expect(await isLastActiveAdmin(testDb.db, 'dave')).toBe(false);
     expect(await isLastActiveAdmin(testDb.db, 'nobody')).toBe(false);
 
-    await addUser('bob', 'admin');
+    await addUser('bob', 'user,admin');
     expect(await isLastActiveAdmin(testDb.db, 'alice')).toBe(false);
+    expect(await isLastActiveAdmin(testDb.db, 'bob')).toBe(false);
   });
 });

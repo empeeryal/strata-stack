@@ -119,6 +119,12 @@ const stack = stackEntries.map(([name, dep]) => ({
   version: installed[dep] ?? deps[dep]?.replace(/^[\^~]/, '') ?? '',
 }));
 
+const platformPoints = [
+  'Static-first output with prerender = false only where you need a server.',
+  'One database client that resolves to the right driver on Node, Workers and edge runtimes.',
+  'CI builds all four targets on every pull request so nothing drifts.',
+];
+
 const steps = [
   {
     title: 'Clone and rename',
@@ -184,7 +190,7 @@ const steps = [
           <li>
             <a
               href={target.href}
-              class="flex items-center justify-center gap-3 rounded-lg border bg-background px-4 py-4 font-medium transition-colors hover:border-primary/40 hover:bg-card"
+              class="flex items-center justify-center gap-3 rounded-lg border bg-background px-4 py-4 font-medium transition-colors hover:border-primary/40 hover:bg-muted/60"
             >
               <Icon name={target.icon} class="size-6" aria-hidden="true" />
               {target.label}
@@ -198,7 +204,7 @@ const steps = [
   <section class="container py-20" aria-labelledby="features-heading">
     <div class="mx-auto max-w-2xl text-center">
       <h2 id="features-heading" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-        Everything a modern site needs, already wired together
+        Everything a site needs, already wired together
       </h2>
       <p class="mt-4 text-pretty text-muted-foreground">
         This site is built from the template you are reading about. Every feature below is running
@@ -225,40 +231,22 @@ const steps = [
           Pick a platform at build time
         </h2>
         <p class="mt-4 text-pretty text-muted-foreground">
-          A single{' '}
-          <code class="rounded bg-code px-1.5 py-0.5 font-mono text-sm">astro.config.ts</code>{' '}
-          selects the adapter from the{' '}
-          <code class="rounded bg-code px-1.5 py-0.5 font-mono text-sm">DEPLOY_TARGET</code>{' '}
-          environment variable, or detects the platform automatically. Static pages, server-rendered
-          auth routes, image optimisation and security headers work the same way everywhere.
+          A single <code class="font-mono text-sm">astro.config.ts</code> selects the adapter from
+          the <code class="font-mono text-sm">DEPLOY_TARGET</code> environment variable, or detects
+          the platform automatically. Static pages, server-rendered auth routes, image optimisation
+          and security headers work the same way everywhere.
         </p>
         <ul class="mt-6 space-y-3 text-sm">
-          <li class="flex gap-3">
-            <Icon
-              name="lucide:check"
-              class="mt-0.5 size-4 shrink-0 text-success"
-              aria-hidden="true"
-            />
-            Static-first output with <code class="font-mono">prerender = false</code> only where you
-            need a server.
-          </li>
-          <li class="flex gap-3">
-            <Icon
-              name="lucide:check"
-              class="mt-0.5 size-4 shrink-0 text-success"
-              aria-hidden="true"
-            />
-            One database client that resolves to the right driver on Node, Workers and edge
-            runtimes.
-          </li>
-          <li class="flex gap-3">
-            <Icon
-              name="lucide:check"
-              class="mt-0.5 size-4 shrink-0 text-success"
-              aria-hidden="true"
-            />
-            CI builds all four targets on every pull request so nothing drifts.
-          </li>
+          {platformPoints.map((point) => (
+            <li class="flex gap-3">
+              <Icon
+                name="lucide:check"
+                class="mt-0.5 size-4 shrink-0 text-success"
+                aria-hidden="true"
+              />
+              {point}
+            </li>
+          ))}
         </ul>
       </div>
       <DeployTargets client:visible />

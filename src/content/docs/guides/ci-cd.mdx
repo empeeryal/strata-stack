@@ -3,19 +3,21 @@ title: CI and releases
 description: The GitHub Actions workflows, the build matrix for every deploy target, Dependabot and Changesets releases.
 publishedDate: 2026-09-18
 sidebar:
-  order: 9
+  order: 11
 ---
 
 ## Pull request checks
 
-`.github/workflows/ci.yml` runs on every push and pull request:
+`.github/workflows/ci.yml` runs on pushes to `main` and on every pull request. Each job checks
+out the repository and runs the composite action in `.github/actions/setup` (pnpm, Node from
+`.nvmrc`, `pnpm install --frozen-lockfile`) before its own steps:
 
 | Job          | What it runs                                                                    |
 | ------------ | ------------------------------------------------------------------------------- |
 | `quality`    | `pnpm lint`, `pnpm format:check`, `pnpm check`, `pnpm audit --audit-level=high` |
-| `unit`       | `pnpm test`                                                                     |
-| `build`      | `pnpm build` for each of `node`, `vercel`, `netlify` and `cloudflare` (matrix)  |
-| `e2e`        | `pnpm build:node` then `pnpm test:e2e` with Playwright's browsers               |
+| `unit`       | `pnpm test:coverage`, uploading the coverage report as an artifact              |
+| `build`      | `pnpm build:<target>` for each of `node`, `vercel`, `netlify` and `cloudflare`  |
+| `e2e`        | `pnpm build:node` then `pnpm test:e2e` with a cached Playwright Chromium        |
 | `lighthouse` | `pnpm lhci` against the Node build                                              |
 
 The matrix is the guarantee behind "deploy anywhere": a dependency that only works on one
@@ -39,12 +41,13 @@ lists when upgrading dependencies.
 
 ## Dependency updates
 
-`.github/dependabot.yml` groups updates weekly: Astro packages, React, tooling and GitHub
-Actions each get one pull request. Because the CI matrix builds every target, merging an update
-is safe when the checks are green.
+`.github/dependabot.yml` opens grouped pull requests every Monday: Astro packages, React and
+Motion, auth and data (Better Auth, Drizzle, libSQL, Resend), styling, tooling, and the GitHub
+Actions used by the workflows and the composite action. Because the CI matrix builds every
+target, merging an update is safe when the checks are green.
 
 TypeScript is pinned to the 6.x line (`~6.0.3`) because `@astrojs/check` and `typescript-eslint`
-do not yet support TypeScript 7. Dependabot will keep proposing it; upgrade when both tools do.
+do not yet support TypeScript 7; Dependabot is configured to ignore TypeScript 7 until then.
 
 ## Releases with Changesets
 
@@ -58,7 +61,8 @@ do not yet support TypeScript 7. Dependabot will keep proposing it; upgrade when
 
 2. Merge the pull request. `.github/workflows/release.yml` opens (or updates) a
    "Version Packages" pull request that bumps `package.json`, rewrites `CHANGELOG.md` and deletes
-   the consumed changesets.
+   the consumed changesets. The repository setting "Allow GitHub Actions to create and approve
+   pull requests" must be on for this.
 
 3. Merge the version pull request. The workflow tags the release, and the next deploy renders
    the new entry on `/changelog`.
