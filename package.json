@@ -1,6 +1,6 @@
 {
   "name": "astro-framework-v2",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "An Astro 7 website starter: React 19, Motion, Tailwind 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, CSP, tests. Deploys to Vercel, Cloudflare, Netlify and Node.",
