@@ -1,5 +1,13 @@
 # astro-framework-v2
 
+## 0.5.1
+
+### Patch Changes
+
+- 5fded12: The home page headline keeps its gradient but no longer animates it. The sliding gradient
+  regularly left "Astro" and "7" in different colours, with the number on the dimmer end; the
+  static primary-to-accent sweep reads as one phrase.
+
 ## 0.5.0
 
 ### Minor Changes
