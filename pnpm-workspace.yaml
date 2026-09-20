@@ -1,0 +1,28 @@
+# pnpm settings. pnpm 11+ reads these from here rather than from a "pnpm" field in package.json.
+
+# Dependencies whose install scripts may run. Everything else is installed without running
+# scripts; `pnpm approve-builds` adds entries when a new native dependency needs one.
+allowBuilds:
+  '@astrojs/compiler-rs': true
+  '@libsql/client': true
+  '@parcel/watcher': true
+  '@resvg/resvg-js': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  libsql: true
+  satteri: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true
+
+# Transitive pins for packages whose advisories are fixed upstream.
+overrides:
+  path-to-regexp@6: ^6.3.0
+  sharp: ^0.35.4
+
+# Advisories with no upstream fix in build-time tooling; reviewed on dependency upgrades
+# (see the CI guide, "Audit exceptions").
+auditConfig:
+  ignoreGhsas:
+    - GHSA-jmr9-qjv8-65gv
+    - GHSA-7pqw-9j4j-h8q3

@@ -35,9 +35,9 @@ and migrates `.data/e2e.db` before the server starts (Playwright launches the we
 
 `pnpm audit --audit-level=high` fails the `quality` job on new high or critical advisories.
 Transitive advisories with no upstream fix (currently `extract-zip` inside the Netlify adapter's
-development tooling, which never runs in production) are listed in `pnpm.auditConfig.ignoreGhsas`
-in `package.json`. Patchable transitive packages are pinned through `pnpm.overrides`. Review both
-lists when upgrading dependencies.
+development tooling, which never runs in production) are listed under `auditConfig.ignoreGhsas`
+in `pnpm-workspace.yaml`. Patchable transitive packages are pinned through `overrides` in the same
+file. Review both lists when upgrading dependencies.
 
 ## Dependency updates
 
@@ -51,11 +51,11 @@ Two dependencies are held back on purpose: TypeScript stays on the 6.x line (`~6
 the Node 24 runtime pinned in `engines` and `.nvmrc`. Both are listed under `ignore`.
 
 Newly published versions wait three days before Dependabot proposes them (`cooldown`). Dependabot
-passes the same gate to pnpm while it rewrites the lockfile, and pnpm 10 applies it to every
-package it re-resolves, including ones already pinned in the lockfile. An update therefore fails
-with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` while any package in `pnpm-lock.yaml` is younger than
-three days, which happens after a manual `pnpm install` picked up fresh versions. The next run
-succeeds once those packages have aged.
+passes the same gate to pnpm while it rewrites the lockfile; pnpm 12 applies it only to the
+packages being updated and keeps the versions already pinned in `pnpm-lock.yaml`. (pnpm 10 and 11
+re-checked every lockfile entry, which made updates fail whenever any package was younger than
+three days.) Locally, pnpm waits one day before resolving a newly published version
+(`minimumReleaseAge`); `pnpm install` from the committed lockfile is unaffected.
 
 ## Releases with Changesets
 

@@ -46,7 +46,7 @@ which is built from this exact code.
 
 ## Quick start
 
-Requires **Node 24** and **pnpm 10** (`corepack enable`).
+Requires **Node 24** and **pnpm 12** (`corepack enable`).
 
 ```bash
 git clone https://github.com/empeeryal/astro-framework-v2.git my-site
