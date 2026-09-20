@@ -79,37 +79,37 @@ command can stay `astro build`. See the [deploy guides](https://stratastack.dev/
 
 ## Environment variables
 
-| Variable                                           | Required   | Purpose                                                                                |
-| -------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                     | yes        | `file:./.data/local.db` locally, `libsql://…` in production                            |
-| `DATABASE_AUTH_TOKEN`                              | production | Turso token                                                                            |
-| `BETTER_AUTH_SECRET`                               | yes        | ≥ 32 random bytes (`openssl rand -base64 32`)                                          |
-| `BETTER_AUTH_URL`                                  | yes        | Public origin as a full URL, e.g. `https://example.com`                                |
-| `SITE_URL`                                         | no         | Canonical origin; defaults to the Vercel/Netlify production URL, then `siteConfig.url` |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`        | no         | Enables GitHub sign-in                                                                 |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                                                 |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links, verification, password resets, contact notifications                      |
-| `ADMIN_EMAILS`                                     | no         | Addresses that get the `admin` role on sign-up (or `pnpm admin:promote`)               |
-| `HEALTH_TOKEN`                                     | no         | Bearer token that unlocks the detailed `/api/health` response for monitors             |
-| `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                           |
+| Variable                                           | Required   | Purpose                                                                                      |
+| -------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                     | yes        | `file:./.data/local.db` locally, `libsql://…` in production (`TURSO_DATABASE_URL` works too) |
+| `DATABASE_AUTH_TOKEN`                              | production | Turso token (`TURSO_AUTH_TOKEN` works too)                                                   |
+| `BETTER_AUTH_SECRET`                               | yes        | ≥ 32 random bytes (`openssl rand -base64 32`)                                                |
+| `BETTER_AUTH_URL`                                  | yes        | Public origin as a full URL, e.g. `https://example.com`                                      |
+| `SITE_URL`                                         | no         | Canonical origin; defaults to the Vercel/Netlify production URL, then `siteConfig.url`       |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`        | no         | Enables GitHub sign-in                                                                       |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                                                       |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links, verification, password resets, contact notifications                            |
+| `ADMIN_EMAILS`                                     | no         | Addresses that get the `admin` role on sign-up (or `pnpm admin:promote`)                     |
+| `HEALTH_TOKEN`                                     | no         | Bearer token that unlocks the detailed `/api/health` response for monitors                   |
+| `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                                 |
 
 The full list with platform notes lives in [`.env.example`](.env.example) and the
 [environment variables guide](https://stratastack.dev/docs/guides/environment-variables).
 
 ## Scripts
 
-| Script                                                                   | Description                                         |
-| ------------------------------------------------------------------------ | --------------------------------------------------- |
-| `pnpm dev`                                                               | Development server                                  |
-| `pnpm build` / `pnpm build:<target>`                                     | Production build (target auto-detected or explicit) |
-| `pnpm preview` / `pnpm start`                                            | Preview the build / run the Node server             |
-| `pnpm check` · `pnpm lint` · `pnpm format`                               | Type-check, lint, format                            |
-| `pnpm test` · `pnpm test:e2e` · `pnpm test:a11y`                         | Vitest, Playwright, axe checks                      |
-| `pnpm lhci`                                                              | Lighthouse budgets                                  |
-| `pnpm db:migrate` · `db:generate` · `db:studio` · `db:seed` · `db:reset` | Database                                            |
-| `pnpm db:prune` · `pnpm admin:promote <email>`                           | Retention job, grant the admin role                 |
-| `pnpm auth:generate`                                                     | Regenerate the Better Auth schema                   |
-| `pnpm changeset`                                                         | Record a change for the changelog                   |
+| Script                                                                   | Description                                          |
+| ------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `pnpm dev`                                                               | Development server                                   |
+| `pnpm build` / `pnpm build:<target>`                                     | Production build (target auto-detected or explicit)  |
+| `pnpm preview` / `pnpm start`                                            | Preview the build / run the Node server              |
+| `pnpm check` · `pnpm lint` · `pnpm format`                               | Type-check, lint, format                             |
+| `pnpm test` · `pnpm test:e2e` · `pnpm test:a11y`                         | Vitest, Playwright, axe checks                       |
+| `pnpm lhci`                                                              | Lighthouse budgets                                   |
+| `pnpm db:migrate` · `db:generate` · `db:studio` · `db:seed` · `db:reset` | Database (production: the Migrate database workflow) |
+| `pnpm db:prune` · `pnpm admin:promote <email>`                           | Retention job, grant the admin role                  |
+| `pnpm auth:generate`                                                     | Regenerate the Better Auth schema                    |
+| `pnpm changeset`                                                         | Record a change for the changelog                    |
 
 ## Project structure
 

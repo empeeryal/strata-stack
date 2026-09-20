@@ -6,6 +6,7 @@ import {
   getAdminEmails,
   getContactMaxAgeDays,
   getContactRetentionDays,
+  getDatabaseConfig,
 } from './env';
 
 const STRONG_SECRET = 'x'.repeat(40);
@@ -52,6 +53,29 @@ describe('checkProductionConfig', () => {
         CONTACT_TO_EMAIL: 'owner@example.com',
       }),
     ).toEqual([]);
+  });
+});
+
+describe('getDatabaseConfig', () => {
+  it('defaults to the local file database', () => {
+    expect(getDatabaseConfig({})).toEqual({ url: 'file:./.data/local.db', authToken: undefined });
+  });
+
+  it('accepts the names set by the Turso integration on Vercel', () => {
+    expect(
+      getDatabaseConfig({ TURSO_DATABASE_URL: 'libsql://db.turso.io', TURSO_AUTH_TOKEN: 'tok' }),
+    ).toEqual({ url: 'libsql://db.turso.io', authToken: 'tok' });
+  });
+
+  it('prefers the template names and ignores empty values', () => {
+    expect(
+      getDatabaseConfig({
+        DATABASE_URL: 'libsql://a.turso.io',
+        TURSO_DATABASE_URL: 'libsql://b.turso.io',
+        DATABASE_AUTH_TOKEN: '',
+        TURSO_AUTH_TOKEN: 'tok',
+      }),
+    ).toEqual({ url: 'libsql://a.turso.io', authToken: 'tok' });
   });
 });
 
