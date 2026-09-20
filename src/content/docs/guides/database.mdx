@@ -48,9 +48,15 @@ and `pnpm db:reset` deletes the local file and re-applies every migration. The
    ```
 
 2. Set `DATABASE_URL=libsql://<db>-<org>.turso.io` and `DATABASE_AUTH_TOKEN=<token>` in your
-   platform's environment variables.
+   platform's environment variables. The names Turso's Vercel integration sets,
+   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, work too (`getDatabaseConfig()` in
+   `src/lib/env.ts` reads both).
 
-3. Apply migrations from your machine or a CI step with the production variables:
+3. Add the same two values as `DATABASE_URL` and `DATABASE_AUTH_TOKEN` secrets in the GitHub
+   repository (Settings → Secrets and variables → Actions), then run the **Migrate database**
+   workflow from the Actions tab. It runs `pnpm db:migrate` against that database, and it runs
+   again automatically whenever a merged change adds a file under `drizzle/`. From your machine
+   the equivalent is:
 
    ```bash
    DATABASE_URL=libsql://… DATABASE_AUTH_TOKEN=… pnpm db:migrate

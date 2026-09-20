@@ -16,12 +16,17 @@ Vercel is the primary deployment target for this repository.
 
 2. Add the environment variables from `.env.example` in Project → Settings → Environment
    Variables. At minimum: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `BETTER_AUTH_SECRET` and
-   `BETTER_AUTH_URL` (a full URL such as `https://my-site.vercel.app`). `SITE_URL` is optional:
-   when it is unset the build uses the production URL Vercel injects
-   (`VERCEL_PROJECT_PRODUCTION_URL`). None of these variables are needed to _build_, so you
-   can also add them after the first deployment and redeploy.
+   `BETTER_AUTH_URL` (a full URL such as `https://my-site.vercel.app`). If you add Turso through
+   the Vercel Marketplace it sets `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` instead, which the
+   template reads as well. `SITE_URL` is optional: when it is unset the build uses the production
+   URL Vercel injects (`VERCEL_PROJECT_PRODUCTION_URL`). None of these variables are needed to
+   _build_, so you can also add them after the first deployment and redeploy.
 
-3. Deploy. Every pull request gets a preview deployment; preview hostnames are trusted by Better
+3. Create the tables: add `DATABASE_URL` and `DATABASE_AUTH_TOKEN` as GitHub Actions secrets and
+   run the **Migrate database** workflow (see the [database guide](/docs/guides/database#production-with-turso)).
+   Until it has run, sign-up and the contact form fail because the tables do not exist.
+
+4. Deploy. Every pull request gets a preview deployment; preview hostnames are trusted by Better
    Auth automatically through `VERCEL_URL` and `VERCEL_BRANCH_URL`.
 
 </Steps>
@@ -48,7 +53,7 @@ vercel({ imageService: true, staticHeaders: true });
 - Turn on **ISR** for on-demand pages with `vercel({ isr: { expiration: 60 } })` if you add
   server-rendered pages that can be cached.
 - Store the database with the Turso integration from the Vercel Marketplace, which injects
-  `DATABASE_URL` and `DATABASE_AUTH_TOKEN` for you.
+  `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`; no renaming is needed.
 
 ## Custom domains
 

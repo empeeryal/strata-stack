@@ -1,0 +1,39 @@
+name: Migrate database
+
+# Applies the SQL migrations in ./drizzle to the production database. Runs on demand
+# (Actions -> Migrate database -> Run workflow) and automatically when a merged change adds
+# or edits a migration. Needs the DATABASE_URL and DATABASE_AUTH_TOKEN secrets.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['drizzle/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate-${{ github.ref }}
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Check secrets
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set. Add it (and DATABASE_AUTH_TOKEN) as a repository or production environment secret."
+            exit 1
+          fi
+          case "$DATABASE_URL" in
+            file:*) echo "::error::DATABASE_URL points at a local file; the workflow expects a libsql:// URL."; exit 1 ;;
+          esac
+      - run: pnpm db:migrate

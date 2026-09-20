@@ -6,7 +6,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-const url = process.env.DATABASE_URL ?? 'file:./.data/local.db';
+import { getDatabaseConfig } from '../src/lib/env.ts';
+
+const { url } = getDatabaseConfig();
 if (!url.startsWith('file:')) {
   console.error(`Refusing to reset a non-local database (${url}).`);
   process.exit(1);

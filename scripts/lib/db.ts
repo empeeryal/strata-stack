@@ -1,8 +1,9 @@
 import { createClient } from '@libsql/client';
 
-/** libSQL client for DATABASE_URL (default: the local file database), with the Turso token when set. */
+import { getDatabaseConfig } from '../../src/lib/env.ts';
+
+/** libSQL client for the configured database (default: the local file), with the auth token when set. */
 export function openDatabase() {
-  const url = process.env.DATABASE_URL ?? 'file:./.data/local.db';
-  const authToken = process.env.DATABASE_AUTH_TOKEN;
+  const { url, authToken } = getDatabaseConfig();
   return createClient(authToken ? { url, authToken } : { url });
 }

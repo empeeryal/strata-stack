@@ -1,19 +1,20 @@
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 
+import { getDatabaseConfig } from '../lib/env';
+
 import * as schema from './schema/index';
 
 /**
  * libSQL connection shared by Better Auth, actions and API routes.
  *
  * - Development: `file:./.data/local.db` (created by `pnpm db:migrate`).
- * - Production: `libsql://<db>.turso.io` + DATABASE_AUTH_TOKEN.
+ * - Production: `libsql://<db>.turso.io` + DATABASE_AUTH_TOKEN (see `getDatabaseConfig`).
  *
  * `@libsql/client` resolves to its HTTP build on Cloudflare Workers, Netlify and edge
  * runtimes through package export conditions, so this file works unchanged everywhere.
  */
-const url = process.env.DATABASE_URL ?? 'file:./.data/local.db';
-const authToken = process.env.DATABASE_AUTH_TOKEN;
+const { url, authToken } = getDatabaseConfig();
 
 const client = createClient(authToken ? { url, authToken } : { url });
 

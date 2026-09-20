@@ -34,6 +34,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/scripts/migrate.ts ./scripts/migrate.ts
 COPY --from=build /app/scripts/lib/db.ts ./scripts/lib/db.ts
+COPY --from=build /app/src/lib/env.ts ./src/lib/env.ts
 RUN mkdir -p /app/.data && chown -R node:node /app
 USER node
 EXPOSE 4321

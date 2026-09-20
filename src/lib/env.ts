@@ -17,6 +17,26 @@ export function getEnv(name: string): string | undefined {
 
 export const isProduction = process.env.NODE_ENV === 'production';
 
+export interface DatabaseConfig {
+  url: string;
+  authToken: string | undefined;
+}
+
+/**
+ * Database connection settings. `DATABASE_URL` and `DATABASE_AUTH_TOKEN` are the template's
+ * names; `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, which Turso's Vercel integration sets,
+ * are accepted as well. Defaults to the local file database.
+ */
+export function getDatabaseConfig(
+  env: Record<string, string | undefined> = process.env,
+): DatabaseConfig {
+  const pick = (...names: string[]) => names.map((name) => env[name]).find((value) => value);
+  return {
+    url: pick('DATABASE_URL', 'TURSO_DATABASE_URL') ?? 'file:./.data/local.db',
+    authToken: pick('DATABASE_AUTH_TOKEN', 'TURSO_AUTH_TOKEN'),
+  };
+}
+
 const stripSlash = (url: string) => url.replace(/\/+$/, '');
 
 /** Public origin visitors use, e.g. https://example.com. */
@@ -122,7 +142,7 @@ export function checkProductionConfig(
     });
   }
 
-  if (!env.DATABASE_URL || env.DATABASE_URL.startsWith('file:')) {
+  if (getDatabaseConfig(env).url.startsWith('file:')) {
     issues.push({
       level: 'warn',
       message:
