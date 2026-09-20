@@ -5,7 +5,7 @@
   "type": "module",
   "description": "An Astro 7 website starter: React 19, Motion, Tailwind 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, CSP, tests. Deploys to Vercel, Cloudflare, Netlify and Node.",
   "license": "MIT",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@12.4.2",
   "engines": {
     "node": "24.x"
   },
@@ -117,31 +117,6 @@
     "typescript-eslint": "^8.70.0",
     "vitest": "^5.0.1",
     "wrangler": "^4.134.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@astrojs/compiler-rs",
-      "@libsql/client",
-      "@parcel/watcher",
-      "@resvg/resvg-js",
-      "@tailwindcss/oxide",
-      "esbuild",
-      "libsql",
-      "satteri",
-      "sharp",
-      "unrs-resolver",
-      "workerd"
-    ],
-    "overrides": {
-      "path-to-regexp@6": "^6.3.0",
-      "sharp": "^0.35.4"
-    },
-    "auditConfig": {
-      "ignoreGhsas": [
-        "GHSA-jmr9-qjv8-65gv",
-        "GHSA-7pqw-9j4j-h8q3"
-      ]
-    }
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,mts,tsx,astro}": [

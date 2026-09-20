@@ -5,7 +5,7 @@ Thanks for helping improve the template. This guide covers the workflow; the
 
 ## Prerequisites
 
-- Node.js 24 (`.nvmrc`) and pnpm 10 (`corepack enable`)
+- Node.js 24 (`.nvmrc`) and pnpm 12 (`corepack enable`)
 - Git with the Husky pre-commit hook installed automatically by `pnpm install`
 
 ## Setup

@@ -10,8 +10,9 @@ sidebar:
 
 - **Node.js 24.x.** The repository pins the version in `.nvmrc`, and the `engines` field in
   `package.json` tells Vercel and Netlify which runtime to use.
-- **pnpm 10.** Enabled through the `packageManager` field; run `corepack enable` if pnpm is not
-  installed.
+- **pnpm 12.** Pinned through the `packageManager` field; run `corepack enable` if pnpm is not
+  installed. pnpm's own settings (allowed build scripts, overrides, audit exceptions) live in
+  `pnpm-workspace.yaml`.
 - **Git.** Husky installs a pre-commit hook that runs lint-staged.
 
 ## First run

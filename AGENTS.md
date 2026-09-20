@@ -6,7 +6,7 @@ before making changes; the full documentation lives in `src/content/docs`.
 ## Commands
 
 ```bash
-pnpm install              # Node 24 + pnpm 10 (corepack enable)
+pnpm install              # Node 24 + pnpm 12 (corepack enable)
 pnpm dev                  # dev server (Node)
 pnpm check                # astro check – run before finishing any change
 pnpm lint && pnpm format  # ESLint 10 flat config, Prettier with astro + tailwind plugins
@@ -57,6 +57,8 @@ netlify`). Application code must not branch on the platform.
 - **Cloudflare:** on-demand routes run in workerd. Keep Node-only packages out of API routes,
   actions and middleware; build-time endpoints may use them (`prerenderEnvironment: 'node'`).
 - **TypeScript** stays on 6.x until `@astrojs/check` and `typescript-eslint` support 7.
+- **pnpm settings** (`allowBuilds`, `overrides`, `auditConfig`) live in `pnpm-workspace.yaml`;
+  pnpm 12 ignores a `pnpm` field in `package.json`.
 - **Semantic tokens** (`bg-card`, `text-muted-foreground`) instead of raw palette classes.
 - **Tests:** keep `tests/e2e` green, including the CSP and axe specs. Use `waitForIslands(page)`
   before interacting with React islands.
