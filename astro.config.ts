@@ -39,6 +39,9 @@ const SITEMAP_EXCLUDE = [
 export default defineConfig({
   site,
   output: 'static',
+  redirects: {
+    '/blog/introducing-astro-framework': '/blog/introducing-strata',
+  },
   build: {
     inlineStylesheets: 'auto',
   },

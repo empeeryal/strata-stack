@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "astro-framework-v2",
+  "name": "strata-stack",
   // Node.js compatibility is required by Better Auth (AsyncLocalStorage) and lets
   // `process.env` read Worker variables/secrets at runtime.
   "compatibility_date": "2025-09-01",

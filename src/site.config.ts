@@ -5,16 +5,16 @@
  */
 export const siteConfig = {
   /** Public product name shown in the header, titles and Open Graph cards. */
-  name: 'Astro Framework',
+  name: 'Strata',
   /** Short name used in compact UI such as the web manifest. */
-  shortName: 'Framework',
+  shortName: 'Strata',
   /** One-line value proposition used on the home page and as the default OG title. */
-  tagline: 'An Astro 7 starter with auth, content, search and security built in.',
+  tagline: 'The layered Astro stack: auth, content, search and security, already in place.',
   /** Default meta description (max ~160 characters). */
   description:
-    'An Astro 7 template with React 19, Motion, Tailwind CSS 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, a strict CSP and tests. Deploys to Vercel, Cloudflare, Netlify or Node.',
+    'Strata is an Astro 7 template with React 19, Motion, Tailwind CSS 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, a strict CSP and tests. Deploys to Vercel, Cloudflare, Netlify or Node.',
   /** Canonical production URL. Override at build time with SITE_URL. */
-  url: 'https://astro-framework-v2.vercel.app',
+  url: 'https://stratastack.dev',
   /** BCP 47 language tag used for <html lang> and Open Graph locale. */
   locale: 'en',
   ogLocale: 'en_US',
@@ -25,13 +25,13 @@ export const siteConfig = {
   },
   /** Source repository, used for "Edit this page" links and the footer. */
   repo: {
-    url: 'https://github.com/empeeryal/astro-framework-v2',
+    url: 'https://github.com/empeeryal/strata-stack',
     branch: 'main',
     /** Path prefix for "Edit this page" links. */
     editPath: 'edit',
   },
   social: {
-    github: 'https://github.com/empeeryal/astro-framework-v2',
+    github: 'https://github.com/empeeryal/strata-stack',
   },
   /** Primary navigation (desktop header + mobile drawer). */
   nav: [
