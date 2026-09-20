@@ -1,0 +1,107 @@
+---
+title: 'Dependabot, the three-day cooldown, and why the template moved to pnpm 12'
+description: 'A Dependabot job that failed on every run turned out to be a supply-chain safeguard colliding with how pnpm 10 re-resolves a lockfile. Here is the diagnosis and the fix.'
+pubDate: 2026-09-20
+author: empeeryal
+tags: [dependabot, pnpm, ci]
+---
+
+The template's Dependabot job for npm failed on its first two runs, both with the same
+unhelpful summary: `@types/node`, `unknown_error`, no details. Working out why took an afternoon
+and ended with a package-manager upgrade. The chain of causes is worth writing down, because
+every pnpm project using Dependabot is exposed to it.
+
+## The symptom
+
+Dependabot runs each update inside a checkout of the repository and asks pnpm to rewrite the
+lockfile. The log showed the command and the error:
+
+```text
+pnpm update @types/node@26.6.1 --lockfile-only --no-save -r --config.minimumReleaseAge=4320
+ERR_PNPM_NO_MATURE_MATCHING_VERSION  Version 1.2.134 (released 36 hours ago) of
+@iconify-json/lucide does not meet the minimumReleaseAge constraint
+```
+
+Two things stand out. Dependabot was updating `@types/node`, but pnpm complained about
+`@iconify-json/lucide`, a package nobody asked it to touch. And the flag `minimumReleaseAge=4320`
+(minutes, so three days) appeared although the repository's `dependabot.yml` set no such thing.
+
+## Where the three days come from
+
+Dependabot has a `cooldown` option: a version must be at least this old before it is proposed,
+which keeps a freshly compromised release out of your pull requests until the ecosystem has had
+time to notice. What the log revealed is that Dependabot now applies a **default cooldown of
+three days** to npm even when none is configured, and passes the same value to pnpm as
+`minimumReleaseAge` while the lockfile is updated.
+
+The cooldown itself is a good idea. The template now writes it into `dependabot.yml` explicitly,
+so the behaviour is visible in the repository rather than implied.
+
+## Why pnpm 10 turned it into a failure
+
+`pnpm update <package> --lockfile-only` in pnpm 10 re-resolves the whole dependency graph, not
+just the package being updated. With `minimumReleaseAge` set, every package it resolves is
+checked against the gate, including versions already pinned in `pnpm-lock.yaml`. The lockfile
+held `@iconify-json/lucide` 1.2.134, published 36 hours earlier, and its range `^1.2.134` had no
+older match, so pnpm refused, and the update died.
+
+Reproducing this locally made the scope clear. Any package in the lockfile younger than three
+days breaks every Dependabot update, and platform binaries such as `@cloudflare/workerd-*`
+publish often enough that a fresh `pnpm install` regularly leaves one behind. pnpm 10.34 and
+pnpm 11 behave the same way.
+
+## Two fixes, one small and one real
+
+The small fix landed first. `@types/node` follows the Node version the template runs on, pinned
+to 24 in `engines` and `.nvmrc`, so a bump to 26 was never going to be merged. Ignoring
+`@types/node` 25 and above in `dependabot.yml` removed the only update Dependabot was actually
+attempting, and the next run passed.
+
+The real fix is pnpm 12. Given the same command against the same lockfile, pnpm 12 keeps the
+lockfile's pinned versions and applies the release-age gate only to the packages being
+updated. The update that failed on pnpm 10 and 11 completes in under a second on pnpm 12.
+
+## What the upgrade involved
+
+<Steps>
+
+1. `packageManager` in `package.json` now pins `pnpm@12.4.2`. Corepack, the CI setup action and
+   the Dockerfile all read the version from that field, so no workflow or image changed.
+
+2. pnpm 11 stopped reading the `pnpm` field in `package.json`. The settings moved to
+   `pnpm-workspace.yaml`: the list of dependencies allowed to run install scripts
+   (`onlyBuiltDependencies` became `allowBuilds`), the transitive `overrides`, and the audit
+   exceptions.
+
+   ```yaml title="pnpm-workspace.yaml"
+   allowBuilds:
+     '@astrojs/compiler-rs': true
+     sharp: true
+     # …
+   overrides:
+     sharp: ^0.35.4
+   auditConfig:
+     ignoreGhsas:
+       - GHSA-jmr9-qjv8-65gv
+   ```
+
+3. The lockfile was regenerated. Its version stays `9.0` and no dependency versions changed;
+   pnpm 12 only records its own binary under `packageManagerDependencies`. pnpm 10 can still
+   install from it in frozen mode, which matters for a hosting platform that ignores
+   `packageManager`. pnpm 9 cannot.
+
+</Steps>
+
+The upgrade shipped as release 0.5.0. CI, the Vercel preview and the full Playwright suite
+passed on the first run.
+
+## What to take from it
+
+- If Dependabot's npm job fails with `unknown_error`, open the job log. The pnpm error is there,
+  a few hundred lines above the summary table.
+- A cooldown you did not configure is still a cooldown. Make it explicit so the next person does
+  not have to rediscover it.
+- Ignore major versions you will never merge. `@types/node` should track your runtime, not the
+  newest Node.
+- On pnpm 10 or 11 with Dependabot, expect updates to fail for up to three days after any manual
+  install that pulled in fresh versions. On pnpm 12 the problem is gone.

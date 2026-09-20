@@ -1,0 +1,103 @@
+---
+title: 'Why the admin area re-reads the session on every request'
+description: 'Session cookie caches are great for showing a name in the header and dangerous for deciding access. How the admin area, its actions and the account export bypass the cache.'
+pubDate: 2026-09-20
+author: empeeryal
+tags: [auth, admin, security]
+---
+
+Better Auth can cache a session in a signed cookie so that most requests never touch the
+database. The template turns that on with a five-minute lifetime, and for almost every page it
+is the right trade: the header shows your name, the dashboard greets you, and no query runs.
+The problem appears the moment the cache is used to decide something.
+
+## The five-minute hole
+
+Suppose an administrator removes another person's admin role, or bans an account, or clicks
+**Sign out everywhere**. The database changes immediately. The affected browser, however, still
+holds a signed cookie that says the session is valid and the role is `admin`, and it stays
+valid until the cache expires. For up to five minutes the person keeps working in `/admin` as if
+nothing had happened.
+
+That is acceptable for a greeting. It is not acceptable for authorization.
+
+## One function, two callers
+
+`getAuthoritativeSession()` in `src/lib/session.ts` asks Better Auth for the session with the
+cookie cache disabled, which costs one database read:
+
+```ts
+export async function getAuthoritativeSession(headers: Headers) {
+  const result = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
+  return { user: result?.user ?? null, session: result?.session ?? null };
+}
+```
+
+Two places call it, and together they cover every way into the admin area:
+
+- **Pages.** `guardAdminPage()` runs at the top of every `src/pages/admin/*` route. It redirects
+  anonymous visitors to the login page and answers signed-in users without the role with a 404,
+  so the area's existence is not revealed to people who should not see it. It also refreshes
+  `Astro.locals` so the rest of the render uses the fresh values.
+- **Actions.** Every handler under `server.admin` starts with `await requireAdmin(context)`.
+  Pages are how people reach the actions, but actions are what change data, so the check is
+  repeated there rather than trusted from the page.
+
+The account export at `/api/account/export` does the same, because handing someone a copy of
+their data is also a decision. The rest of the site keeps using the cache.
+
+## Guarding in the page, not the middleware
+
+It is tempting to protect `/admin` with a pathname check in `src/middleware.ts`. The template
+does not, and the reason is in Astro's own documentation: the pathname a middleware sees is not
+guaranteed to match the route Astro resolves. Encodings, duplicate slashes and a configured
+`base` can all differ. A check inside the page runs after routing has happened, so there is
+nothing to bypass.
+
+## What the admin plugin adds
+
+User operations (roles, bans, session revocation, deletion) go through Better Auth's admin
+plugin, which checks the caller's role against the database again on its side. The template's
+check and the plugin's check are independent, and a bug in one does not open the other.
+
+## The last administrator
+
+A site with an admin area but no administrator is stuck: recovery means running
+`pnpm admin:promote` against the production database. The template refuses to get there:
+
+- the actions will not demote, ban or delete the last active administrator;
+- `deleteUser.beforeDelete` in `src/lib/auth.ts` stops that person deleting their own account
+  from the dashboard;
+- `pnpm admin:promote --revoke` refuses as well, unless you pass `--force`, which is the
+  break-glass path.
+
+"Active" means the role includes `admin` and the account is not banned, so a banned
+administrator does not count as cover.
+
+## Writing down what happened
+
+Every administrative action appends to `audit_log`: who, what, which target, and a small JSON
+detail such as the new status. Entries never contain message bodies or secrets. The guarantee
+depends on what changed:
+
+- **Message status changes and deletions** write the row and the audit entry in one database
+  transaction. Neither exists without the other.
+- **Everything else** (resending a notification, user operations, exports, account deletions)
+  involves email or Better Auth and cannot share a transaction. Those entries are best-effort:
+  the change stands even if the log write fails, and the failure is reported on the server log
+  as `[audit] could not record entry`.
+
+The [admin guide](/docs/guides/admin#audit-log) says the same thing, because a privacy policy
+that promises a complete audit trail should be able to point at the code that keeps it.
+
+<Callout type="tip" title="Reads never write">
+  Opening a message marks it read, but not while the page renders. A small script posts the same
+  `setMessageStatus` action a person would trigger with the button, and inbox links disable Astro's
+  prefetching. A crawler, a link preview or a hovering cursor fetches HTML and changes nothing.
+</Callout>
+
+## Using the pattern in your own routes
+
+If you add a privileged page or endpoint, call `getAuthoritativeSession()` instead of reading
+`Astro.locals.user`, and keep the check inside the route. One database read per privileged
+request is a small price for a demotion that takes effect on the very next click.
