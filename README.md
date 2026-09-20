@@ -2,31 +2,32 @@
   <img src="public/icon-192.png" width="72" height="72" alt="" />
 </p>
 
-<h1 align="center">Astro Framework</h1>
+<h1 align="center">Strata</h1>
 
 <p align="center">
-  An <a href="https://astro.build">Astro 7</a> starter with auth, content, search and security built in.<br />
+  The layered <a href="https://astro.build">Astro 7</a> stack: auth, content, search and security, already in place.<br />
   Clone it, rename it, deploy it to Vercel, Cloudflare, Netlify or Node.
 </p>
 
 <p align="center">
-  <a href="https://github.com/empeeryal/astro-framework-v2/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/empeeryal/astro-framework-v2/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/empeeryal/strata-stack/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/empeeryal/strata-stack/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="Astro 7.3" src="https://img.shields.io/badge/Astro-7.3-BC52EE?logo=astro&logoColor=white" />
   <img alt="Node 24" src="https://img.shields.io/badge/Node-24.x-5FA04E?logo=node.js&logoColor=white" />
   <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-blue" />
 </p>
 
 <p align="center">
-  <a href="https://astro-framework-v2.vercel.app">Website</a> ·
-  <a href="https://astro-framework-v2.vercel.app/docs">Documentation</a> ·
-  <a href="https://astro-framework-v2.vercel.app/blog">Blog</a> ·
-  <a href="https://astro-framework-v2.vercel.app/changelog">Changelog</a>
+  <a href="https://stratastack.dev">Website</a> ·
+  <a href="https://stratastack.dev/docs">Documentation</a> ·
+  <a href="https://stratastack.dev/blog">Blog</a> ·
+  <a href="https://stratastack.dev/changelog">Changelog</a>
 </p>
 
 ---
 
-This repository is a complete website skeleton **and** the website that documents it. Every
-feature listed below runs on [astro-framework-v2.vercel.app](https://astro-framework-v2.vercel.app),
+Strata is a complete website skeleton **and** the website that documents it. The name spells
+the stack: **S**QLite, **T**ailwind, **R**eact, **A**stro, **T**urso and **A**uth, the layers every
+production site needs. Every feature listed below runs on [stratastack.dev](https://stratastack.dev),
 which is built from this exact code.
 
 ## Features
@@ -49,7 +50,7 @@ which is built from this exact code.
 Requires **Node 24** and **pnpm 12** (`corepack enable`).
 
 ```bash
-git clone https://github.com/empeeryal/astro-framework-v2.git my-site
+git clone https://github.com/empeeryal/strata-stack.git my-site
 cd my-site
 pnpm install
 cp .env.example .env     # defaults work locally with no external services
@@ -62,9 +63,9 @@ Optional: `pnpm db:seed` creates `demo@example.com` and `admin@example.com` (pas
 
 ## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fempeeryal%2Fastro-framework-v2&env=BETTER_AUTH_SECRET,BETTER_AUTH_URL,DATABASE_URL,DATABASE_AUTH_TOKEN,SITE_URL)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/empeeryal/astro-framework-v2)
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/empeeryal/astro-framework-v2)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fempeeryal%2Fstrata-stack&env=BETTER_AUTH_SECRET,BETTER_AUTH_URL,DATABASE_URL,DATABASE_AUTH_TOKEN,SITE_URL)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/empeeryal/strata-stack)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/empeeryal/strata-stack)
 
 | Target             | Command                         | Notes                                                               |
 | ------------------ | ------------------------------- | ------------------------------------------------------------------- |
@@ -74,7 +75,7 @@ Optional: `pnpm db:seed` creates `demo@example.com` and `admin@example.com` (pas
 | Node / Docker      | `pnpm build:node && pnpm start` | Multi-stage `Dockerfile` with health check                          |
 
 `DEPLOY_TARGET` is inferred from `VERCEL`, `NETLIFY` and `WORKERS_CI`, so the platform build
-command can stay `astro build`. See the [deploy guides](https://astro-framework-v2.vercel.app/docs/deploy/choosing-a-target).
+command can stay `astro build`. See the [deploy guides](https://stratastack.dev/docs/deploy/choosing-a-target).
 
 ## Environment variables
 
@@ -93,7 +94,7 @@ command can stay `astro build`. See the [deploy guides](https://astro-framework-
 | `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                           |
 
 The full list with platform notes lives in [`.env.example`](.env.example) and the
-[environment variables guide](https://astro-framework-v2.vercel.app/docs/guides/environment-variables).
+[environment variables guide](https://stratastack.dev/docs/guides/environment-variables).
 
 ## Scripts
 
@@ -130,12 +131,12 @@ src/
 tests/                  unit (Vitest) and e2e (Playwright)
 ```
 
-A full tour is in the [project structure docs](https://astro-framework-v2.vercel.app/docs/getting-started/project-structure).
+A full tour is in the [project structure docs](https://stratastack.dev/docs/getting-started/project-structure).
 
 ## Renaming for a new project
 
 Start with `src/site.config.ts` (name, tagline, URL, author, repository, navigation), then work
-through the [rename checklist](https://astro-framework-v2.vercel.app/docs/getting-started/installation#rename-checklist)
+through the [rename checklist](https://stratastack.dev/docs/getting-started/installation#rename-checklist)
 for the icons, legal pages and changelog.
 
 ## Contributing

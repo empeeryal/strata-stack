@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping improve the template. This guide covers the workflow; the
-[documentation](https://astro-framework-v2.vercel.app/docs) explains the architecture.
+[documentation](https://stratastack.dev/docs) explains the architecture.
 
 ## Prerequisites
 
@@ -48,7 +48,7 @@ Node). A change must build on all of them.
 ## Changesets
 
 Run `pnpm changeset` for user-facing changes and commit the generated file. Releases are cut by
-the release workflow; see the [changelog process](https://astro-framework-v2.vercel.app/docs/reference/changelog).
+the release workflow; see the [changelog process](https://stratastack.dev/docs/reference/changelog).
 
 ## Commit messages
 

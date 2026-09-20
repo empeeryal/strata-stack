@@ -17,7 +17,7 @@ env:
   BETTER_AUTH_SECRET: ci-only-secret-never-use-in-production-0123456789
   BETTER_AUTH_URL: http://127.0.0.1:4321
   DATABASE_URL: file:./.data/ci.db
-  SITE_URL: https://astro-framework-v2.vercel.app
+  SITE_URL: https://stratastack.dev
   HUSKY: 0
 
 jobs:

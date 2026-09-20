@@ -7,7 +7,7 @@ Only the latest release on the `main` branch receives security fixes.
 ## Reporting a vulnerability
 
 Please do not open a public issue. Report vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/empeeryal/astro-framework-v2/security/advisories/new).
+[GitHub Security Advisories](https://github.com/empeeryal/strata-stack/security/advisories/new).
 Reports are acknowledged as soon as possible, and confirmed issues are fixed in the next release.
 
 The same contact is published at `/.well-known/security.txt` on deployed sites built from this

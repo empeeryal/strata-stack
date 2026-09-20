@@ -1,6 +1,7 @@
 # Guidance for AI coding agents
 
-This is an Astro 7.3 website template. The site documents the template itself. Read this file
+This is Strata (package `strata-stack`), an Astro 7.3 website template. The site documents
+the template itself. Read this file
 before making changes; the full documentation lives in `src/content/docs`.
 
 ## Commands

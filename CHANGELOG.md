@@ -1,4 +1,4 @@
-# astro-framework-v2
+# strata-stack
 
 ## 0.5.1
 

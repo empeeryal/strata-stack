@@ -6,7 +6,7 @@ DATABASE_AUTH_TOKEN=
 BETTER_AUTH_SECRET=change-me-to-a-random-32-byte-secret
 BETTER_AUTH_URL=http://localhost:4321
 RESEND_API_KEY=
-EMAIL_FROM="Astro Framework <noreply@example.com>"
+EMAIL_FROM="Strata <noreply@example.com>"
 CONTACT_TO_EMAIL=you@example.com
 
 # wrangler.jsonc sets NODE_ENV=production for deployments; override it locally so

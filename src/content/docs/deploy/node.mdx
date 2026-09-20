@@ -28,8 +28,8 @@ build output, the migrations and the production dependencies into a `node:24-sli
 as the unprivileged `node` user, with a health check against `/api/health`.
 
 ```bash
-docker build --build-arg SITE_URL=https://example.com -t astro-framework .
-docker run -p 4321:4321 --env-file .env astro-framework
+docker build --build-arg SITE_URL=https://example.com -t strata-stack .
+docker run -p 4321:4321 --env-file .env strata-stack
 ```
 
 `docker-compose.yml` adds a named volume at `/app/.data` so a `file:` database survives
@@ -40,7 +40,7 @@ Run migrations before starting a new version. The image ships `scripts/migrate.t
 applies the SQL files in `drizzle/` with Drizzle's migrator and needs no dev dependencies:
 
 ```bash
-docker run --rm --env-file .env astro-framework node scripts/migrate.ts
+docker run --rm --env-file .env strata-stack node scripts/migrate.ts
 ```
 
 ## Reverse proxy

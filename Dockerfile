@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage build for the Node standalone target (DEPLOY_TARGET=node).
-#   docker build -t astro-framework .
-#   docker run -p 4321:4321 --env-file .env astro-framework
-#   docker run --rm --env-file .env astro-framework node scripts/migrate.ts   # apply migrations
+#   docker build -t strata-stack .
+#   docker run -p 4321:4321 --env-file .env strata-stack
+#   docker run --rm --env-file .env strata-stack node scripts/migrate.ts   # apply migrations
 
 FROM node:24-slim AS base
 ENV PNPM_HOME=/pnpm
