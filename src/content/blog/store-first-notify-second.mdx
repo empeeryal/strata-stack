@@ -1,0 +1,97 @@
+---
+title: 'Store first, notify second: a contact form that survives a broken mail provider'
+description: 'How the contact form handles bots, floods and email outages: a honeypot, two throttles in one atomic upsert, and a message that is saved before anyone is notified.'
+pubDate: 2026-09-20
+author: empeeryal
+tags: [contact, actions, security]
+---
+
+A contact form looks like the smallest feature on a site. It is also the one that quietly loses
+messages: the email provider rejects a request, the function times out, and the visitor sees a
+success message for a message nobody will ever read. The template's form is built around one
+rule, store the message first and treat everything after that as optional. This post walks
+through what happens on a submission and why each step is there.
+
+## The submission path
+
+`submitContactMessage()` in `src/lib/contact.ts` runs four steps in order:
+
+<Steps>
+
+1. **Honeypot.** The form has a `website` field that people never see. When it arrives filled
+   in, the handler answers with the normal success response and stores nothing. Bots that check
+   for an error message see none, so they have no signal to adapt to.
+
+2. **Throttles.** Two limits apply to every message: five per fifteen minutes per client address
+   and three per hour per email address. Keys are SHA-256 hashes, so the `throttle` table never
+   holds a raw address. Exceeding either limit ends the request with `TOO_MANY_REQUESTS` before
+   anything is written.
+
+3. **Store.** The message is inserted into `contact_message`. This insert is the authoritative
+   success: once it commits, the visitor's message exists whatever happens next.
+
+4. **Notify.** If `CONTACT_TO_EMAIL` is set, the owner notification is sent and its outcome is
+   recorded on the row: `sent`, or `failed` with the attempt count and the error text. If no
+   recipient is configured the row is marked `skipped`.
+
+</Steps>
+
+A failed notification never fails the request. The visitor still sees the success message,
+which is accurate, and the failure is visible to administrators instead, in the inbox and on
+the dashboard's list of failed notifications.
+
+## Why the throttle is one SQL statement
+
+Serverless platforms run many copies of the same function at once, so two submissions from the
+same sender can hit two instances in the same millisecond. A read-then-write counter would let
+both through. `consumeThrottle()` in `src/lib/throttle.ts` avoids that with a single upsert:
+
+```sql
+INSERT INTO throttle (key, count, reset_at) VALUES (?, 1, ?)
+ON CONFLICT (key) DO UPDATE SET
+  count    = CASE WHEN reset_at <= ? THEN 1 ELSE count + 1 END,
+  reset_at = CASE WHEN reset_at <= ? THEN ?  ELSE reset_at  END
+RETURNING count, reset_at;
+```
+
+The database serialises the statement, so every concurrent request gets a distinct count and
+the window resets atomically when it has expired. There is no in-memory state to lose between
+invocations, and the same code runs unchanged on Node, Vercel, Netlify and Cloudflare Workers.
+
+## What the visitor is told
+
+The success message says the message was received and that a reply comes by email when one is
+needed. It does not promise that anyone has been notified, because at that moment the template
+cannot know. Writing copy that matches what the code guarantees is cheaper than explaining a
+lost message later.
+
+<Callout type="note" title="Submissions are not idempotent">
+  If the success response is lost on the network and the visitor submits again, a second row is
+  stored. The throttles bound how often that can happen. If exactly-once matters for your site, send
+  a client-generated key with the form and add a unique index on it.
+</Callout>
+
+## Recovering from an outage
+
+When the provider is down for an hour, the inbox at `/admin/messages` shows every message with a
+failed notification, and the detail page has a **Resend notification** button that runs the
+delivery step again for that row. Nothing needs to be re-typed and nothing is duplicated:
+resending only updates the delivery columns of the existing message.
+
+## Retention
+
+Messages are personal data, so they do not live forever by default. `pnpm db:prune` deletes
+archived messages older than `CONTACT_RETENTION_DAYS` (365 by default) and expired throttle
+counters. Open messages are kept until someone archives them, unless `CONTACT_MAX_AGE_DAYS` sets
+a hard maximum for every message regardless of status. Both values belong in your privacy
+policy; the [privacy and data guide](/docs/guides/privacy-and-data) has a scheduled-workflow
+example for running the job weekly.
+
+## Adapting it
+
+The action in `src/actions/index.ts` validates with Zod 4 from `astro/zod` and calls
+`submitContactMessage()` with its dependencies injected, which is what makes the unit tests in
+`src/lib/contact.test.ts` fast: they run against an in-memory database and a fake mail sender.
+To add a field, extend the schema and the insert. To add a CAPTCHA for a high-traffic site,
+verify the token in the action handler before the honeypot check; the rest of the pipeline
+stays the same.
