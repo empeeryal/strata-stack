@@ -1,7 +1,7 @@
 ---
 title: Actions and forms
 description: Type-safe form handling with Astro Actions, validation, honeypots and the contact form example.
-publishedDate: 2026-09-18
+\1\nupdatedDate: 2026-09-21
 sidebar:
   order: 5
 ---
@@ -78,8 +78,10 @@ The database write is the authoritative success: the message is inserted into
 result is recorded on the row (`delivery_status`: `sent`, `failed`, `skipped` when no recipient
 is configured, plus attempts and the last error). A failed notification never fails the request,
 so visitors are not pushed into resending a message that was already stored; administrators
-resend the notification from the [inbox](/docs/guides/admin). The success message tells
-visitors the message was _received_ and only promises a reply when one is needed.
+resend the notification from the [inbox](/docs/guides/admin). The notification's `Reply-To`
+header carries the visitor's name and address, so answering it from your mail client replies to
+the visitor rather than to the sending address. The success message tells visitors the message
+was _received_ and only promises a reply when one is needed.
 
 Submissions are not idempotent: if the success response is lost on the network and the visitor
 submits again, a second row is stored. The throttles bound how often that can happen. If you
