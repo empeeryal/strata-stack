@@ -7,6 +7,19 @@ export interface EmailMessage {
   subject: string;
   text: string;
   html?: string;
+  /** Address (or `Name <address>`) that replies from the recipient's mail client go to. */
+  replyTo?: string;
+}
+
+/**
+ * Formats a display name and address as a mailbox (`"Jane Doe" <jane@example.com>`), dropping
+ * characters that would break the header. Returns the bare address when the name is empty.
+ */
+export function formatAddress(name: string, address: string): string {
+  // Control characters, quotes, backslashes and angle brackets are the only characters a
+  // quoted display name cannot contain.
+  const safeName = name.replace(/[\p{Cc}"\\<>]/gu, '').trim();
+  return safeName ? `"${safeName}" <${address}>` : address;
 }
 
 /** True when a transactional email provider is available. */
@@ -32,7 +45,7 @@ export async function sendEmail(message: EmailMessage): Promise<{ id: string }> 
       throw new Error('Email delivery is not configured. Set RESEND_API_KEY to send email.');
     }
     console.info(
-      `[email] RESEND_API_KEY is not set; printing the message instead (development only).\n  to: ${message.to}\n  subject: ${message.subject}\n  ${message.text}`,
+      `[email] RESEND_API_KEY is not set; printing the message instead (development only).\n  to: ${message.to}${message.replyTo ? `\n  reply-to: ${message.replyTo}` : ''}\n  subject: ${message.subject}\n  ${message.text}`,
     );
     return { id: 'logged' };
   }
@@ -45,6 +58,7 @@ export async function sendEmail(message: EmailMessage): Promise<{ id: string }> 
     subject: message.subject,
     text: message.text,
     ...(message.html ? { html: message.html } : {}),
+    ...(message.replyTo ? { replyTo: message.replyTo } : {}),
   });
 
   if (error || !data) {

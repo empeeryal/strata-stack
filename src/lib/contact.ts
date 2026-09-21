@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { contactMessages, type DeliveryStatus } from '../db/schema/app';
 
-import type { EmailMessage } from './email';
+import { formatAddress, type EmailMessage } from './email';
 import { consumeThrottle, hashThrottleKey, type ThrottleRule } from './throttle';
 
 export interface ContactSubmission {
@@ -138,6 +138,8 @@ export async function deliverContactMessage(
   try {
     await deps.sendEmail({
       to: deps.recipient,
+      // Replying from a mail client answers the visitor, not the sending address.
+      replyTo: formatAddress(row.name, row.email),
       subject: `[${deps.siteName}] Contact form: ${row.name}`,
       text: `From: ${row.name} <${row.email}>\n\n${row.message}`,
     });

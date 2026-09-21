@@ -47,6 +47,7 @@ describe('submitContactMessage', () => {
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'owner@example.com',
+        replyTo: '"Jane Doe" <jane@example.com>',
         subject: expect.stringContaining('Jane'),
       }),
     );
