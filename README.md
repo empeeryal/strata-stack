@@ -74,6 +74,10 @@ Optional: `pnpm db:seed` creates `demo@example.com` and `admin@example.com` (pas
 | Netlify            | `pnpm build:netlify`            | `netlify.toml` sets Node 24 and the publish directory               |
 | Node / Docker      | `pnpm build:node && pnpm start` | Multi-stage `Dockerfile` with health check                          |
 
+After the first deployment, add `DATABASE_URL` and `DATABASE_AUTH_TOKEN` (or the `TURSO_*` names)
+as GitHub Actions secrets and run the **Migrate database** workflow once to create the tables. It
+runs again on its own whenever a merged change adds a migration.
+
 `DEPLOY_TARGET` is inferred from `VERCEL`, `NETLIFY` and `WORKERS_CI`, so the platform build
 command can stay `astro build`. See the [deploy guides](https://stratastack.dev/docs/deploy/choosing-a-target).
 

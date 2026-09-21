@@ -2,6 +2,7 @@
 title: Deploy to Netlify
 description: Netlify Functions for on-demand routes, the Image CDN for images and static headers for prerendered pages.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 4
 ---
@@ -16,10 +17,15 @@ sidebar:
    variables (or `netlify env:set`). Set `SITE_URL` and `BETTER_AUTH_URL` to your production
    domain.
 
-3. Set the functions runtime to Node 24 by adding `AWS_LAMBDA_JS_RUNTIME=nodejs24.x` as an
+3. Create the tables: add `DATABASE_URL` and `DATABASE_AUTH_TOKEN` as GitHub Actions secrets and
+   run the **Migrate database** workflow (see the [database guide](/docs/guides/database#production-with-turso)).
+   Netlify's environment variables are not visible to GitHub Actions. Until the workflow has run,
+   sign-up and the contact form fail because the tables do not exist.
+
+4. Set the functions runtime to Node 24 by adding `AWS_LAMBDA_JS_RUNTIME=nodejs24.x` as an
    environment variable. This value cannot be set in `netlify.toml`.
 
-4. Deploy. Deploy previews are trusted by Better Auth automatically through `DEPLOY_PRIME_URL`.
+5. Deploy. Deploy previews are trusted by Better Auth automatically through `DEPLOY_PRIME_URL`.
 
 </Steps>
 

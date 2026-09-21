@@ -2,6 +2,7 @@
 title: Deploy to Node and Docker
 description: The standalone Node server, the multi-stage Dockerfile and notes for VPS and container platforms.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 5
 ---
@@ -42,6 +43,9 @@ applies the SQL files in `drizzle/` with Drizzle's migrator and needs no dev dep
 ```bash
 docker run --rm --env-file .env strata-stack node scripts/migrate.ts
 ```
+
+Without a container, the **Migrate database** GitHub Actions workflow applies the same migrations
+to a Turso database; see [CI and releases](/docs/guides/ci-cd#database-migrations).
 
 ## Reverse proxy
 

@@ -2,6 +2,7 @@
 title: Deploy to Cloudflare
 description: Running on Cloudflare Workers with static assets, workerd for on-demand routes and Node compatibility for Better Auth.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 3
 ---
@@ -33,7 +34,12 @@ on-demand routes in the workerd runtime.
    Non-secret values such as `SITE_URL` can live in `wrangler.jsonc` under `vars`; `SITE_URL` is
    also needed at build time, so set it in the Workers Builds environment as well.
 
-3. Deploy. The first deploy provisions the Images binding used for image optimisation.
+3. Create the tables: add `DATABASE_URL` and `DATABASE_AUTH_TOKEN` as GitHub Actions secrets and
+   run the **Migrate database** workflow (see the [database guide](/docs/guides/database#production-with-turso)).
+   Wrangler secrets are not visible to GitHub Actions. Until the workflow has run, sign-up and the
+   contact form fail because the tables do not exist.
+
+4. Deploy. The first deploy provisions the Images binding used for image optimisation.
 
 </Steps>
 

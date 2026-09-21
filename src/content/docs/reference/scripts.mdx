@@ -2,6 +2,7 @@
 title: Scripts
 description: Every pnpm script in package.json, grouped by purpose.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 2
 ---
@@ -39,7 +40,7 @@ sidebar:
 | Script               | Description                                                                                                                              |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm db:generate`   | Create a migration from schema changes                                                                                                   |
-| `pnpm db:migrate`    | Apply migrations                                                                                                                         |
+| `pnpm db:migrate`    | Apply migrations (in production the **Migrate database** workflow runs this from GitHub Actions)                                         |
 | `pnpm db:push`       | Push schema without a migration (prototyping)                                                                                            |
 | `pnpm db:studio`     | Drizzle Studio                                                                                                                           |
 | `pnpm db:seed`       | Create demo accounts (`demo@example.com`, `admin@example.com`)                                                                           |
