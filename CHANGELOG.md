@@ -1,5 +1,13 @@
 # strata-stack
 
+## 0.7.2
+
+### Patch Changes
+
+- fd5ed40: Every deploy guide, the FAQ, the README and the scripts reference now explain how the production
+  tables are created with the **Migrate database** workflow; the project structure and agent guides
+  mention it too. Page revision dates reflect the actual last changes.
+
 ## 0.7.1
 
 ### Patch Changes
