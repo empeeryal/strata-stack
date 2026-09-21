@@ -1,5 +1,12 @@
 # strata-stack
 
+## 0.7.3
+
+### Patch Changes
+
+- 00f6d88: Contact notifications set `Reply-To` to the visitor's name and address, so replying from your
+  mail client answers the visitor directly.
+
 ## 0.7.2
 
 ### Patch Changes
