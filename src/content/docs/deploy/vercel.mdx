@@ -22,9 +22,12 @@ Vercel is the primary deployment target for this repository.
    URL Vercel injects (`VERCEL_PROJECT_PRODUCTION_URL`). None of these variables are needed to
    _build_, so you can also add them after the first deployment and redeploy.
 
-3. Create the tables: add `DATABASE_URL` and `DATABASE_AUTH_TOKEN` as GitHub Actions secrets and
-   run the **Migrate database** workflow (see the [database guide](/docs/guides/database#production-with-turso)).
-   Until it has run, sign-up and the contact form fail because the tables do not exist.
+3. Create the tables: add the database URL and token as GitHub Actions secrets (`DATABASE_URL`
+   and `DATABASE_AUTH_TOKEN`, or the same `TURSO_*` names the integration uses) and run the
+   **Migrate database** workflow (see the [database guide](/docs/guides/database#production-with-turso)).
+   Vercel's environment variables are not visible to GitHub Actions, so the secrets must be
+   added in the repository even when the integration already set them on Vercel. Until the
+   workflow has run, sign-up and the contact form fail because the tables do not exist.
 
 4. Deploy. Every pull request gets a preview deployment; preview hostnames are trusted by Better
    Auth automatically through `VERCEL_URL` and `VERCEL_BRANCH_URL`.

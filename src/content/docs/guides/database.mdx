@@ -52,11 +52,14 @@ and `pnpm db:reset` deletes the local file and re-applies every migration. The
    `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, work too (`getDatabaseConfig()` in
    `src/lib/env.ts` reads both).
 
-3. Add the same two values as `DATABASE_URL` and `DATABASE_AUTH_TOKEN` secrets in the GitHub
-   repository (Settings → Secrets and variables → Actions), then run the **Migrate database**
-   workflow from the Actions tab. It runs `pnpm db:migrate` against that database, and it runs
-   again automatically whenever a merged change adds a file under `drizzle/`. From your machine
-   the equivalent is:
+3. Add the same two values as GitHub Actions secrets (repository Settings → Secrets and
+   variables → Actions → Secrets tab), either as `DATABASE_URL` and `DATABASE_AUTH_TOKEN` or
+   under the Turso names `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, then run the **Migrate
+   database** workflow from the Actions tab. It runs `pnpm db:migrate` against that database
+   and runs again automatically whenever a merged change adds a file under `drizzle/`. Its
+   first log lines list which of the four secret names the job can see. Variables, Dependabot
+   secrets and the platform's own environment variables are not visible to the workflow. From
+   your machine the equivalent is:
 
    ```bash
    DATABASE_URL=libsql://… DATABASE_AUTH_TOKEN=… pnpm db:migrate

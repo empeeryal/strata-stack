@@ -2,7 +2,8 @@ name: Migrate database
 
 # Applies the SQL migrations in ./drizzle to the production database. Runs on demand
 # (Actions -> Migrate database -> Run workflow) and automatically when a merged change adds
-# or edits a migration. Needs the DATABASE_URL and DATABASE_AUTH_TOKEN secrets.
+# or edits a migration. Reads the database from GitHub Actions secrets, named either
+# DATABASE_URL and DATABASE_AUTH_TOKEN or TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.
 
 on:
   workflow_dispatch:
@@ -22,18 +23,31 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.TURSO_DATABASE_URL }}
+      DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN || secrets.TURSO_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Check secrets
+        # Prints which of the accepted secret names exist (never their values) so a
+        # misconfiguration is visible in the log.
+        env:
+          HAS_DATABASE_URL: ${{ secrets.DATABASE_URL != '' }}
+          HAS_DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN != '' }}
+          HAS_TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL != '' }}
+          HAS_TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN != '' }}
         run: |
+          echo "Secrets visible to this job:"
+          echo "  DATABASE_URL=$HAS_DATABASE_URL DATABASE_AUTH_TOKEN=$HAS_DATABASE_AUTH_TOKEN"
+          echo "  TURSO_DATABASE_URL=$HAS_TURSO_DATABASE_URL TURSO_AUTH_TOKEN=$HAS_TURSO_AUTH_TOKEN"
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::DATABASE_URL is not set. Add it (and DATABASE_AUTH_TOKEN) as a repository or production environment secret."
+            echo "::error::No database URL. Open the repository Settings -> Secrets and variables -> Actions, stay on the Secrets tab (not Variables) and add DATABASE_URL and DATABASE_AUTH_TOKEN, or TURSO_DATABASE_URL and TURSO_AUTH_TOKEN, as repository secrets or as secrets of the 'production' environment. Vercel environment variables and Dependabot secrets are not visible to this workflow."
             exit 1
           fi
           case "$DATABASE_URL" in
-            file:*) echo "::error::DATABASE_URL points at a local file; the workflow expects a libsql:// URL."; exit 1 ;;
+            file:*) echo "::error::The database URL points at a local file; the workflow expects a libsql:// URL."; exit 1 ;;
           esac
+          if [ -z "$DATABASE_AUTH_TOKEN" ]; then
+            echo "::warning::No auth token secret found; Turso rejects the connection unless the database allows anonymous access."
+          fi
       - run: pnpm db:migrate

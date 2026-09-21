@@ -85,9 +85,11 @@ The site is a private package, so nothing is published to npm; `privatePackages.
 `.github/workflows/migrate.yml` applies the migrations in `drizzle/` to the production database
 with `pnpm db:migrate`. Run it from the Actions tab after the first deployment and whenever you
 want to apply pending migrations; it also runs automatically when a push to `main` adds or edits
-a file under `drizzle/`. It reads `DATABASE_URL` and `DATABASE_AUTH_TOKEN` from repository
-secrets (or from a `production` environment, which the job references, so you can add a
-required-reviewer rule there) and refuses a `file:` URL.
+a file under `drizzle/`. It reads the database URL and token from GitHub Actions secrets named
+`DATABASE_URL` and `DATABASE_AUTH_TOKEN` or `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, as
+repository secrets or as secrets of the `production` environment the job references (add a
+required-reviewer rule there if you want approvals). The first step logs which of the four
+names are present, and the job refuses a `file:` URL.
 
 ## Deploy previews
 
