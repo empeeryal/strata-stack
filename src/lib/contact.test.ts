@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { contactMessages } from '@/db/schema';
@@ -6,6 +7,8 @@ import { createTestDb } from '../../tests/unit/db';
 
 import {
   CONTACT_LIMITS,
+  DELIVERY_LEASE_MS,
+  DeliveryInProgressError,
   ContactThrottledError,
   deliverContactMessage,
   submitContactMessage,
@@ -143,6 +146,50 @@ describe('deliverContactMessage', () => {
       deliveryAttempts: 2,
       deliveryError: null,
     });
+  });
+
+  it('sends once when two retries race', async () => {
+    sendEmail.mockRejectedValueOnce(new Error('temporary'));
+    await submitContactMessage(input, ctx, deps());
+    const [row] = await testDb.db.select().from(contactMessages);
+
+    // The first retry claims the attempt and then waits inside the provider call.
+    let release: () => void = () => {};
+    sendEmail.mockImplementationOnce(
+      () => new Promise<{ id: string }>((resolve) => (release = () => resolve({ id: 'email-2' }))),
+    );
+    const first = deliverContactMessage(row!.id, deps());
+    await vi.waitFor(() => expect(sendEmail).toHaveBeenCalledTimes(2));
+
+    // A second retry while that one is in flight is refused without sending.
+    await expect(deliverContactMessage(row!.id, deps())).rejects.toBeInstanceOf(
+      DeliveryInProgressError,
+    );
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+
+    release();
+    expect(await first).toBe('sent');
+    const [updated] = await testDb.db.select().from(contactMessages);
+    expect(updated).toMatchObject({
+      deliveryStatus: 'sent',
+      deliveryAttempts: 2,
+      deliveryClaimedAt: null,
+    });
+  });
+
+  it('retries a message whose claim expired without a result', async () => {
+    sendEmail.mockRejectedValueOnce(new Error('temporary'));
+    await submitContactMessage(input, ctx, deps());
+    const [row] = await testDb.db.select().from(contactMessages);
+    // Simulate a crash mid-delivery: the lease is left behind and has since expired.
+    await testDb.db
+      .update(contactMessages)
+      .set({ deliveryClaimedAt: new Date(Date.now() - DELIVERY_LEASE_MS - 1000) })
+      .where(eq(contactMessages.id, row!.id));
+
+    expect(await deliverContactMessage(row!.id, deps())).toBe('sent');
+    const [updated] = await testDb.db.select().from(contactMessages);
+    expect(updated).toMatchObject({ deliveryStatus: 'sent', deliveryClaimedAt: null });
   });
 
   it('returns null for unknown ids', async () => {

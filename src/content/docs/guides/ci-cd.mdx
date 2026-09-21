@@ -92,6 +92,14 @@ repository secrets or as secrets of the `production` environment the job referen
 required-reviewer rule there if you want approvals). The first step logs which of the four
 names are present, and the job refuses a `file:` URL.
 
+## Data retention
+
+`.github/workflows/prune.yml` runs `pnpm db:prune` every Sunday at 03:00 UTC and on demand. It
+reads the same database secrets as the migration workflow plus the optional
+`CONTACT_RETENTION_DAYS` and `CONTACT_MAX_AGE_DAYS` repository variables (see
+[privacy and data](/docs/guides/privacy-and-data#retention)). Check its runs now and then: a
+retention policy is only real while the job succeeds.
+
 ## Deploy previews
 
 Vercel and Netlify build every pull request automatically. Preview URLs are added to Better

@@ -68,11 +68,27 @@ const isActive = (href: string) =>
 </BaseLayout>
 
 <script>
-  // Confirmation prompts for destructive forms. Inline `onsubmit` handlers are blocked by
-  // the CSP, so the behaviour is attached here from a processed script.
-  document.querySelectorAll<HTMLFormElement>('form[data-confirm]').forEach((form) => {
-    form.addEventListener('submit', (event) => {
-      if (!window.confirm(form.dataset.confirm ?? 'Are you sure?')) event.preventDefault();
+  // Confirmation prompts for destructive forms, and free-text prompts whose answer goes into
+  // the form's `[data-prompt-field]` input (the ban reason). Cancelling either aborts the
+  // submission. Inline `onsubmit` handlers are blocked by the CSP, so the behaviour is
+  // attached here from a processed script.
+  document
+    .querySelectorAll<HTMLFormElement>('form[data-confirm], form[data-prompt]')
+    .forEach((form) => {
+      form.addEventListener('submit', (event) => {
+        if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+          event.preventDefault();
+          return;
+        }
+        if (form.dataset.prompt) {
+          const answer = window.prompt(form.dataset.prompt, '');
+          if (answer === null) {
+            event.preventDefault();
+            return;
+          }
+          const field = form.querySelector<HTMLInputElement>('[data-prompt-field]');
+          if (field) field.value = answer.trim();
+        }
+      });
     });
-  });
 </script>

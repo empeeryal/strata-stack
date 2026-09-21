@@ -12,8 +12,12 @@ export function isAdmin(user: { role?: string | null | undefined } | null | unde
   return (user?.role ?? '').split(',').some((role) => role.trim() === 'admin');
 }
 
-/** Administrators who can currently sign in: the role includes `admin` and the account is not banned. */
-async function countActiveAdmins(db: DbExecutor, excludeUserId?: string): Promise<number> {
+/**
+ * Administrators who can currently sign in: the role includes `admin` (Better Auth may store
+ * several roles as a comma-separated list) and the account is not banned. The same rule as
+ * `isAdmin()`, so the overview statistic and the last-admin protection agree with authorization.
+ */
+export async function countActiveAdmins(db: DbExecutor, excludeUserId?: string): Promise<number> {
   const rows = await db
     .select({ id: userTable.id, role: userTable.role, banned: userTable.banned })
     .from(userTable)

@@ -36,7 +36,8 @@ netlify`). Application code must not branch on the platform.
   `src/lib/env.ts`, which reads `DATABASE_URL`/`DATABASE_AUTH_TOKEN` or the `TURSO_*` names.
   `src/db/schema/auth.ts` is generated; edit `src/db/schema/app.ts` for your own tables, then
   `pnpm db:generate && pnpm db:migrate`. Production migrations run from
-  `.github/workflows/migrate.yml` (the **Migrate database** workflow), never from a deploy.
+  `.github/workflows/migrate.yml` (the **Migrate database** workflow), never from a deploy;
+  `.github/workflows/prune.yml` runs the retention job weekly.
 - Contact flow: `src/lib/contact.ts` (honeypot, throttle, store-then-notify) behind the action in
   `src/actions/index.ts`. Admin area: `src/pages/admin/*` guarded by `guardAdminPage()`, actions
   under `server.admin` guarded by `await requireAdmin()`. Both read the session from the database

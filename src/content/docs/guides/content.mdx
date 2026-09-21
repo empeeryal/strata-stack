@@ -50,7 +50,7 @@ Every docs page receives a table of contents (from `h2` and `h3`), previous/next
 title: 'A title of at most 90 characters'
 description: 'A summary of at most 200 characters used in cards, RSS and social previews.'
 pubDate: 2026-09-18
-updatedDate: 2026-09-19
+updatedDate: 2026-09-21
 author: empeeryal # id of a file in src/content/authors
 tags: [astro, guide]
 heroImage: ./images/my-post.png # optional
@@ -60,7 +60,10 @@ draft: false
 ```
 
 Drafts are visible in development and excluded from production builds, the RSS feed and OG
-image generation. Post URLs come from the file name, so keep it stable once published.
+image generation. Posts whose `pubDate` is in the future are held back the same way and appear
+on the first build on or after that date; a static site needs a rebuild (a deploy hook or a
+scheduled workflow) for that to happen on its own. Post URLs come from the file name, so keep
+it stable once published.
 
 ## MDX components
 

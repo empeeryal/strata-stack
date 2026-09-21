@@ -4,7 +4,7 @@ import { auditLog, user } from '@/db/schema';
 
 import { createTestDb } from '../../tests/unit/db';
 
-import { isAdmin, isLastActiveAdmin, recordAudit, writeAudit } from './admin';
+import { countActiveAdmins, isAdmin, isLastActiveAdmin, recordAudit, writeAudit } from './admin';
 
 describe('isAdmin', () => {
   it('recognises the admin role in a comma-separated list', () => {
@@ -14,6 +14,27 @@ describe('isAdmin', () => {
     expect(isAdmin({ role: 'administrator' })).toBe(false);
     expect(isAdmin({ role: null })).toBe(false);
     expect(isAdmin(null)).toBe(false);
+  });
+});
+
+describe('countActiveAdmins', () => {
+  let testDb: Awaited<ReturnType<typeof createTestDb>>;
+  beforeEach(async () => {
+    testDb = await createTestDb();
+  });
+  afterEach(() => testDb.close());
+
+  it('counts unbanned accounts whose roles include admin, like isAdmin()', async () => {
+    await testDb.db.insert(user).values([
+      { id: 'a', name: 'A', email: 'a@example.com', role: 'admin' },
+      { id: 'b', name: 'B', email: 'b@example.com', role: 'user,admin' },
+      { id: 'c', name: 'C', email: 'c@example.com', role: 'administrator' },
+      { id: 'd', name: 'D', email: 'd@example.com', role: 'admin', banned: true },
+      { id: 'e', name: 'E', email: 'e@example.com', role: 'user' },
+    ]);
+
+    expect(await countActiveAdmins(testDb.db)).toBe(2);
+    expect(await countActiveAdmins(testDb.db, 'a')).toBe(1);
   });
 });
 

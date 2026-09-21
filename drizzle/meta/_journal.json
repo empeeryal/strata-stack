@@ -15,6 +15,13 @@
       "when": 1789771295652,
       "tag": "0001_white_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790006336798,
+      "tag": "0002_happy_master_mold",
+      "breakpoints": true
     }
   ]
 }

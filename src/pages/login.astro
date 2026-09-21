@@ -7,14 +7,23 @@ import Divider from '@/components/ui/Divider.astro';
 import AuthLayout from '@/layouts/AuthLayout.astro';
 import { enabledAuthMethods } from '@/lib/auth';
 import { safeRedirectPath } from '@/lib/redirect';
+import { getAuthoritativeSession } from '@/lib/session';
 
 export const prerender = false;
 
 const redirectTo = safeRedirectPath(Astro.url.searchParams.get('next'), '/dashboard');
 
-if (Astro.locals.user) {
+// Sending a signed-in visitor on is an access decision: confirm the cached session against
+// the database so a cookie left over from "sign out everywhere" shows the form instead of
+// bouncing to the dashboard (which would send it straight back here).
+const signedIn = Astro.locals.user
+  ? (await getAuthoritativeSession(Astro.request.headers, Astro.cookies)).user
+  : null;
+if (signedIn) {
   return Astro.redirect(redirectTo);
 }
+Astro.locals.user = null;
+Astro.locals.session = null;
 
 const methods = enabledAuthMethods();
 // Verification and magic-link callbacks land here with `?error=` when a link is bad.

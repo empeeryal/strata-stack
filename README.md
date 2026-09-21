@@ -102,18 +102,18 @@ The full list with platform notes lives in [`.env.example`](.env.example) and th
 
 ## Scripts
 
-| Script                                                                   | Description                                          |
-| ------------------------------------------------------------------------ | ---------------------------------------------------- |
-| `pnpm dev`                                                               | Development server                                   |
-| `pnpm build` / `pnpm build:<target>`                                     | Production build (target auto-detected or explicit)  |
-| `pnpm preview` / `pnpm start`                                            | Preview the build / run the Node server              |
-| `pnpm check` · `pnpm lint` · `pnpm format`                               | Type-check, lint, format                             |
-| `pnpm test` · `pnpm test:e2e` · `pnpm test:a11y`                         | Vitest, Playwright, axe checks                       |
-| `pnpm lhci`                                                              | Lighthouse budgets                                   |
-| `pnpm db:migrate` · `db:generate` · `db:studio` · `db:seed` · `db:reset` | Database (production: the Migrate database workflow) |
-| `pnpm db:prune` · `pnpm admin:promote <email>`                           | Retention job, grant the admin role                  |
-| `pnpm auth:generate`                                                     | Regenerate the Better Auth schema                    |
-| `pnpm changeset`                                                         | Record a change for the changelog                    |
+| Script                                                                   | Description                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `pnpm dev`                                                               | Development server                                                       |
+| `pnpm build` / `pnpm build:<target>`                                     | Production build (target auto-detected or explicit)                      |
+| `pnpm preview` / `pnpm start`                                            | Preview the build / run the Node server                                  |
+| `pnpm check` · `pnpm lint` · `pnpm format`                               | Type-check, lint, format                                                 |
+| `pnpm test` · `pnpm test:e2e` · `pnpm test:a11y`                         | Vitest, Playwright, axe checks                                           |
+| `pnpm lhci`                                                              | Lighthouse budgets                                                       |
+| `pnpm db:migrate` · `db:generate` · `db:studio` · `db:seed` · `db:reset` | Database (production: the Migrate database workflow)                     |
+| `pnpm db:prune` · `pnpm admin:promote <email>`                           | Retention job (weekly via the Prune data workflow), grant the admin role |
+| `pnpm auth:generate`                                                     | Regenerate the Better Auth schema                                        |
+| `pnpm changeset`                                                         | Record a change for the changelog                                        |
 
 ## Project structure
 

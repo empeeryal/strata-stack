@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card.astro';
 import { db } from '@/db/client';
 import { auditLog, contactMessages, user as userTable } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
+import { countActiveAdmins } from '@/lib/admin';
 import { guardAdminPage } from '@/lib/admin-page';
 import { isEmailConfigured } from '@/lib/email';
 import { getEnv } from '@/lib/env';
@@ -16,10 +17,10 @@ export const prerender = false;
 const denied = await guardAdminPage(Astro);
 if (denied) return denied;
 
-const [[users], [admins], messageCounts, [failedDeliveries], recentMessages, recentAudit] =
+const [[users], admins, messageCounts, [failedDeliveries], recentMessages, recentAudit] =
   await Promise.all([
     db.select({ value: count() }).from(userTable),
-    db.select({ value: count() }).from(userTable).where(eq(userTable.role, 'admin')),
+    countActiveAdmins(db),
     db
       .select({ status: contactMessages.status, value: count() })
       .from(contactMessages)
@@ -35,7 +36,7 @@ const [[users], [admins], messageCounts, [failedDeliveries], recentMessages, rec
 const messagesByStatus = Object.fromEntries(messageCounts.map((row) => [row.status, row.value]));
 const stats = [
   { label: 'Users', value: users?.value ?? 0, href: '/admin/users' },
-  { label: 'Administrators', value: admins?.value ?? 0, href: '/admin/users' },
+  { label: 'Administrators', value: admins, href: '/admin/users' },
   { label: 'New messages', value: messagesByStatus.new ?? 0, href: '/admin/messages?status=new' },
   {
     label: 'Failed notifications',

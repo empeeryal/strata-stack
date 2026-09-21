@@ -2,7 +2,7 @@
 title: Security
 description: The Content Security Policy, response headers, CSRF protection, production checks and secrets handling that ship enabled.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-19
+updatedDate: 2026-09-21
 sidebar:
   order: 9
 ---
@@ -90,10 +90,12 @@ everyone.
 - Administrative actions, account deletions and data exports are recorded in `audit_log`.
   Message status changes and deletions share a transaction with their entries; everything else
   is best-effort and a failed write is logged (see the [admin area](/docs/guides/admin#audit-log)).
-- Access decisions (`/admin`, the admin actions, the account export) read the session from the
-  database instead of the cookie cache, so demotion, bans and "sign out everywhere" apply
-  immediately (see [sessions and cookies](/docs/guides/authentication#sessions-and-cookies)).
-  The last active administrator cannot be removed.
+- Access decisions (`/admin`, the admin actions, the account export, the dashboard, the
+  detailed `/api/health` response and the redirect that sends signed-in visitors away from the
+  auth pages) read the session from the database instead of the cookie cache, so demotion,
+  bans and "sign out everywhere" apply immediately and stale cookies are expired (see
+  [sessions and cookies](/docs/guides/authentication#sessions-and-cookies)). The last active
+  administrator cannot be removed.
 - Admin pages never change data while rendering: marking a message read is a POST action, so
   link prefetching and previews cannot alter state.
 

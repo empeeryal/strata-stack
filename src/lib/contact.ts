@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lt, or } from 'drizzle-orm';
 
 import type { Database } from '../db/client';
 import { contactMessages, type DeliveryStatus } from '../db/schema/app';
@@ -48,6 +48,20 @@ export class ContactThrottledError extends Error {
     this.name = 'ContactThrottledError';
   }
 }
+
+/** Thrown when another delivery attempt for the same message claimed it first. */
+export class DeliveryInProgressError extends Error {
+  constructor(public readonly messageId: string) {
+    super('A notification for this message is already being sent.');
+    this.name = 'DeliveryInProgressError';
+  }
+}
+
+/**
+ * How long a delivery claim blocks other attempts. Long enough for any provider call, short
+ * enough that a crash between the claim and the result does not leave the message stuck.
+ */
+export const DELIVERY_LEASE_MS = 2 * 60 * 1000;
 
 /** Per-sender limits; both apply. */
 export const CONTACT_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule } = {
@@ -114,6 +128,12 @@ export async function submitContactMessage(
 /**
  * Sends (or re-sends) the owner notification for a stored message and records the
  * outcome. Returns null when no message has that id.
+ *
+ * The attempt is claimed before anything is sent: one conditional update sets the lease
+ * (`deliveryClaimedAt`) and counts the attempt, and only succeeds while no unexpired lease
+ * exists. Of any concurrent callers (a double-click, two administrators, two instances)
+ * exactly one sends; the others get a `DeliveryInProgressError`. The lease is cleared with the
+ * result and expires after `DELIVERY_LEASE_MS`, so a crash in between leaves the row retryable.
  */
 export async function deliverContactMessage(
   id: string,
@@ -134,7 +154,22 @@ export async function deliverContactMessage(
     return 'skipped';
   }
 
-  const attempts = row.deliveryAttempts + 1;
+  const claimedAt = now();
+  const claimed = await deps.db
+    .update(contactMessages)
+    .set({ deliveryClaimedAt: claimedAt, deliveryAttempts: row.deliveryAttempts + 1 })
+    .where(
+      and(
+        eq(contactMessages.id, id),
+        or(
+          isNull(contactMessages.deliveryClaimedAt),
+          lt(contactMessages.deliveryClaimedAt, new Date(claimedAt.valueOf() - DELIVERY_LEASE_MS)),
+        ),
+      ),
+    )
+    .returning({ id: contactMessages.id });
+  if (claimed.length === 0) throw new DeliveryInProgressError(id);
+
   try {
     await deps.sendEmail({
       to: deps.recipient,
@@ -147,9 +182,9 @@ export async function deliverContactMessage(
       .update(contactMessages)
       .set({
         deliveryStatus: 'sent',
-        deliveryAttempts: attempts,
         deliveryError: null,
         deliveredAt: now(),
+        deliveryClaimedAt: null,
       })
       .where(eq(contactMessages.id, id));
     return 'sent';
@@ -159,8 +194,8 @@ export async function deliverContactMessage(
       .update(contactMessages)
       .set({
         deliveryStatus: 'failed',
-        deliveryAttempts: attempts,
         deliveryError: describeError(error),
+        deliveryClaimedAt: null,
       })
       .where(eq(contactMessages.id, id));
     return 'failed';

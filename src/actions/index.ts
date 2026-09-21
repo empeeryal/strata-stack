@@ -16,6 +16,7 @@ import { auth } from '@/lib/auth';
 import {
   ContactThrottledError,
   deliverContactMessage,
+  DeliveryInProgressError,
   submitContactMessage,
   type ContactDeps,
   type DeliveryOutcome,
@@ -193,7 +194,15 @@ export const server = {
       input: z.object({ id: messageId }),
       handler: async ({ id }, context) => {
         const actor = await requireAdmin(context);
-        const delivery = await deliverContactMessage(id, contactDeps());
+        let delivery: Awaited<ReturnType<typeof deliverContactMessage>>;
+        try {
+          delivery = await deliverContactMessage(id, contactDeps());
+        } catch (error) {
+          if (error instanceof DeliveryInProgressError) {
+            throw new ActionError({ code: 'CONFLICT', message: error.message });
+          }
+          throw error;
+        }
         if (!delivery) {
           throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
         }
