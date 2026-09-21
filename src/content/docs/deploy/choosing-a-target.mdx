@@ -2,6 +2,7 @@
 title: Choosing a target
 description: How the deploy switch works, what each platform supports and how to pick one.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 1
 ---
@@ -29,6 +30,11 @@ pnpm build:node        # DEPLOY_TARGET=node astro build (default)
 | Extra security headers                      | Build Output config (integration) | `public/_headers` + middleware  | `public/_headers` + middleware | Middleware (SSR)          |
 | Database                                    | Turso over HTTP                   | Turso over HTTP                 | Turso over HTTP                | File or Turso             |
 | Local dev runtime                           | Node                              | workerd (`pnpm dev:cloudflare`) | Node with Netlify emulation    | Node                      |
+
+The production tables are created the same way on every target: the **Migrate database**
+workflow in GitHub Actions applies the migrations in `drizzle/` to the Turso database (see the
+[database guide](/docs/guides/database#production-with-turso)). Node hosts can also run
+`node scripts/migrate.ts` next to the server.
 
 ## Recommendations
 

@@ -2,6 +2,7 @@
 title: FAQ
 description: Answers to common questions about the template.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 4
 ---
@@ -23,6 +24,15 @@ no adapter is needed.
 Yes. Swap `@libsql/client` for a serverless-friendly Postgres driver, change the Drizzle dialect
 in `drizzle.config.ts` and `src/db/client.ts`, regenerate the Better Auth schema with
 `pnpm exec auth generate --adapter drizzle --dialect postgresql`, and generate a fresh migration.
+
+## How do I create the tables in production?
+
+Add the database URL and token as GitHub Actions secrets (`DATABASE_URL` and
+`DATABASE_AUTH_TOKEN`, or `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`) and run the **Migrate
+database** workflow from the Actions tab. It applies the migrations in `drizzle/` and runs again
+automatically when a merged change adds one. Node and Docker hosts can also run
+`node scripts/migrate.ts` next to the server. See the
+[database guide](/docs/guides/database#production-with-turso).
 
 ## Why does `astro dev` not send the Content Security Policy?
 

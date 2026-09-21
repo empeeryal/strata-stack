@@ -2,6 +2,7 @@
 title: Environment variables
 description: Every variable the template reads, where to set it on each platform, and the two access patterns.
 publishedDate: 2026-09-18
+updatedDate: 2026-09-21
 sidebar:
   order: 12
 ---
@@ -51,8 +52,9 @@ where the server code runs.
     `--env-file-if-exists=.env`.
   </TabItem>
   <TabItem label="Vercel">
-    Project → Settings → Environment Variables. Mark secrets as sensitive. Preview URLs are trusted
-    automatically through `VERCEL_URL`.
+    Project → Settings → Environment Variables. Mark secrets as sensitive. The Turso integration
+    from the Vercel Marketplace adds `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` itself, and the
+    application reads those names too. Preview URLs are trusted automatically through `VERCEL_URL`.
   </TabItem>
   <TabItem label="Cloudflare">
     Non-secret variables go in `wrangler.jsonc` under `vars`; secrets are set with `wrangler secret
