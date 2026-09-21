@@ -37,11 +37,13 @@
   --accent: oklch(70% 0.15 195);
   --accent-foreground: oklch(20% 0.05 195);
 
-  --success: oklch(62% 0.17 150);
+  /* Status colours are used as text on tinted backgrounds (alerts, badges); these
+     lightnesses keep that text at 4.5:1 or better in the light theme. */
+  --success: oklch(48% 0.17 150);
   --success-foreground: oklch(98% 0.02 150);
   --warning: oklch(78% 0.16 80);
   --warning-foreground: oklch(25% 0.06 80);
-  --danger: oklch(58% 0.22 25);
+  --danger: oklch(50% 0.22 25);
   --danger-foreground: oklch(98% 0.02 25);
 
   --code: oklch(96.5% 0.006 262);
@@ -356,7 +358,8 @@ pagefind-summary {
   --pf-border-focus: var(--color-ring);
   --pf-outline-focus: var(--color-ring);
   --pf-hover: var(--color-muted);
-  --pf-mark: color-mix(in oklch, var(--color-primary) 30%, transparent);
+  /* Pagefind renders highlighted words in this colour (not as a background). */
+  --pf-mark: var(--color-primary);
   --pf-border-radius: var(--radius-lg);
   --pf-modal-backdrop: oklch(0% 0 0 / 0.55);
   --pf-skeleton: var(--color-muted);

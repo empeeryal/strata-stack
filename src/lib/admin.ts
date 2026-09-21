@@ -191,17 +191,20 @@ async function explainRefusal(tx: DbExecutor, targetId: string): Promise<never> 
   throw row ? new LastAdminError() : new UserNotFoundError();
 }
 
-export type AuditAction =
-  | 'account.delete'
-  | 'account.export'
-  | 'message.status'
-  | 'message.delete'
-  | 'message.retry_delivery'
-  | 'user.set_role'
-  | 'user.ban'
-  | 'user.unban'
-  | 'user.revoke_sessions'
-  | 'user.delete';
+/** Every action the audit log records; the admin page offers them as a filter. */
+export const AUDIT_ACTIONS = [
+  'account.delete',
+  'account.export',
+  'message.status',
+  'message.delete',
+  'message.retry_delivery',
+  'user.set_role',
+  'user.ban',
+  'user.unban',
+  'user.revoke_sessions',
+  'user.delete',
+] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export interface AuditEntry {
   actorId?: string | null | undefined;

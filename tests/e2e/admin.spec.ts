@@ -116,7 +116,7 @@ test.describe('admin area', () => {
     await expect(userRow(page, ADMIN_EMAIL)).toContainText('Admin');
 
     await page.goto('/admin/audit');
-    await expect(page.getByText('message.status').first()).toBeVisible();
+    await expect(page.locator('tbody').getByText('message.status').first()).toBeVisible();
   });
 
   test('the last administrator cannot delete their own account', async ({ page }) => {

@@ -1,30 +1,150 @@
 ---
-import { desc } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lt, or, sql, type SQL } from 'drizzle-orm';
 
+import Button from '@/components/ui/Button.astro';
+import { inputClasses } from '@/components/ui/field-classes';
+import Pagination from '@/components/ui/Pagination.astro';
 import { db } from '@/db/client';
 import { auditLog } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
+import { AUDIT_ACTIONS } from '@/lib/admin';
 import { guardAdminPage } from '@/lib/admin-page';
-import { formatDate, toISODate } from '@/lib/utils';
+import { parseAuditFilters } from '@/lib/audit-filters';
+import { listQuery, paginate } from '@/lib/pagination';
+import { escapeLike } from '@/lib/sql';
+import { cn, formatDate, toISODate } from '@/lib/utils';
 
 export const prerender = false;
 
 const denied = await guardAdminPage(Astro);
 if (denied) return denied;
 
-const entries = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(200);
+const PAGE_SIZE = 25;
+const params = Astro.url.searchParams;
+const filters = parseAuditFilters(params);
+const query = {
+  action: filters.action,
+  q: filters.q,
+  from: filters.fromInput,
+  to: filters.toInput,
+};
+const pageUrl = (page: number) =>
+  `/admin/audit${listQuery({ ...query, page: page > 1 ? page : null })}`;
+
+// The text filter matches the actor's address or the target id literally (wildcards escaped).
+const pattern = filters.q ? `%${escapeLike(filters.q.toLowerCase())}%` : null;
+const conditions: SQL[] = [];
+if (filters.action) conditions.push(eq(auditLog.action, filters.action));
+const textCondition = pattern
+  ? or(
+      sql`lower(${auditLog.actorEmail}) like ${pattern} escape '\\'`,
+      sql`lower(${auditLog.targetId}) like ${pattern} escape '\\'`,
+    )
+  : undefined;
+if (textCondition) conditions.push(textCondition);
+if (filters.from) conditions.push(gte(auditLog.createdAt, filters.from));
+if (filters.before) conditions.push(lt(auditLog.createdAt, filters.before));
+const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+const [matching] = await db.select({ value: count() }).from(auditLog).where(where);
+const paging = paginate(matching?.value ?? 0, params.get('page'), PAGE_SIZE);
+const entries = await db
+  .select()
+  .from(auditLog)
+  .where(where)
+  .orderBy(desc(auditLog.createdAt))
+  .limit(PAGE_SIZE)
+  .offset(paging.offset);
+
+const filtered = Boolean(filters.action || filters.q || filters.fromInput || filters.toInput);
+const summary =
+  paging.total === 0
+    ? filtered
+      ? 'No entries match these filters.'
+      : 'Nothing recorded yet.'
+    : `Showing ${paging.from}–${paging.to} of ${paging.total} ${paging.total === 1 ? 'entry' : 'entries'}, newest first.`;
 ---
 
 <AdminLayout title="Audit log" description="Privileged and privacy-relevant actions.">
   <p class="text-sm text-muted-foreground">
     Administrative changes, account deletions and data exports, with the account that performed
-    them. Entries never contain message bodies or secrets. Latest 200 entries.
+    them. Entries never contain message bodies or secrets.
   </p>
 
-  {entries.length === 0 ? (
-    <p class="mt-8 text-sm text-muted-foreground">Nothing recorded yet.</p>
-  ) : (
-    <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
+  <form
+    method="GET"
+    action="/admin/audit"
+    role="search"
+    aria-label="Filter audit entries"
+    class="mt-6 flex flex-wrap items-end gap-3"
+  >
+    <div class="flex flex-col gap-1">
+      <label for="audit-action" class="text-xs font-medium text-muted-foreground">
+        Action
+      </label>
+      <select id="audit-action" name="action" class={cn(inputClasses, 'h-9 w-52')}>
+        <option value="">All actions</option>
+        {AUDIT_ACTIONS.map((action) => (
+          <option value={action} selected={filters.action === action}>
+            {action}
+          </option>
+        ))}
+      </select>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="audit-q" class="text-xs font-medium text-muted-foreground">
+        Actor or target
+      </label>
+      <input
+        id="audit-q"
+        name="q"
+        type="search"
+        value={filters.q}
+        maxlength="100"
+        placeholder="Email or id"
+        class={cn(inputClasses, 'h-9 w-52')}
+      />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="audit-from" class="text-xs font-medium text-muted-foreground">
+        From
+      </label>
+      <input
+        id="audit-from"
+        name="from"
+        type="date"
+        value={filters.fromInput}
+        class={cn(inputClasses, 'h-9 w-40')}
+      />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label for="audit-to" class="text-xs font-medium text-muted-foreground">
+        To
+      </label>
+      <input
+        id="audit-to"
+        name="to"
+        type="date"
+        value={filters.toInput}
+        class={cn(inputClasses, 'h-9 w-40')}
+      />
+    </div>
+    <Button type="submit" variant="outline" size="sm" class="h-9">
+      Filter
+    </Button>
+    {filtered && (
+      <a href="/admin/audit" class="text-sm font-medium underline underline-offset-4">
+        Clear
+      </a>
+    )}
+  </form>
+
+  <p class="mt-4 text-sm text-muted-foreground" data-list-summary>
+    {summary}
+  </p>
+
+  {entries.length > 0 && (
+    <div class="mt-4 overflow-x-auto rounded-xl border bg-card shadow-soft">
       <table class="w-full text-sm">
         <caption class="sr-only">Audit log entries</caption>
         <thead class="bg-muted/60 text-left">
@@ -56,7 +176,13 @@ const entries = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt
               </td>
               <td class="px-4 py-3 align-top">{entry.actorEmail ?? 'system'}</td>
               <td class="px-4 py-3 align-top">
-                <code class="font-mono text-xs">{entry.action}</code>
+                <a
+                  href={`/admin/audit${listQuery({ ...query, action: entry.action })}`}
+                  class="font-mono text-xs hover:underline"
+                  title={`Only ${entry.action} entries`}
+                >
+                  {entry.action}
+                </a>
               </td>
               <td class="px-4 py-3 align-top font-mono text-xs text-muted-foreground">
                 {entry.targetType ? `${entry.targetType}:${entry.targetId ?? ''}` : ''}
@@ -70,4 +196,13 @@ const entries = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt
       </table>
     </div>
   )}
+
+  <Pagination
+    current={paging.page}
+    total={paging.pages}
+    prev={paging.page > 1 ? pageUrl(paging.page - 1) : undefined}
+    next={paging.page < paging.pages ? pageUrl(paging.page + 1) : undefined}
+    labels={['Newer', 'Older']}
+    class="mt-6"
+  />
 </AdminLayout>
