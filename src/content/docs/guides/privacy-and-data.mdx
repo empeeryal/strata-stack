@@ -2,7 +2,7 @@
 title: Privacy and data
 description: What personal data the template stores, the self-service export and deletion flows, retention, and the checklist for adapting the legal pages.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-19
+updatedDate: 2026-09-21
 sidebar:
   order: 7
   badge: new
@@ -45,23 +45,12 @@ and archive the request. The audit log shows what was done and when.
 
 ## Retention
 
-`pnpm db:prune` deletes archived contact messages older than `CONTACT_RETENTION_DAYS` (default 365) and expired throttle counters. Run it on a schedule:
-
-```yaml title=".github/workflows/prune.yml"
-on:
-  schedule:
-    - cron: '0 3 * * 0'
-jobs:
-  prune:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup
-      - run: pnpm db:prune
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
-```
+`pnpm db:prune` deletes archived contact messages older than `CONTACT_RETENTION_DAYS` (default 365) and expired throttle counters. The **Prune data** workflow (`.github/workflows/prune.yml`)
+runs it every Sunday at 03:00 UTC, and on demand from the Actions tab, against the database in
+the repository's Actions secrets, the same ones the
+[migration workflow](/docs/guides/ci-cd#database-migrations) reads. To change the defaults, add
+`CONTACT_RETENTION_DAYS` and `CONTACT_MAX_AGE_DAYS` as repository _variables_ (Settings →
+Secrets and variables → Actions → Variables).
 
 By default open (new or read) messages are never deleted automatically, so
 `CONTACT_RETENTION_DAYS` is not a maximum age for all contact data. If your policy needs one,
@@ -77,7 +66,8 @@ transaction); entries for everything else are best-effort. See the
 1. Edit `src/content/legal/privacy.md` and `terms.md`: legal entity, contact address,
    jurisdiction, and the providers you actually use (hosting, Turso, Resend, OAuth, analytics).
 2. Set `CONTACT_RETENTION_DAYS` (and `CONTACT_MAX_AGE_DAYS` if open messages must expire) to
-   match the policy, and schedule `pnpm db:prune`.
+   match the policy; the **Prune data** workflow runs `pnpm db:prune` weekly once the database
+   secrets are in place.
 3. Decide who the administrators are (`ADMIN_EMAILS`) and make sure at least one exists. The
    application refuses to remove the last one.
 4. Configure `RESEND_API_KEY` so verification, resets and magic links work, or accept that

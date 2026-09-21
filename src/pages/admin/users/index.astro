@@ -130,9 +130,10 @@ if (paging.page !== requested) return Astro.redirect(pageUrl(paging.page));
                       <form
                         method="POST"
                         action={actions.admin.banUser}
-                        data-confirm="Ban this user and revoke their sessions?"
+                        data-prompt="Ban this user and sign them out everywhere. Reason (optional, shown on the account):"
                       >
                         <input type="hidden" name="userId" value={account.id} />
+                        <input type="hidden" name="reason" data-prompt-field />
                         <Button type="submit" variant="ghost" size="sm">
                           Ban
                         </Button>

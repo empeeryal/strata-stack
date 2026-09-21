@@ -217,6 +217,16 @@ test.describe('admin area', () => {
     await expect(notice(otherPage)).toHaveText('Role updated.');
     expect((await page.goto('/admin'))?.status()).toBe(200);
 
+    // "Sign out everywhere" ends the first admin's still-cached session on the next request,
+    // for the dashboard as well as the admin area.
+    await userRow(otherPage, ADMIN_EMAIL)
+      .getByRole('button', { name: 'Sign out everywhere' })
+      .click();
+    await expect(notice(otherPage)).toHaveText('The user was signed out everywhere.');
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login\?next=(\/|%2F)dashboard$/);
+    await expect(page.getByLabel('Email').first()).toBeVisible();
+
     await other.close();
   });
 

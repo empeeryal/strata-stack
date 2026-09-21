@@ -22,6 +22,8 @@ export const contactMessages = sqliteTable(
       .default('pending'),
     deliveryAttempts: integer('delivery_attempts').notNull().default(0),
     deliveryError: text('delivery_error'),
+    /** Set while a notification is being sent; a lease that keeps concurrent retries to one. */
+    deliveryClaimedAt: integer('delivery_claimed_at', { mode: 'timestamp_ms' }),
     deliveredAt: integer('delivered_at', { mode: 'timestamp_ms' }),
     readAt: integer('read_at', { mode: 'timestamp_ms' }),
     archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
@@ -30,7 +32,10 @@ export const contactMessages = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (table) => [
-    index('contact_message_status_idx').on(table.status),
+    // The inbox lists by status or delivery state, newest first; the overview counts failures.
+    index('contact_message_status_created_at_idx').on(table.status, table.createdAt),
+    index('contact_message_delivery_created_at_idx').on(table.deliveryStatus, table.createdAt),
+    index('contact_message_created_at_idx').on(table.createdAt),
     index('contact_message_email_idx').on(table.email),
   ],
 );

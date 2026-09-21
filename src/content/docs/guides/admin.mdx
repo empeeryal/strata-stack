@@ -2,7 +2,7 @@
 title: Admin area
 description: The built-in administration pages for contact messages, users and the audit log, and how authorization works.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-19
+updatedDate: 2026-09-21
 sidebar:
   order: 6
   badge: new
@@ -22,6 +22,10 @@ person's next request. See [sessions and cookies](/docs/guides/authentication#se
   database hook in `src/lib/auth.ts` assigns the role at creation.
 - For existing accounts run `pnpm admin:promote user@example.com` (or `--revoke`).
 - Administrators can promote or demote each other from the users page, but never themselves.
+- **Resending a notification** claims the message for up to two minutes before sending, so two
+  administrators (or a double-click) cannot produce two emails: the second attempt is refused
+  as "already being sent" and the attempt counter stays accurate. A claim left behind by a
+  crash expires, after which the message can be resent.
 - The **last active administrator** cannot be demoted, banned or deleted, and cannot delete
   their own account from the dashboard: the site would be left without anyone who can reach
   `/admin`. `pnpm admin:promote --revoke` refuses for the same reason unless you pass `--force`.
@@ -29,13 +33,13 @@ person's next request. See [sessions and cookies](/docs/guides/authentication#se
 
 ## Pages
 
-| Route                  | What it does                                                                                                            |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity    |
-| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk |
-| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete            |
-| `/admin/users`         | Every account with role and status; make or remove admin, ban, unban, sign out everywhere, delete                       |
-| `/admin/audit`         | The last 200 audit entries                                                                                              |
+| Route                  | What it does                                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity        |
+| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk     |
+| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                |
+| `/admin/users`         | Every account with role and status; make or remove admin, ban (with an optional reason), unban, sign out everywhere, delete |
+| `/admin/audit`         | The last 200 audit entries                                                                                                  |
 
 Destructive buttons ask for confirmation through a small processed script (inline handlers
 are blocked by the CSP). After a successful action the page redirects with `?notice=<key>` and

@@ -51,7 +51,11 @@ import { cn } from '@/lib/utils';
 <script>
   class SearchTrigger extends HTMLElement {
     connectedCallback() {
-      if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+      // `navigator.platform` is deprecated; use the User-Agent Client Hints value when present.
+      const platform =
+        (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData
+          ?.platform ?? navigator.platform;
+      if (/Mac|iPhone|iPad|iOS/.test(platform)) {
         const modifier = this.querySelector('[data-modifier]');
         if (modifier) modifier.textContent = '⌘';
       }

@@ -3,10 +3,19 @@ import readingTime from 'reading-time';
 
 export type BlogPost = CollectionEntry<'blog'>;
 
-/** Published blog posts, newest first. Drafts are included in development only. */
+/**
+ * Whether a post belongs in a production build: not a draft and not dated in the future. A
+ * static site only re-evaluates this at build time, so a future date needs a rebuild on or
+ * after that day to publish.
+ */
+export function isPublished(data: { draft: boolean; pubDate: Date }, now = new Date()): boolean {
+  return !data.draft && data.pubDate.valueOf() <= now.valueOf();
+}
+
+/** Published blog posts, newest first. Development shows drafts and future posts as well. */
 export async function getPublishedPosts(): Promise<BlogPost[]> {
   const posts = await getCollection('blog', ({ data }) =>
-    import.meta.env.PROD ? !data.draft : true,
+    import.meta.env.PROD ? isPublished(data) : true,
   );
   return posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 }

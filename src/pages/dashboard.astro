@@ -12,11 +12,17 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { isAdmin } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { isEmailConfigured } from '@/lib/email';
+import { getAuthoritativeSession } from '@/lib/session';
 import { formatDate, toISODate } from '@/lib/utils';
 
 export const prerender = false;
 
-const { user, session } = Astro.locals;
+// The account page decides access from the database rather than the five-minute cookie
+// cache, so a ban or "sign out everywhere" ends access on the next request (and expires the
+// stale cookies). The header reads the same fresh values through Astro.locals.
+const { user, session } = await getAuthoritativeSession(Astro.request.headers, Astro.cookies);
+Astro.locals.user = user;
+Astro.locals.session = session;
 if (!user || !session) {
   // Verification and magic-link callbacks target this page; forward their error state.
   const error = Astro.url.searchParams.get('error');

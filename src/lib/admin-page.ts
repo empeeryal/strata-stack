@@ -16,7 +16,7 @@ import { getAuthoritativeSession } from './session';
  * existence of the area is not revealed.
  */
 export async function guardAdminPage(Astro: AstroGlobal): Promise<Response | null> {
-  const { user, session } = await getAuthoritativeSession(Astro.request.headers);
+  const { user, session } = await getAuthoritativeSession(Astro.request.headers, Astro.cookies);
   Astro.locals.user = user;
   Astro.locals.session = session;
 

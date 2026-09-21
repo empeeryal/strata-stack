@@ -1,0 +1,41 @@
+name: Prune data
+
+# Retention job: deletes archived contact messages older than CONTACT_RETENTION_DAYS, every
+# message older than CONTACT_MAX_AGE_DAYS when that is set, and expired throttle counters.
+# Runs weekly and on demand against the database in the Actions secrets (the same names the
+# Migrate database workflow reads). The two retention settings are repository variables.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prune
+
+jobs:
+  prune:
+    name: Delete expired data
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.TURSO_DATABASE_URL }}
+      DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN || secrets.TURSO_AUTH_TOKEN }}
+      CONTACT_RETENTION_DAYS: ${{ vars.CONTACT_RETENTION_DAYS }}
+      CONTACT_MAX_AGE_DAYS: ${{ vars.CONTACT_MAX_AGE_DAYS }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Check secrets
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::No database URL. Add DATABASE_URL and DATABASE_AUTH_TOKEN (or TURSO_DATABASE_URL and TURSO_AUTH_TOKEN) as Actions secrets, as for the Migrate database workflow."
+            exit 1
+          fi
+          case "$DATABASE_URL" in
+            file:*) echo "::error::The database URL points at a local file; the workflow expects a libsql:// URL."; exit 1 ;;
+          esac
+      - run: pnpm db:prune

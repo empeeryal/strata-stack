@@ -6,6 +6,7 @@ import { db } from '@/db/client';
 import { isAdmin } from '@/lib/admin';
 import { isEmailConfigured } from '@/lib/email';
 import { getEnv } from '@/lib/env';
+import { getAuthoritativeSession } from '@/lib/session';
 
 export const prerender = false;
 
@@ -15,8 +16,9 @@ export const prerender = false;
  * Everyone gets `status` (`ok` when the database answers, `degraded` with HTTP 503
  * otherwise) and the time. The details, which reveal how the deployment is configured
  * (version, target, whether email and contact notifications are set up), are only included
- * for a signed-in administrator or a request carrying `Authorization: Bearer <HEALTH_TOKEN>`,
- * so the public route does not double as reconnaissance. No secrets are ever exposed.
+ * for a signed-in administrator (confirmed against the database, not the cookie cache) or a
+ * request carrying `Authorization: Bearer <HEALTH_TOKEN>`, so the public route does not double
+ * as reconnaissance. No secrets are ever exposed.
  */
 export const GET: APIRoute = async ({ request, locals }) => {
   let database: 'ok' | 'error' = 'ok';
@@ -29,7 +31,11 @@ export const GET: APIRoute = async ({ request, locals }) => {
 
   const status = database === 'ok' ? 'ok' : 'degraded';
   const time = new Date().toISOString();
-  const detailed = isAdmin(locals.user) || hasHealthToken(request);
+  // The token costs nothing to check. The admin lookup reads the database, so it only runs
+  // when a session cookie is present; anonymous monitors never trigger it.
+  const detailed =
+    hasHealthToken(request) ||
+    (locals.user ? isAdmin((await getAuthoritativeSession(request.headers)).user) : false);
 
   const body = detailed
     ? {
