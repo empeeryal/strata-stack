@@ -5,10 +5,13 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { CONTACT_STATUSES, contactMessages, type ContactStatus } from '@/db/schema';
 import {
+  banUserAccount,
+  changeUserRole,
+  deleteUserAccount,
   isAdmin,
-  isLastActiveAdmin,
-  LAST_ADMIN_MESSAGE,
+  LastAdminError,
   recordAudit,
+  UserNotFoundError,
   writeAudit,
 } from '@/lib/admin';
 import type { AdminNotice } from '@/lib/admin-page';
@@ -52,11 +55,18 @@ async function requireAdmin(context: ActionAPIContext) {
   return user;
 }
 
-/** Refuses an operation that would leave the deployment without an active administrator. */
-async function assertNotLastAdmin(targetId: string): Promise<void> {
-  if (await isLastActiveAdmin(db, targetId)) {
-    throw new ActionError({ code: 'BAD_REQUEST', message: LAST_ADMIN_MESSAGE });
+/**
+ * Maps the outcomes of the guarded user operations in src/lib/admin.ts (which refuse to
+ * remove the last active administrator inside the statement itself) to action errors.
+ */
+function toAdminError(error: unknown, fallback: string): ActionError {
+  if (error instanceof LastAdminError) {
+    return new ActionError({ code: 'BAD_REQUEST', message: error.message });
   }
+  if (error instanceof UserNotFoundError) {
+    return new ActionError({ code: 'NOT_FOUND', message: error.message });
+  }
+  return toActionError(error, fallback);
 }
 
 /** Turns Better Auth API errors into action errors with their original message. */
@@ -229,23 +239,11 @@ export const server = {
             message: 'You cannot change your own role.',
           });
         }
-        if (role !== 'admin') await assertNotLastAdmin(targetId);
         try {
-          await auth.api.setRole({
-            body: { userId: targetId, role },
-            headers: context.request.headers,
-          });
+          await changeUserRole(db, actor, targetId, role);
         } catch (error) {
-          throw toActionError(error, 'Could not update the role.');
+          throw toAdminError(error, 'Could not update the role.');
         }
-        await recordAudit(db, {
-          actorId: actor.id,
-          actorEmail: actor.email,
-          action: 'user.set_role',
-          targetType: 'user',
-          targetId,
-          details: { role },
-        });
         return { notice: 'role-updated' as AdminNotice };
       },
     }),
@@ -258,23 +256,11 @@ export const server = {
         if (targetId === actor.id) {
           throw new ActionError({ code: 'BAD_REQUEST', message: 'You cannot ban yourself.' });
         }
-        await assertNotLastAdmin(targetId);
         try {
-          await auth.api.banUser({
-            body: { userId: targetId, ...(reason ? { banReason: reason } : {}) },
-            headers: context.request.headers,
-          });
+          await banUserAccount(db, actor, targetId, reason);
         } catch (error) {
-          throw toActionError(error, 'Could not ban the user.');
+          throw toAdminError(error, 'Could not ban the user.');
         }
-        await recordAudit(db, {
-          actorId: actor.id,
-          actorEmail: actor.email,
-          action: 'user.ban',
-          targetType: 'user',
-          targetId,
-          details: { reason: reason ?? null },
-        });
         return { notice: 'user-banned' as AdminNotice };
       },
     }),
@@ -338,22 +324,11 @@ export const server = {
             message: 'Delete your own account from the dashboard instead.',
           });
         }
-        await assertNotLastAdmin(targetId);
         try {
-          await auth.api.removeUser({
-            body: { userId: targetId },
-            headers: context.request.headers,
-          });
+          await deleteUserAccount(db, actor, targetId);
         } catch (error) {
-          throw toActionError(error, 'Could not delete the user.');
+          throw toAdminError(error, 'Could not delete the user.');
         }
-        await recordAudit(db, {
-          actorId: actor.id,
-          actorEmail: actor.email,
-          action: 'user.delete',
-          targetType: 'user',
-          targetId,
-        });
         return { notice: 'user-deleted' as AdminNotice };
       },
     }),

@@ -95,7 +95,8 @@ everyone.
   auth pages) read the session from the database instead of the cookie cache, so demotion,
   bans and "sign out everywhere" apply immediately and stale cookies are expired (see
   [sessions and cookies](/docs/guides/authentication#sessions-and-cookies)). The last active
-  administrator cannot be removed.
+  administrator cannot be removed; for the admin actions that rule is evaluated inside the
+  statement that makes the change, so concurrent requests cannot slip past it.
 - Admin pages never change data while rendering: marking a message read is a POST action, so
   link prefetching and previews cannot alter state.
 

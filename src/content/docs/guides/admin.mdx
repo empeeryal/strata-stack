@@ -30,6 +30,10 @@ person's next request. See [sessions and cookies](/docs/guides/authentication#se
   their own account from the dashboard: the site would be left without anyone who can reach
   `/admin`. `pnpm admin:promote --revoke` refuses for the same reason unless you pass `--force`.
 - `pnpm db:seed` creates `admin@example.com` / `password123` for local development.
+  For the admin actions the rule is part of the SQL statement that makes the change
+  (`notLastActiveAdmin()` in `src/lib/admin.ts`), so two administrators demoting, banning or
+  deleting each other at the same moment cannot both succeed. Self-deletion from the dashboard
+  goes through Better Auth's `deleteUser` hook, which checks the rule before the deletion.
 
 ## Pages
 
@@ -60,15 +64,16 @@ and are called from plain `<form method="POST">` elements, so they are covered b
 origin check. The pages redirect after a successful action (POST → redirect → GET) so a
 refresh never repeats it.
 
-| Action                  | Backed by                                                   |
-| ----------------------- | ----------------------------------------------------------- |
-| `setMessageStatus`      | `contact_message.status` (+ `read_at` / `archived_at`)      |
-| `deleteMessage`         | Hard delete                                                 |
-| `retryMessageDelivery`  | `deliverContactMessage()` in `src/lib/contact.ts`           |
-| `setUserRole`           | `auth.api.setRole`                                          |
-| `banUser` / `unbanUser` | `auth.api.banUser` / `unbanUser` (bans revoke all sessions) |
-| `revokeUserSessions`    | `auth.api.revokeUserSessions`                               |
-| `removeUser`            | `auth.api.removeUser`                                       |
+| Action                  | Backed by                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| `setMessageStatus`      | `contact_message.status` (+ `read_at` / `archived_at`)                                      |
+| `deleteMessage`         | Hard delete                                                                                 |
+| `retryMessageDelivery`  | `deliverContactMessage()` in `src/lib/contact.ts`                                           |
+| `setUserRole`           | `changeUserRole()` in `src/lib/admin.ts`: guarded update and audit entry in one transaction |
+| `banUser` / `unbanUser` | `banUserAccount()` (guarded, revokes every session) / `auth.api.unbanUser`                  |
+| `revokeUserSessions`    | `auth.api.revokeUserSessions`                                                               |
+| `removeUser`            | `deleteUserAccount()`: guarded delete of the user, sessions and linked accounts             |
+| `removeUser`            | `auth.api.removeUser`                                                                       |
 
 User operations go through Better Auth's admin plugin, which checks the caller's role again
 against the database. Every action writes an audit entry and returns a `notice` key for the
