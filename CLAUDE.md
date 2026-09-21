@@ -42,8 +42,10 @@ netlify`). Application code must not branch on the platform.
   `src/actions/index.ts`. Admin area: `src/pages/admin/*` guarded by `guardAdminPage()`, actions
   under `server.admin` guarded by `await requireAdmin()`. Both read the session from the database
   via `getAuthoritativeSession()` (`src/lib/session.ts`), never from the cookie cache. Audit
-  entries: `writeAudit()` inside a transaction for DB-only changes, `recordAudit()` (best-effort)
-  for Better Auth operations. Admin pages never change data on GET; use an action.
+  entries: `writeAudit()` inside a transaction for DB-only changes (message actions; role, ban
+  and delete via `changeUserRole()`, `banUserAccount()`, `deleteUserAccount()` in
+  `src/lib/admin.ts`, whose SQL also enforces the last-admin rule), `recordAudit()`
+  (best-effort) for Better Auth operations. Admin pages never change data on GET; use an action.
 - Email: `src/lib/email.ts` prints messages only outside production; never log links in production.
 - Security: `security.csp` in `astro.config.ts` (hash-based), `config/security-headers.ts`
   (mirrored in `public/_headers`, verified by a unit test).

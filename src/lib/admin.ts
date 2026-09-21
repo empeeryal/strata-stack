@@ -1,8 +1,12 @@
-import { eq, like } from 'drizzle-orm';
+import { and, eq, like, sql, type SQL } from 'drizzle-orm';
 
-import type { DbExecutor } from '../db/client';
+import type { Database, DbExecutor } from '../db/client';
 import { auditLog } from '../db/schema/app';
-import { user as userTable } from '../db/schema/auth';
+import {
+  account as accountTable,
+  session as sessionTable,
+  user as userTable,
+} from '../db/schema/auth';
 
 /**
  * Whether the user may access `/admin` and the admin actions. Better Auth stores several
@@ -38,6 +42,154 @@ export async function isLastActiveAdmin(db: DbExecutor, userId: string): Promise
 
 export const LAST_ADMIN_MESSAGE =
   'This is the only administrator account. Make someone else an administrator first.';
+
+/** Thrown when a change would leave the deployment without an active administrator. */
+export class LastAdminError extends Error {
+  constructor() {
+    super(LAST_ADMIN_MESSAGE);
+    this.name = 'LastAdminError';
+  }
+}
+
+/** Thrown when the account an operation targets does not exist. */
+export class UserNotFoundError extends Error {
+  constructor() {
+    super('User not found.');
+    this.name = 'UserNotFoundError';
+  }
+}
+
+/** The `isAdmin()` rule in SQL: the comma-separated role list contains `admin` (spaces ignored). */
+const ADMIN_ROLE_PATTERN = `'%,admin,%'`;
+
+/**
+ * Condition under which `userId` may lose access: it is not an active administrator, or
+ * another active administrator exists. SQLite evaluates it inside the statement that makes
+ * the change, so two administrators demoting, banning or deleting each other at the same
+ * moment cannot both succeed: the second statement sees the first one's result. This is what
+ * `isLastActiveAdmin()` checks in application code, made atomic.
+ */
+export function notLastActiveAdmin(userId: string): SQL {
+  return sql`(
+    not (
+      (',' || replace(coalesce(${userTable.role}, ''), ' ', '') || ',') like ${sql.raw(ADMIN_ROLE_PATTERN)}
+      and coalesce(${userTable.banned}, 0) = 0
+    )
+    or exists (
+      select 1 from ${userTable} as other
+      where other.id <> ${userId}
+        and (',' || replace(coalesce(other.role, ''), ' ', '') || ',') like ${sql.raw(ADMIN_ROLE_PATTERN)}
+        and coalesce(other.banned, 0) = 0
+    )
+  )`;
+}
+
+/** Who performs an administrative change, for the audit log. */
+export interface AdminActor {
+  id: string;
+  email: string;
+}
+
+/**
+ * Sets a user's role. A demotion is refused when the user is the last active administrator,
+ * by the same statement that would perform it. The audit entry shares the transaction.
+ */
+export async function changeUserRole(
+  db: Database,
+  actor: AdminActor,
+  targetId: string,
+  role: 'user' | 'admin',
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const where =
+      role === 'admin'
+        ? eq(userTable.id, targetId)
+        : and(eq(userTable.id, targetId), notLastActiveAdmin(targetId));
+    const updated = await tx
+      .update(userTable)
+      .set({ role })
+      .where(where)
+      .returning({ id: userTable.id });
+    if (updated.length === 0) await explainRefusal(tx, targetId);
+    await writeAudit(tx, {
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'user.set_role',
+      targetType: 'user',
+      targetId,
+      details: { role },
+    });
+  });
+}
+
+/**
+ * Bans a user and signs them out everywhere. Refused for the last active administrator by the
+ * same statement that would perform it. The audit entry shares the transaction.
+ */
+export async function banUserAccount(
+  db: Database,
+  actor: AdminActor,
+  targetId: string,
+  reason?: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const updated = await tx
+      .update(userTable)
+      .set({ banned: true, banReason: reason ?? null, banExpires: null })
+      .where(and(eq(userTable.id, targetId), notLastActiveAdmin(targetId)))
+      .returning({ id: userTable.id });
+    if (updated.length === 0) await explainRefusal(tx, targetId);
+    await tx.delete(sessionTable).where(eq(sessionTable.userId, targetId));
+    await writeAudit(tx, {
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'user.ban',
+      targetType: 'user',
+      targetId,
+      details: { reason: reason ?? null },
+    });
+  });
+}
+
+/**
+ * Deletes a user with their sessions and linked accounts. Refused for the last active
+ * administrator by the same statement that would perform it. The audit entry shares the
+ * transaction. Contact messages are keyed by address, not user, and stay in the inbox.
+ */
+export async function deleteUserAccount(
+  db: Database,
+  actor: AdminActor,
+  targetId: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const deleted = await tx
+      .delete(userTable)
+      .where(and(eq(userTable.id, targetId), notLastActiveAdmin(targetId)))
+      .returning({ id: userTable.id });
+    if (deleted.length === 0) await explainRefusal(tx, targetId);
+    // The foreign keys cascade when SQLite enforces them; delete explicitly so the outcome
+    // does not depend on the connection's pragma.
+    await tx.delete(sessionTable).where(eq(sessionTable.userId, targetId));
+    await tx.delete(accountTable).where(eq(accountTable.userId, targetId));
+    await writeAudit(tx, {
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'user.delete',
+      targetType: 'user',
+      targetId,
+    });
+  });
+}
+
+/** Explains a guarded statement that changed nothing: the user is unknown or the last admin. */
+async function explainRefusal(tx: DbExecutor, targetId: string): Promise<never> {
+  const [row] = await tx
+    .select({ id: userTable.id })
+    .from(userTable)
+    .where(eq(userTable.id, targetId))
+    .limit(1);
+  throw row ? new LastAdminError() : new UserNotFoundError();
+}
 
 export type AuditAction =
   | 'account.delete'
