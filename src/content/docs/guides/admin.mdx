@@ -43,7 +43,7 @@ person's next request. See [sessions and cookies](/docs/guides/authentication#se
 | `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk     |
 | `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                |
 | `/admin/users`         | Every account with role and status; make or remove admin, ban (with an optional reason), unban, sign out everywhere, delete |
-| `/admin/audit`         | The last 200 audit entries                                                                                                  |
+| `/admin/audit`         | Audit entries, 25 per page, filtered by action, actor or target and date range                                              |
 
 Destructive buttons ask for confirmation through a small processed script (inline handlers
 are blocked by the CSP). After a successful action the page redirects with `?notice=<key>` and
@@ -83,7 +83,10 @@ confirmation.
 
 `writeAudit()` and `recordAudit()` (`src/lib/admin.ts`) append to the `audit_log` table:
 actor, action, target and small JSON details. Entries never contain message bodies, passwords
-or tokens. The guarantee differs by kind of change:
+or tokens. `/admin/audit` shows them 25 at a time, newest first, filtered by action, by a text
+match on the actor's address or the target id, and by date range; the filters live in the URL,
+so a view can be bookmarked or handed to another administrator, and clicking an action in the
+table narrows the list to that action. The guarantee differs by kind of change:
 
 - **Message status changes and deletions** run the change and `writeAudit()` in one database
   transaction, so neither exists without the other.
