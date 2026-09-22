@@ -1,15 +1,19 @@
 ---
 import { actions } from 'astro:actions';
+import { count, desc, or, sql, type SQL } from 'drizzle-orm';
 
 import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
+import { inputClasses } from '@/components/ui/field-classes';
 import Pagination from '@/components/ui/Pagination.astro';
+import { db } from '@/db/client';
+import { user as userTable } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
 import { isAdmin } from '@/lib/admin';
 import { guardAdminPage, summarizeActionResults, withNotice } from '@/lib/admin-page';
-import { auth } from '@/lib/auth';
 import { listQuery, paginate } from '@/lib/pagination';
-import { formatDate, toISODate } from '@/lib/utils';
+import { escapeLike } from '@/lib/sql';
+import { cn, formatDate, toISODate } from '@/lib/utils';
 
 export const prerender = false;
 
@@ -19,7 +23,8 @@ const me = Astro.locals.user!;
 
 const PAGE_SIZE = 25;
 const requestedPage = Astro.url.searchParams.get('page');
-const pageUrl = (page: number) => `/admin/users${listQuery({ page: page > 1 ? page : null })}`;
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 100);
+const pageUrl = (page: number) => `/admin/users${listQuery({ q, page: page > 1 ? page : null })}`;
 
 const outcome = summarizeActionResults([
   Astro.getActionResult(actions.admin.setUserRole),
@@ -32,138 +37,180 @@ if (outcome.completed) {
   return Astro.redirect(withNotice(pageUrl(Number(requestedPage) || 1), outcome.notice));
 }
 
-// Better Auth's admin plugin enforces the role again on this call.
+// The search matches the name or address literally (wildcards escaped).
+const pattern = q ? `%${escapeLike(q.toLowerCase())}%` : null;
+const searchCondition: SQL | undefined = pattern
+  ? or(
+      sql`lower(${userTable.name}) like ${pattern} escape '\\'`,
+      sql`lower(${userTable.email}) like ${pattern} escape '\\'`,
+    )
+  : undefined;
+
 const requested = Math.max(1, Math.floor(Number(requestedPage)) || 1);
-const { users, total } = await auth.api.listUsers({
-  query: {
-    limit: PAGE_SIZE,
-    offset: (requested - 1) * PAGE_SIZE,
-    sortBy: 'createdAt',
-    sortDirection: 'desc',
-  },
-  headers: Astro.request.headers,
-});
+const [matching] = await db.select({ value: count() }).from(userTable).where(searchCondition);
+const total = matching?.value ?? 0;
 const paging = paginate(total, requested, PAGE_SIZE);
 // A stale link past the last page lands on the last page instead of an empty one.
 if (paging.page !== requested) return Astro.redirect(pageUrl(paging.page));
+const users = await db
+  .select()
+  .from(userTable)
+  .where(searchCondition)
+  .orderBy(desc(userTable.createdAt))
+  .limit(PAGE_SIZE)
+  .offset(paging.offset);
+const summary =
+  total === 0
+    ? q
+      ? `No accounts match “${q}”.`
+      : 'No accounts yet.'
+    : `${total} ${total === 1 ? 'account' : 'accounts'}${q ? ` matching “${q}”` : ''}.`;
 ---
 
 <AdminLayout title="Users" description="Manage accounts, roles and bans." error={outcome.error}>
-  <p class="text-sm text-muted-foreground">
-    {total} {total === 1 ? 'account' : 'accounts'}. Administrators are bootstrapped from{' '}
-    <code class="font-mono">ADMIN_EMAILS</code> and can be changed here.
-  </p>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-muted-foreground" data-list-summary>
+      {summary} Administrators are bootstrapped from <code class="font-mono">ADMIN_EMAILS</code> and
+      can be changed here.
+    </p>
+    <form method="GET" action="/admin/users" role="search" class="flex items-center gap-2">
+      <label for="user-search" class="sr-only">
+        Search by name or email
+      </label>
+      <input
+        id="user-search"
+        name="q"
+        type="search"
+        value={q}
+        maxlength="100"
+        placeholder="Search by name or email"
+        class={cn(inputClasses, 'h-9 w-56')}
+      />
+      <Button type="submit" variant="outline" size="sm">
+        Search
+      </Button>
+      {q && (
+        <a href="/admin/users" class="text-sm font-medium underline underline-offset-4">
+          Clear
+        </a>
+      )}
+    </form>
+  </div>
 
-  <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
-    <table class="w-full text-sm">
-      <caption class="sr-only">User accounts</caption>
-      <thead class="bg-muted/60 text-left">
-        <tr>
-          <th scope="col" class="px-4 py-3 font-semibold">
-            User
-          </th>
-          <th scope="col" class="px-4 py-3 font-semibold">
-            Role
-          </th>
-          <th scope="col" class="px-4 py-3 font-semibold">
-            Status
-          </th>
-          <th scope="col" class="px-4 py-3 font-semibold">
-            Joined
-          </th>
-          <th scope="col" class="px-4 py-3 text-right font-semibold">
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody class="divide-y">
-        {users.map((account) => {
-          const admin = isAdmin(account);
-          const self = account.id === me.id;
-          return (
-            <tr>
-              <td class="px-4 py-3 align-top">
-                <p class="font-medium">
-                  {account.name}
-                  {self && <span class="text-xs text-muted-foreground"> (you)</span>}
-                </p>
-                <p class="text-xs text-muted-foreground">{account.email}</p>
-              </td>
-              <td class="px-4 py-3 align-top">
-                <Badge variant={admin ? 'default' : 'outline'}>{admin ? 'Admin' : 'User'}</Badge>
-              </td>
-              <td class="px-4 py-3 align-top">
-                <div class="flex flex-wrap gap-1">
-                  {account.emailVerified ? (
-                    <Badge variant="success">Verified</Badge>
-                  ) : (
-                    <Badge variant="muted">Unverified</Badge>
-                  )}
-                  {account.banned && (
-                    <Badge variant="danger" title={account.banReason ?? undefined}>
-                      Banned
-                    </Badge>
-                  )}
-                </div>
-              </td>
-              <td class="px-4 py-3 align-top whitespace-nowrap">
-                <time datetime={toISODate(account.createdAt)}>{formatDate(account.createdAt)}</time>
-              </td>
-              <td class="px-4 py-3 align-top">
-                {!self && (
-                  <div class="flex flex-wrap justify-end gap-1">
-                    <form method="POST" action={actions.admin.setUserRole}>
-                      <input type="hidden" name="userId" value={account.id} />
-                      <input type="hidden" name="role" value={admin ? 'user' : 'admin'} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        {admin ? 'Remove admin' : 'Make admin'}
-                      </Button>
-                    </form>
-                    {account.banned ? (
-                      <form method="POST" action={actions.admin.unbanUser}>
+  {users.length > 0 && (
+    <div class="mt-6 overflow-x-auto rounded-xl border bg-card shadow-soft">
+      <table class="w-full text-sm">
+        <caption class="sr-only">User accounts</caption>
+        <thead class="bg-muted/60 text-left">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              User
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Role
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Status
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Joined
+            </th>
+            <th scope="col" class="px-4 py-3 text-right font-semibold">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {users.map((account) => {
+            const admin = isAdmin(account);
+            const self = account.id === me.id;
+            return (
+              <tr>
+                <td class="px-4 py-3 align-top">
+                  <p class="font-medium">
+                    {account.name}
+                    {self && <span class="text-xs text-muted-foreground"> (you)</span>}
+                  </p>
+                  <p class="text-xs text-muted-foreground">{account.email}</p>
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <Badge variant={admin ? 'default' : 'outline'}>{admin ? 'Admin' : 'User'}</Badge>
+                </td>
+                <td class="px-4 py-3 align-top">
+                  <div class="flex flex-wrap gap-1">
+                    {account.emailVerified ? (
+                      <Badge variant="success">Verified</Badge>
+                    ) : (
+                      <Badge variant="muted">Unverified</Badge>
+                    )}
+                    {account.banned && (
+                      <Badge variant="danger" title={account.banReason ?? undefined}>
+                        Banned
+                      </Badge>
+                    )}
+                  </div>
+                </td>
+                <td class="px-4 py-3 align-top whitespace-nowrap">
+                  <time datetime={toISODate(account.createdAt)}>
+                    {formatDate(account.createdAt)}
+                  </time>
+                </td>
+                <td class="px-4 py-3 align-top">
+                  {!self && (
+                    <div class="flex flex-wrap justify-end gap-1">
+                      <form method="POST" action={actions.admin.setUserRole}>
                         <input type="hidden" name="userId" value={account.id} />
+                        <input type="hidden" name="role" value={admin ? 'user' : 'admin'} />
                         <Button type="submit" variant="ghost" size="sm">
-                          Unban
+                          {admin ? 'Remove admin' : 'Make admin'}
                         </Button>
                       </form>
-                    ) : (
+                      {account.banned ? (
+                        <form method="POST" action={actions.admin.unbanUser}>
+                          <input type="hidden" name="userId" value={account.id} />
+                          <Button type="submit" variant="ghost" size="sm">
+                            Unban
+                          </Button>
+                        </form>
+                      ) : (
+                        <form
+                          method="POST"
+                          action={actions.admin.banUser}
+                          data-prompt="Ban this user and sign them out everywhere. Reason (optional, shown on the account):"
+                        >
+                          <input type="hidden" name="userId" value={account.id} />
+                          <input type="hidden" name="reason" data-prompt-field />
+                          <Button type="submit" variant="ghost" size="sm">
+                            Ban
+                          </Button>
+                        </form>
+                      )}
+                      <form method="POST" action={actions.admin.revokeUserSessions}>
+                        <input type="hidden" name="userId" value={account.id} />
+                        <Button type="submit" variant="ghost" size="sm">
+                          Sign out everywhere
+                        </Button>
+                      </form>
                       <form
                         method="POST"
-                        action={actions.admin.banUser}
-                        data-prompt="Ban this user and sign them out everywhere. Reason (optional, shown on the account):"
+                        action={actions.admin.removeUser}
+                        data-confirm="Permanently delete this account and all of its data?"
                       >
                         <input type="hidden" name="userId" value={account.id} />
-                        <input type="hidden" name="reason" data-prompt-field />
-                        <Button type="submit" variant="ghost" size="sm">
-                          Ban
+                        <Button type="submit" variant="ghost" size="sm" class="text-danger">
+                          Delete
                         </Button>
                       </form>
-                    )}
-                    <form method="POST" action={actions.admin.revokeUserSessions}>
-                      <input type="hidden" name="userId" value={account.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Sign out everywhere
-                      </Button>
-                    </form>
-                    <form
-                      method="POST"
-                      action={actions.admin.removeUser}
-                      data-confirm="Permanently delete this account and all of its data?"
-                    >
-                      <input type="hidden" name="userId" value={account.id} />
-                      <Button type="submit" variant="ghost" size="sm" class="text-danger">
-                        Delete
-                      </Button>
-                    </form>
-                  </div>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
 
   <Pagination
     current={paging.page}

@@ -50,6 +50,33 @@ test.describe('account self-service', () => {
     await expect(page.getByRole('link', { name: 'Back to sign in' })).toBeVisible();
   });
 
+  test('lists sessions and signs out another one from the dashboard', async ({ page, browser }) => {
+    const address = `sessions-${Date.now()}@example.com`;
+    await signUp(page, 'Session Tester', address);
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    // A second device: the same account signed in from another browser context.
+    const other = await browser.newContext();
+    const otherPage = await other.newPage();
+    await signIn(otherPage, address);
+    await expect(otherPage).toHaveURL(/\/dashboard$/);
+
+    await page.goto('/dashboard');
+    const sessions = page.locator('[data-sessions] > li');
+    await expect(sessions).toHaveCount(2);
+    await expect(page.getByText('This device')).toHaveCount(1);
+
+    // Signing out the other session works from the first device without JavaScript islands.
+    await page.locator('[data-sessions]').getByRole('button', { name: 'Sign out' }).click();
+    await expect(page.locator('[data-account-notice]')).toHaveText('That session was signed out.');
+    await expect(sessions).toHaveCount(1);
+
+    // The other device's cached cookie no longer opens the dashboard.
+    await otherPage.goto('/dashboard');
+    await expect(otherPage).toHaveURL(/\/login\?next=(\/|%2F)dashboard$/);
+    await other.close();
+  });
+
   test('rejects unauthenticated export requests', async ({ request }) => {
     const response = await request.get('/api/account/export');
     expect(response.status()).toBe(401);

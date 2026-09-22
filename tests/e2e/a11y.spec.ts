@@ -91,6 +91,9 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
   // only reads pages. Each test opens a context carrying the administrator's cookies.
   test.describe.configure({ mode: 'serial' });
   let storageState: Awaited<ReturnType<BrowserContext['storageState']>>;
+  // The block opens only this message: opening one marks it read, and the admin spec running in
+  // another worker asserts that its own message stays new.
+  const sender = `Axe Sender ${Date.now()}`;
 
   async function asAdmin(browser: Browser, run: (page: Page) => Promise<void>) {
     const context = await browser.newContext({ storageState });
@@ -113,7 +116,7 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
     await expect(page).toHaveURL(/\/dashboard$/);
     // Give the inbox a message so the detail page has something to render.
     await fillContactForm(page, {
-      name: `Axe Sender ${Date.now()}`,
+      name: sender,
       message: 'A message long enough to be accepted by the contact form.',
     });
     await page.getByRole('button', { name: 'Send message' }).click();
@@ -141,8 +144,8 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
 
   test('a message detail page', async ({ browser }) => {
     await asAdmin(browser, async (page) => {
-      await page.goto('/admin/messages');
-      await page.locator('table a[href^="/admin/messages/"]').first().click();
+      await page.goto(`/admin/messages?q=${encodeURIComponent(sender)}`);
+      await page.getByRole('link', { name: sender }).click();
       await expect(page).toHaveURL(/\/admin\/messages\/[^/]+$/);
       await expectNoViolations(page);
     });
