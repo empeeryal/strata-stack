@@ -1,7 +1,8 @@
 ---
 title: 'Why the admin area re-reads the session on every request'
-description: 'Session cookie caches are great for showing a name in the header and dangerous for deciding access. How the admin area, its actions and the account export bypass the cache.'
+description: 'Session cookie caches are great for showing a name in the header and dangerous for deciding access. How the admin area, the dashboard, the auth pages and the account export bypass the cache.'
 pubDate: 2026-09-20
+updatedDate: 2026-09-22
 author: empeeryal
 tags: [auth, admin, security]
 ---
@@ -27,9 +28,14 @@ That is acceptable for a greeting. It is not acceptable for authorization.
 cookie cache disabled, which costs one database read:
 
 ```ts
-export async function getAuthoritativeSession(headers: Headers) {
-  const result = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
-  return { user: result?.user ?? null, session: result?.session ?? null };
+export async function getAuthoritativeSession(headers: Headers, cookies?: AstroCookies) {
+  const { headers: responseHeaders, response } = await auth.api.getSession({
+    headers,
+    query: { disableCookieCache: true },
+    returnHeaders: true,
+  });
+  if (!response && cookies) expireCookies(responseHeaders, cookies);
+  return { user: response?.user ?? null, session: response?.session ?? null };
 }
 ```
 
@@ -46,6 +52,16 @@ Two places call it, and together they cover every way into the admin area:
 The account export at `/api/account/export` does the same, because handing someone a copy of
 their data is also a decision. The rest of the site keeps using the cache.
 
+<Callout type="note" title="Update, 22 September 2026">
+  An outside audit pointed out that the dashboard, the detailed `/api/health` response and the
+  redirect that sends signed-in visitors away from the login page still trusted the cache. All three
+  read the database now. Making the dashboard strict exposed a redirect loop after "sign out
+  everywhere" (dashboard to login, login back to dashboard on the cached cookie), which is why the
+  helper grew an optional `cookies` argument: when the database has no session for the cookie any
+  more, the `Set-Cookie` headers Better Auth already produces to expire it are applied. The [audit
+  write-up](/blog/what-an-outside-audit-found) has the details.
+</Callout>
+
 ## Guarding in the page, not the middleware
 
 It is tempting to protect `/admin` with a pathname check in `src/middleware.ts`. The template
@@ -56,16 +72,20 @@ nothing to bypass.
 
 ## What the admin plugin adds
 
-User operations (roles, bans, session revocation, deletion) go through Better Auth's admin
-plugin, which checks the caller's role against the database again on its side. The template's
-check and the plugin's check are independent, and a bug in one does not open the other.
+Unbanning an account and signing it out everywhere go through Better Auth's admin plugin, which
+checks the caller's role against the database again on its side. Role changes, bans and
+deletions are written by the template itself (see the next section), guarded by `requireAdmin()`
+and by the SQL statement that makes the change.
 
 ## The last administrator
 
 A site with an admin area but no administrator is stuck: recovery means running
 `pnpm admin:promote` against the production database. The template refuses to get there:
 
-- the actions will not demote, ban or delete the last active administrator;
+- the actions will not demote, ban or delete the last active administrator. Since the audit
+  round the rule is part of the `UPDATE` or `DELETE` itself (`notLastActiveAdmin()` in
+  `src/lib/admin.ts`), so two administrators acting on each other at the same moment cannot
+  both succeed;
 - `deleteUser.beforeDelete` in `src/lib/auth.ts` stops that person deleting their own account
   from the dashboard;
 - `pnpm admin:promote --revoke` refuses as well, unless you pass `--force`, which is the
@@ -80,12 +100,13 @@ Every administrative action appends to `audit_log`: who, what, which target, and
 detail such as the new status. Entries never contain message bodies or secrets. The guarantee
 depends on what changed:
 
-- **Message status changes and deletions** write the row and the audit entry in one database
+- **Message status changes and deletions, role changes, bans, user deletions and a person
+  signing out one of their own sessions** write the row and the audit entry in one database
   transaction. Neither exists without the other.
-- **Everything else** (resending a notification, user operations, exports, account deletions)
-  involves email or Better Auth and cannot share a transaction. Those entries are best-effort:
-  the change stands even if the log write fails, and the failure is reported on the server log
-  as `[audit] could not record entry`.
+- **Everything else** (resending a notification, unbanning, signing an account out everywhere,
+  exports, account deletions) involves email or Better Auth and cannot share a transaction.
+  Those entries are best-effort: the change stands even if the log write fails, and the failure
+  is reported on the server log as `[audit] could not record entry`.
 
 The [admin guide](/docs/guides/admin#audit-log) says the same thing, because a privacy policy
 that promises a complete audit trail should be able to point at the code that keeps it.

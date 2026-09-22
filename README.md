@@ -76,7 +76,9 @@ Optional: `pnpm db:seed` creates `demo@example.com` and `admin@example.com` (pas
 
 After the first deployment, add `DATABASE_URL` and `DATABASE_AUTH_TOKEN` (or the `TURSO_*` names)
 as GitHub Actions secrets and run the **Migrate database** workflow once to create the tables. It
-runs again on its own whenever a merged change adds a migration.
+runs again on its own whenever a merged change adds a migration. The
+[operating guide](https://stratastack.dev/docs/guides/operations) collects everything after that:
+scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups.
 
 `DEPLOY_TARGET` is inferred from `VERCEL`, `NETLIFY` and `WORKERS_CI`, so the platform build
 command can stay `astro build`. See the [deploy guides](https://stratastack.dev/docs/deploy/choosing-a-target).
