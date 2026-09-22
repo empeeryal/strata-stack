@@ -1,0 +1,121 @@
+---
+title: Operating the site
+description: 'The runbook for a deployed site: creating the tables, scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups, collected in one place.'
+publishedDate: 2026-09-22
+sidebar:
+  order: 12
+---
+
+The other guides explain how each part works. This page is the short version for the person who
+runs the deployed site: what to do once, what runs on a schedule, what to look at when something
+is off, and where each knob lives. Every item links to the guide with the details.
+
+## Once, after the first deployment
+
+<Steps>
+
+1. **Environment variables on the platform.** `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` and
+   `SITE_URL` (both the public `https://` origin), the database pair (`DATABASE_URL` and
+   `DATABASE_AUTH_TOKEN`, or the `TURSO_*` names the Vercel integration sets), and
+   `ADMIN_EMAILS` for the first administrators. Email needs `RESEND_API_KEY`, `EMAIL_FROM` and
+   `CONTACT_TO_EMAIL`. The [environment variables guide](/docs/guides/environment-variables)
+   has the full table.
+
+2. **Database secrets in GitHub.** Add the database URL and token as Actions secrets (repository
+   Settings → Secrets and variables → Actions → Secrets), under either pair of names. Platform
+   variables are not visible to GitHub Actions, so this step is separate even when the
+   integration already set them on the platform.
+
+3. **Create the tables.** Run the **Migrate database** workflow from the Actions tab. Its first
+   log lines list which secret names the job can see; "migrations applied successfully" means
+   the schema is in place. Until then sign-up and the contact form fail.
+
+4. **Sign up with an address from `ADMIN_EMAILS`.** That account gets the `admin` role on
+   creation and opens `/admin`. Check `/api/health` and the admin overview's configuration
+   panel: both say whether email delivery and contact notifications are configured.
+
+5. **OAuth callbacks and the domain.** If GitHub or Google sign-in is enabled, register
+   `https://<your-domain>/api/auth/callback/github` (and `/google`) with the providers, and
+   make sure `BETTER_AUTH_URL` matches the domain visitors use.
+
+</Steps>
+
+## What runs on a schedule
+
+| Job                  | When                                                     | Where                           | Needs                                                                                                  |
+| -------------------- | -------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Migrate database** | Every merge to `main` that touches `drizzle/`; on demand | `.github/workflows/migrate.yml` | The database secrets                                                                                   |
+| **Prune data**       | Sundays 03:00 UTC; on demand                             | `.github/workflows/prune.yml`   | The database secrets; optional `CONTACT_RETENTION_DAYS`, `CONTACT_MAX_AGE_DAYS` repository _variables_ |
+| **Release**          | Every push to `main`                                     | `.github/workflows/release.yml` | Nothing; opens or updates the version PR and tags merged releases                                      |
+| **Dependabot**       | Mondays                                                  | `.github/dependabot.yml`        | Nothing; opens update PRs after the three-day cooldown                                                 |
+
+Look at the Actions tab now and then. A retention policy is only real while the prune job
+succeeds, and a migration that failed on merge means the new code is running against the old
+schema. GitHub also pauses scheduled workflows in repositories with no activity for sixty
+days; a push or a manual run resumes them.
+
+## Monitoring
+
+- **`/api/health`** answers `{ status: 'ok' }` with HTTP 200 while the database responds and
+  `degraded` with 503 otherwise. Point your uptime monitor at it. With
+  `Authorization: Bearer <HEALTH_TOKEN>` (or a signed-in administrator) the response also
+  reports the version, deploy target and whether email and contact notifications are
+  configured. See [security](/docs/guides/security).
+- **The admin overview** (`/admin`) shows failed notifications, new messages and the
+  configuration health at a glance.
+- **Server log lines worth alerting on**: `[contact] owner notification failed` (a message is
+  stored but you were not told), `[audit] could not record entry` (a best-effort audit write
+  failed) and `[auth] could not send` (a verification, reset or magic-link email did not go
+  out). Where the log lives depends on the platform (Vercel and Netlify function logs,
+  Cloudflare observability, your process manager on Node).
+
+## Administrators
+
+- New administrators: add the address to `ADMIN_EMAILS` before they sign up, or promote an
+  existing account from `/admin/users` (or `pnpm admin:promote user@example.com` with
+  `DATABASE_URL` and `DATABASE_AUTH_TOKEN` pointing at production).
+- The last active administrator cannot be demoted, banned or deleted, and the rule is enforced
+  inside the SQL statement that would do it, so two administrators cannot remove each other by
+  accident. Recovery from an empty admin list is `pnpm admin:promote` against production;
+  `--revoke --force` is the break-glass path in the other direction.
+- Everything administrators do is in the [audit log](/docs/guides/admin#audit-log), 25 entries
+  per page, filterable by action, actor or target and date.
+
+## Incidents
+
+- **A compromised or lost device**: the person signs out of that session from their dashboard
+  (every session is listed with its browser and address). An administrator can **Sign out
+  everywhere** for any account from `/admin/users`, or ban it with a reason.
+- **Spam through the contact form**: the honeypot and the per-address and per-sender throttles
+  handle the common cases; archived messages disappear with the retention job. For a campaign,
+  add a CAPTCHA check to the action handler (see [actions and forms](/docs/guides/actions-and-forms)).
+- **Email provider outage**: messages are stored before the notification is attempted, so
+  nothing is lost. Failed notifications are listed on the overview; **Resend notification** on
+  a message retries it, one attempt at a time.
+- **Rotating secrets**: a new `BETTER_AUTH_SECRET` invalidates every session cookie, so
+  everyone signs in again; a new database token goes in the platform variables **and** the
+  GitHub secrets; a new `RESEND_API_KEY` needs nothing else. Redeploy after changing platform
+  variables so the running functions pick them up.
+
+## Releases and updates
+
+Every merged pull request with a changeset makes the Release workflow open or update a
+**chore: version packages** pull request. Merging that one bumps the version, writes
+`CHANGELOG.md` and creates the Git tag; the `/changelog` page renders the file on the next
+deploy. Dependabot's Monday pull requests are safe to merge when CI is green; the
+[CI guide](/docs/guides/ci-cd) explains the cooldown that keeps very fresh releases out.
+
+## Backups and schema changes
+
+Turso keeps point-in-time history for its databases (the retention depends on the plan); take a
+dump before a destructive migration anyway:
+
+```bash
+turso db shell <database> .dump > backup.sql
+```
+
+Prefer additive migrations (new columns and tables first, code that reads them second, removal
+in a later release), because platform deploys and the migration workflow start from the same
+push and neither waits for the other. Migrations are generated with `pnpm db:generate` and
+apply to production through the workflow, never from a deploy. The
+[database guide](/docs/guides/database) covers the local side.

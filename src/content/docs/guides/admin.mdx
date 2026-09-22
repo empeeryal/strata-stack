@@ -16,6 +16,9 @@ Both checks read the role from the database rather than from the session cookie 
 removing the role, banning an account or signing someone out everywhere applies to that
 person's next request. See [sessions and cookies](/docs/guides/authentication#sessions-and-cookies).
 
+The day-to-day side (monitoring, incidents, rotating secrets, backups) is collected in the
+[operating guide](/docs/guides/operations).
+
 ## Becoming an administrator
 
 - Set `ADMIN_EMAILS=you@example.com,ops@example.com` before those people sign up: the
@@ -88,13 +91,14 @@ match on the actor's address or the target id, and by date range; the filters li
 so a view can be bookmarked or handed to another administrator, and clicking an action in the
 table narrows the list to that action. The guarantee differs by kind of change:
 
-- **Message status changes and deletions** run the change and `writeAudit()` in one database
+- **Message status changes and deletions, role changes, bans, user deletions and people signing
+  out one of their own sessions** run the change and `writeAudit()` in one database
   transaction, so neither exists without the other.
-- **Everything else** (notification retries, user operations, exports and account deletions)
-  goes through Better Auth or an external service and cannot share a transaction. These use
-  `recordAudit()`, which is best-effort: the change stands even if the entry cannot be written,
-  and the failure is logged as `[audit] could not record entry`. Watch for that line in your
-  platform's logs.
+- **Everything else** (notification retries, unbanning, signing an account out everywhere,
+  exports and account deletions) goes through Better Auth or an external service and cannot
+  share a transaction. These use `recordAudit()`, which is best-effort: the change stands even
+  if the entry cannot be written, and the failure is logged as `[audit] could not record entry`.
+  Watch for that line in your platform's logs.
 
 ## Extending
 

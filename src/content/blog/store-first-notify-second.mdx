@@ -2,6 +2,7 @@
 title: 'Store first, notify second: a contact form that survives a broken mail provider'
 description: 'How the contact form handles bots, floods and email outages: a honeypot, two throttles in one atomic upsert, and a message that is saved before anyone is notified.'
 pubDate: 2026-09-20
+updatedDate: 2026-09-22
 author: empeeryal
 tags: [contact, actions, security]
 ---
@@ -30,7 +31,8 @@ through what happens on a submission and why each step is there.
 3. **Store.** The message is inserted into `contact_message`. This insert is the authoritative
    success: once it commits, the visitor's message exists whatever happens next.
 
-4. **Notify.** If `CONTACT_TO_EMAIL` is set, the owner notification is sent and its outcome is
+4. **Notify.** If `CONTACT_TO_EMAIL` is set, the owner notification is sent with the visitor
+   as its `Reply-To`, so answering it from a mail client replies to them, and its outcome is
    recorded on the row: `sent`, or `failed` with the attempt count and the error text. If no
    recipient is configured the row is marked `skipped`.
 
@@ -78,14 +80,24 @@ failed notification, and the detail page has a **Resend notification** button th
 delivery step again for that row. Nothing needs to be re-typed and nothing is duplicated:
 resending only updates the delivery columns of the existing message.
 
+<Callout type="note" title="Update, 22 September 2026">
+  Two administrators pressing **Resend** at the same time used to produce two emails. Delivery now
+  takes a short lease on the message first: one conditional update sets `delivery_claimed_at` and
+  counts the attempt, and only succeeds while no unexpired lease exists. The second click is refused
+  as "already being sent", and the lease expires after two minutes so a crash mid-delivery leaves
+  the message retryable. An attempt counter alone was not enough, because a retry that reads the row
+  after the first claim still sends. See the [audit write-up](/blog/what-an-outside-audit-found).
+</Callout>
+
 ## Retention
 
 Messages are personal data, so they do not live forever by default. `pnpm db:prune` deletes
 archived messages older than `CONTACT_RETENTION_DAYS` (365 by default) and expired throttle
 counters. Open messages are kept until someone archives them, unless `CONTACT_MAX_AGE_DAYS` sets
 a hard maximum for every message regardless of status. Both values belong in your privacy
-policy; the [privacy and data guide](/docs/guides/privacy-and-data) has a scheduled-workflow
-example for running the job weekly.
+policy. The **Prune data** workflow runs the job every Sunday with the same database secrets as
+the migration workflow; the [privacy and data guide](/docs/guides/privacy-and-data) explains the
+two repository variables that change the defaults.
 
 ## Adapting it
 

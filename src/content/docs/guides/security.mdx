@@ -88,8 +88,9 @@ everyone.
   throws and the login page hides the magic-link form and the reset link (see
   [authentication](/docs/guides/authentication#email-delivery-and-the-production-rule)).
 - Administrative actions, account deletions and data exports are recorded in `audit_log`.
-  Message status changes and deletions share a transaction with their entries; everything else
-  is best-effort and a failed write is logged (see the [admin area](/docs/guides/admin#audit-log)).
+  Message status changes and deletions, role changes, bans, user deletions and self-service
+  session revocation share a transaction with their entries; everything else is best-effort and
+  a failed write is logged (see the [admin area](/docs/guides/admin#audit-log)).
 - Access decisions (`/admin`, the admin actions, the account export, the dashboard, the
   detailed `/api/health` response and the redirect that sends signed-in visitors away from the
   auth pages) read the session from the database instead of the cookie cache, so demotion,

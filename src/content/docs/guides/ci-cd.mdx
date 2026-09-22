@@ -2,7 +2,7 @@
 title: CI and releases
 description: The GitHub Actions workflows, the build matrix for every deploy target, Dependabot, Changesets releases and production database migrations.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-22
 sidebar:
   order: 11
 ---
@@ -91,6 +91,9 @@ a file under `drizzle/`. It reads the database URL and token from GitHub Actions
 repository secrets or as secrets of the `production` environment the job references (add a
 required-reviewer rule there if you want approvals). The first step logs which of the four
 names are present, and the job refuses a `file:` URL.
+
+The [operating guide](/docs/guides/operations) lists this and the other recurring jobs in one
+table.
 
 ## Data retention
 

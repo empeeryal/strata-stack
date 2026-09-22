@@ -2,7 +2,7 @@
 title: 'Introducing Strata: a template that documents itself'
 description: 'Why we built Strata, a complete Astro 7 starter, what ships in the box, and how this site is generated from the template it describes.'
 pubDate: 2026-09-18
-updatedDate: 2026-09-20
+updatedDate: 2026-09-22
 author: empeeryal
 tags: [announcement, template, astro]
 ---
@@ -27,6 +27,8 @@ together:
 - **Drizzle ORM + libSQL**, using a local file in development and Turso in production.
 - **A contact form** with a honeypot and per-sender throttling that stores every message before
   the owner is notified.
+- **GitHub Actions workflows** that apply migrations to the production database and run the
+  retention job weekly, so a deploy never has to touch the schema.
 - **An admin area** with the contact inbox, user management and an audit log, authorised against
   the database on every request.
 - **MDX documentation and blog collections**, including tabs, callouts, steps and a table of
