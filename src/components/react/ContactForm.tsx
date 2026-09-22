@@ -1,7 +1,12 @@
 import { actions, isInputError } from 'astro:actions';
 import { type SubmitEvent, useState } from 'react';
 
+import { cn } from '@/lib/utils';
+
 import { Alert, Button, Field, Input, Label, Textarea, UNEXPECTED_ERROR } from './primitives';
+
+/** Mirrors the action's schema (src/actions/index.ts); the counter shows how much room is left. */
+const MESSAGE_MAX_LENGTH = 2000;
 
 /**
  * Contact form submitted through the `contact` Astro Action. Works from static pages
@@ -11,6 +16,7 @@ export default function ContactForm() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[] | undefined>>({});
+  const [messageLength, setMessageLength] = useState(0);
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,15 +96,26 @@ export default function ContactForm() {
           name="message"
           required
           minLength={10}
-          maxLength={2000}
+          maxLength={MESSAGE_MAX_LENGTH}
+          onChange={(event) => setMessageLength(event.currentTarget.value.length)}
           aria-invalid={Boolean(fieldErrors.message) || undefined}
-          aria-describedby={fieldErrors.message ? 'contact-message-error' : undefined}
+          aria-describedby={cn(
+            'contact-message-count',
+            fieldErrors.message && 'contact-message-error',
+          )}
         />
-        {fieldErrors.message && (
-          <p id="contact-message-error" className="text-xs text-danger">
-            {fieldErrors.message[0]}
+        <div className="flex flex-wrap justify-between gap-2">
+          {fieldErrors.message ? (
+            <p id="contact-message-error" className="text-xs text-danger">
+              {fieldErrors.message[0]}
+            </p>
+          ) : (
+            <span />
+          )}
+          <p id="contact-message-count" className="text-xs text-muted-foreground">
+            {messageLength}/{MESSAGE_MAX_LENGTH}
           </p>
-        )}
+        </div>
       </Field>
       {/* Honeypot: moved off-screen rather than display:none, which simple bots skip. */}
       <div

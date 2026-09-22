@@ -1,0 +1,119 @@
+---
+title: 'What an outside audit found, and what fixing it taught us'
+description: 'An independent review of Strata rated ten findings. What was real, what changed in the releases since 0.8.0, and the two bugs the fixes themselves uncovered.'
+pubDate: 2026-09-22
+author: empeeryal
+tags: [security, testing, admin]
+---
+
+We handed the whole repository to an independent, AI-assisted review (OpenAI's Codex, working
+from the source alone) and asked for a complete website audit. It came back with no critical
+issues, five findings rated medium, five rated low and a handful of informational notes. Every
+claim checked out against the code. This post is about the ones worth writing down: the
+concurrency bug that a plain check could not catch, the redirect loop that only appeared once
+we fixed something else, and the three contrast failures that had been shipping in the light
+theme all along.
+
+## A check is not a guard
+
+The template refuses to remove the last administrator. Before this round, that rule lived in
+application code: count the other active administrators, and if there is at least one, call
+Better Auth to demote, ban or delete the target. Two administrators demoting each other at the
+same moment would both count one other administrator, both pass, and both succeed. The site
+would be left with nobody who can open `/admin`.
+
+The fix moves the rule into the statement that makes the change. The `WHERE` clause of the
+`UPDATE` or `DELETE` only matches while the target is not an active administrator or another
+one exists (`notLastActiveAdmin()` in `src/lib/admin.ts`). SQLite evaluates the condition and
+applies the change together, so the second of two concurrent requests sees the first one's
+result and changes nothing. A statement that changed nothing is then explained: unknown
+account, or the last administrator.
+
+Two side effects were welcome. The role, ban and delete operations now write their audit
+entry in the same transaction as the change, where before they logged best-effort after
+calling Better Auth. And the SQL form of "is an administrator" is the same expression the
+`admin:promote` script already used, so the overview's administrator count, the guard and the
+script agree.
+
+One thing did not work: a test with two connections racing for real. The embedded libSQL
+driver busy-waits synchronously while it holds the lock, which stalls the other transaction in
+the same Node process. The test that shipped issues two guarded demotions back to back on one
+connection and asserts that exactly one administrator remains, which is the property the old
+code lacked.
+
+## The five-minute cache, and the loop it was hiding
+
+Better Auth caches the session in a signed cookie for five minutes. The admin area already
+bypassed that cache when deciding access, but the dashboard did not, so "sign out everywhere"
+left the dashboard readable on the other device until the cache expired. Making the dashboard
+read the database was a one-line change.
+
+It also broke the end-to-end suite. After "sign out everywhere", the dashboard sent the
+visitor to the login page, whose own redirect for signed-in visitors still trusted the cached
+cookie and sent them straight back. Chrome gave up after twenty hops. The loop had always been
+possible; it needed one strict page and one lenient page to show itself.
+
+The repair has two parts. When the database no longer has a session for the cookie, Better
+Auth answers with the `Set-Cookie` headers that expire it, so the session helper now applies
+them and the stale cookie disappears with the response. And the auth pages confirm the cached
+session against the database before redirecting anyone away. The suite has an assertion for
+the exact sequence now.
+
+## A lease, not a counter
+
+Resending a contact notification read the row, sent the email and then wrote the attempt
+count back, so two administrators clicking "Resend" at the same time produced two emails. The
+audit suggested an optimistic check on the attempt counter. We tried it first and it was not
+enough: a retry that reads the row after the first one has claimed it sees the new count and
+sends anyway.
+
+What shipped is a lease. One conditional update sets `delivery_claimed_at` and counts the
+attempt, and only succeeds while no unexpired lease exists. The loser gets a conflict instead
+of a second email. The lease clears with the result and expires after two minutes, so a crash
+between claim and result leaves the message retryable.
+
+## What the accessibility scans found
+
+The suite had run axe against eight public pages. It now scans sixteen public pages,
+interactive states (the open mobile navigation, the search dialog with results, a contact form
+showing validation errors, a failed sign-in) and, signed in once as an administrator, the
+dashboard with the account-deletion form open and every admin page, including the inbox at
+phone width.
+
+The first run failed on five of the new scans, all for colour contrast in the light theme:
+
+- The success colour did not reach 4.5:1 even on a plain white background (3.4:1). Every
+  "Verified" and "Sent" badge had been shipping below the threshold.
+- The danger colour passed on white but fell to 4.1:1 on the tinted alert behind form errors
+  and 3.8:1 on the "Banned" badge.
+- Search highlights were barely visible. Pagefind renders matched words as text in the
+  `--pf-mark` colour, and the stylesheet had set it to a 30% transparent primary, assuming it
+  was a background.
+
+For the two tokens we computed the ratios from the OKLCH values, compositing the tints in sRGB
+the way a browser does, and lowered the lightness until every text use passed with a margin:
+success from 62% to 48%, danger from 58% to 50%, chroma unchanged. Highlights use the solid
+primary colour. The dark theme needed nothing.
+
+## The rest of the list
+
+The cheap findings landed in one batch: indexes on the contact table for the inbox and
+overview queries, a weekly retention workflow so the documented retention period is actually
+enforced, a reason field when banning an account, future-dated posts held back until their
+date, and the health endpoint confirming administrators against the database. The audit log
+is paginated and filterable by action, actor or target and date range. This release adds the
+sessions list to the dashboard: every device, with a sign-out button for each and one for all
+the others, driven by plain forms so it works without JavaScript.
+
+Two suggestions we documented rather than built. Coordinating schema migrations with
+platform deploys is not possible when Vercel, Netlify and Cloudflare deploy from a push; the
+answer is additive migrations first and destructive ones a release later, which the CI guide
+now says. And a no-JavaScript fallback for the contact form buys little while sign-in needs
+JavaScript anyway, so the authentication guide states the requirement instead.
+
+## What we took from it
+
+The findings that mattered were the ones a reviewer could only see by reading the code with
+concurrency and caching in mind. The findings that surprised us were the ones our own tests
+could have caught years earlier if they had covered the signed-in half of the site. Both kinds
+are in the suite now.

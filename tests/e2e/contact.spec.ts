@@ -34,6 +34,7 @@ test.describe('contact form', () => {
     await page.getByLabel('Name').fill('E2E Sender');
     await page.getByLabel('Email').fill('valid@example.com');
     await page.getByLabel('Message').fill('too short');
+    await expect(page.getByText('9/2000')).toBeVisible();
     // Bypass native validation to exercise the server-side response.
     await page.evaluate(() => document.querySelector('form')?.setAttribute('novalidate', ''));
     await page.getByRole('button', { name: 'Send message' }).click();

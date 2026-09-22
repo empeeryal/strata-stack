@@ -203,6 +203,7 @@ export const AUDIT_ACTIONS = [
   'user.unban',
   'user.revoke_sessions',
   'user.delete',
+  'session.revoke',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -210,7 +211,7 @@ export interface AuditEntry {
   actorId?: string | null | undefined;
   actorEmail?: string | null | undefined;
   action: AuditAction;
-  targetType?: 'user' | 'message' | undefined;
+  targetType?: 'user' | 'message' | 'session' | undefined;
   targetId?: string | null | undefined;
   /** JSON-serialisable context. Never include secrets or message bodies. */
   details?: unknown;

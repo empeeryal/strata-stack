@@ -14,6 +14,8 @@ import {
   UserNotFoundError,
   writeAudit,
 } from '@/lib/admin';
+import { revokeOwnSession, SessionRevokeError } from '@/lib/account';
+import type { AccountNotice } from '@/lib/account-page';
 import type { AdminNotice } from '@/lib/admin-page';
 import { auth } from '@/lib/auth';
 import {
@@ -140,6 +142,46 @@ export const server = {
    * transaction. Resending a notification and the user operations call email or Better
    * Auth and cannot share a transaction; their audit entries are best-effort (`recordAudit`).
    */
+  account: {
+    /** Signs out one of the caller's other sessions, chosen by id on the dashboard. */
+    revokeSession: defineAction({
+      accept: 'form',
+      input: z.object({ id: z.string().min(1) }),
+      handler: async ({ id }, context) => {
+        const { user, session } = await getAuthoritativeSession(context.request.headers);
+        if (!user || !session) {
+          throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in to continue.' });
+        }
+        try {
+          await revokeOwnSession(db, user, session.id, id);
+        } catch (error) {
+          if (error instanceof SessionRevokeError) {
+            throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+          }
+          throw error;
+        }
+        return { notice: 'session-revoked' as AccountNotice };
+      },
+    }),
+
+    /** Signs out every session except the one making the request. */
+    revokeOtherSessions: defineAction({
+      accept: 'form',
+      handler: async (_input, context) => {
+        const { user } = await getAuthoritativeSession(context.request.headers);
+        if (!user) {
+          throw new ActionError({ code: 'UNAUTHORIZED', message: 'Sign in to continue.' });
+        }
+        try {
+          await auth.api.revokeOtherSessions({ headers: context.request.headers });
+        } catch (error) {
+          throw toActionError(error, 'Could not sign out the other sessions.');
+        }
+        return { notice: 'sessions-revoked' as AccountNotice };
+      },
+    }),
+  },
+
   admin: {
     setMessageStatus: defineAction({
       accept: 'form',

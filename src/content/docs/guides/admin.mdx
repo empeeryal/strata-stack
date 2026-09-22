@@ -2,7 +2,7 @@
 title: Admin area
 description: The built-in administration pages for contact messages, users and the audit log, and how authorization works.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-22
 sidebar:
   order: 6
   badge: new
@@ -37,13 +37,13 @@ person's next request. See [sessions and cookies](/docs/guides/authentication#se
 
 ## Pages
 
-| Route                  | What it does                                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity        |
-| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk     |
-| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                |
-| `/admin/users`         | Every account with role and status; make or remove admin, ban (with an optional reason), unban, sign out everywhere, delete |
-| `/admin/audit`         | Audit entries, 25 per page, filtered by action, actor or target and date range                                              |
+| Route                  | What it does                                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity                                     |
+| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk                                  |
+| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                                             |
+| `/admin/users`         | Every account with role and status, searchable by name or email; make or remove admin, ban (with an optional reason), unban, sign out everywhere, delete |
+| `/admin/audit`         | Audit entries, 25 per page, filtered by action, actor or target and date range                                                                           |
 
 Destructive buttons ask for confirmation through a small processed script (inline handlers
 are blocked by the CSP). After a successful action the page redirects with `?notice=<key>` and

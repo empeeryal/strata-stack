@@ -106,4 +106,6 @@ import { actions } from 'astro:actions';
 ```
 
 Handle the result with `Astro.getActionResult(actions.contact)` in a server-rendered page. The
-template uses the React island for richer feedback, but both patterns are supported.
+template's contact page uses the React island for richer feedback (field errors, a character
+counter, a success state without a reload), so it needs JavaScript; the plain-form pattern
+above is the one to reach for when a form must work without it, as the admin area's forms do.
