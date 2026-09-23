@@ -29,4 +29,8 @@ jobs:
           publish-script: pnpm changeset:tag
           commit-message: 'chore: version packages'
           pr-title: 'chore: version packages'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # The built-in token cannot trigger workflows, so a version pull request opened with it
+          # gets no CI run. A fine-grained personal access token (this repository only; contents
+          # and pull requests: read and write) stored as the RELEASE_TOKEN secret fixes that;
+          # without the secret the workflow falls back to the built-in token.
+          github-token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
