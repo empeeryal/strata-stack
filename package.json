@@ -1,6 +1,6 @@
 {
   "name": "strata-stack",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "private": true,
   "type": "module",
   "description": "Strata, the layered Astro 7 stack: React 19, Motion, Tailwind 4, Better Auth, Drizzle + libSQL, MDX docs and blog, SEO, CSP, tests. Deploys to Vercel, Cloudflare, Netlify and Node.",
