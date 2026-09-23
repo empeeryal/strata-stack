@@ -6,7 +6,7 @@
 
 <p align="center">
   The layered <a href="https://astro.build">Astro 7</a> stack: auth, content, search and security, already in place.<br />
-  Clone it, rename it, deploy it to Vercel, Cloudflare, Netlify or Node.
+  Use the template, rename it, deploy it to Vercel, Cloudflare, Netlify or Node.
 </p>
 
 <p align="center">
@@ -49,9 +49,18 @@ which is built from this exact code.
 
 Requires **Node 24** and **pnpm 12** (`corepack enable`).
 
+Start from a copy of the template, not a fork, so your repository has its own history:
+
+- **[Use this template](https://github.com/new?template_name=strata-stack&template_owner=empeeryal)**
+  on GitHub creates a repository under your account; clone that.
+- `pnpm create astro@latest my-site --template empeeryal/strata-stack` downloads the code into
+  `my-site` with Astro's CLI.
+- `git clone https://github.com/empeeryal/strata-stack.git my-site` keeps the full history, which
+  lets you merge later template changes.
+
+Then, inside the project folder:
+
 ```bash
-git clone https://github.com/empeeryal/strata-stack.git my-site
-cd my-site
 pnpm install
 cp .env.example .env     # defaults work locally with no external services
 pnpm db:migrate          # creates .data/local.db
