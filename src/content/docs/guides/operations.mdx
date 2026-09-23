@@ -2,6 +2,7 @@
 title: Operating the site
 description: 'The runbook for a deployed site: creating the tables, scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups, collected in one place.'
 publishedDate: 2026-09-22
+updatedDate: 2026-09-23
 sidebar:
   order: 12
 ---
@@ -95,15 +96,20 @@ days; a push or a manual run resumes them.
 - **Rotating secrets**: a new `BETTER_AUTH_SECRET` invalidates every session cookie, so
   everyone signs in again; a new database token goes in the platform variables **and** the
   GitHub secrets; a new `RESEND_API_KEY` needs nothing else. Redeploy after changing platform
-  variables so the running functions pick them up.
+  variables so the running functions pick them up. A `RELEASE_TOKEN` expires on the date chosen
+  when it was created; generate a new token and replace the secret, or the version pull request
+  silently loses its checks.
 
 ## Releases and updates
 
 Every merged pull request with a changeset makes the Release workflow open or update a
 **chore: version packages** pull request. Merging that one bumps the version, writes
 `CHANGELOG.md` and creates the Git tag; the `/changelog` page renders the file on the next
-deploy. Dependabot's Monday pull requests are safe to merge when CI is green; the
-[CI guide](/docs/guides/ci-cd) explains the cooldown that keeps very fresh releases out.
+deploy. That pull request only gets CI checks when a `RELEASE_TOKEN` secret exists (a
+fine-grained personal access token; the [CI guide](/docs/guides/ci-cd) lists its permissions);
+without it, merge it on the strength of the generated diff. Dependabot's Monday pull requests are
+safe to merge when CI is green; the same guide explains the cooldown that keeps very fresh
+releases out.
 
 ## Backups and schema changes
 
