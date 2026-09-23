@@ -2,7 +2,7 @@
 title: Installation
 description: Prerequisites, first run and the rename checklist for a new project.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-20
+updatedDate: 2026-09-23
 sidebar:
   order: 2
 ---
@@ -16,14 +16,28 @@ sidebar:
   `pnpm-workspace.yaml`.
 - **Git.** Husky installs a pre-commit hook that runs lint-staged.
 
+## Create the project
+
+Start from a copy of the template rather than a fork, so your repository has its own history and
+is not listed as a fork of Strata. Pick one:
+
+- **Use this template.** The
+  [Use this template](https://github.com/new?template_name=strata-stack&template_owner=empeeryal)
+  button on GitHub creates a repository under your account with a single initial commit. Clone it
+  as usual.
+- **Astro's CLI.** `pnpm create astro@latest my-site --template empeeryal/strata-stack` downloads
+  the code into `my-site`, offers to install dependencies and initialises a Git repository.
+- **Clone.** `git clone https://github.com/empeeryal/strata-stack.git my-site` keeps Strata's full
+  history, which lets you merge later template changes with Git. Rename the `origin` remote to
+  `template` before adding your own.
+
 ## First run
 
 <Steps>
 
-1. Clone the repository and install dependencies.
+1. Install dependencies inside the project folder.
 
    ```bash
-   git clone https://github.com/empeeryal/strata-stack.git my-site
    cd my-site
    pnpm install
    ```
@@ -72,6 +86,12 @@ start a new project:
 6. `LICENSE`, `SECURITY.md`, `public/.well-known/security.txt` and `src/content/legal/*`: legal
    text and contact details.
 7. `CHANGELOG.md`: start your own release history.
+8. `.github/CODEOWNERS`: your GitHub handle. `README.md`: the CI badge and the deploy buttons
+   point at this repository; the Vercel button also lists the environment variables it asks for.
+   `.github/ISSUE_TEMPLATE/config.yml`: the security advisory link.
+9. `src/content/blog/*` and `src/content/docs/*` are Strata's own posts and documentation. Delete
+   or replace them, and remove the matching redirect for the old announcement slug from
+   `astro.config.ts`.
 
 ## Verifying the setup
 

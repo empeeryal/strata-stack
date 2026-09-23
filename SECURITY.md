@@ -11,7 +11,7 @@ Please do not open a public issue. Report vulnerabilities privately through
 Reports are acknowledged as soon as possible, and confirmed issues are fixed in the next release.
 
 The same contact is published at `/.well-known/security.txt` on deployed sites built from this
-template. Update that file and this document with your own contact details when you fork the
+template. Update that file and this document with your own contact details when you start from the
 template.
 
 ## What is in scope
