@@ -35,10 +35,18 @@ and migrates `.data/e2e.db` before the server starts (Playwright launches the we
 ### Audit exceptions
 
 `pnpm audit --audit-level=high` fails the `quality` job on new high or critical advisories.
-Transitive advisories with no upstream fix (currently `extract-zip` inside the Netlify adapter's
-development tooling, which never runs in production) are listed under `auditConfig.ignoreGhsas`
-in `pnpm-workspace.yaml`. Patchable transitive packages are pinned through `overrides` in the same
-file. Review both lists when upgrading dependencies.
+`pnpm-workspace.yaml` handles the transitive advisories the template cannot upgrade directly:
+
+- `overrides` pins patchable transitive packages to a fixed version. Currently `fflate` inside
+  the Open Graph image generator (Satori pins a version with a ZIP parsing flaw), `path-to-regexp`
+  and `sharp`.
+- `auditConfig.ignoreGhsas` lists advisories with no upstream fix in build-time tooling that never
+  runs on the deployed site: two for `extract-zip` inside the Netlify adapter's development tooling
+  (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3) and one for the esbuild 0.18 that drizzle-kit's
+  config loader pins (GHSA-67mh-4wv8-2f99, a flaw in esbuild's development server).
+
+Review both lists when upgrading dependencies: drop an entry once the package has moved past the
+advisory, and check that a plain `pnpm audit` reports nothing.
 
 ## Dependency updates
 

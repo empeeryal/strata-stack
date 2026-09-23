@@ -17,6 +17,7 @@ allowBuilds:
 
 # Transitive pins for packages whose advisories are fixed upstream.
 overrides:
+  fflate@0.7: ^0.7.5
   path-to-regexp@6: ^6.3.0
   sharp: ^0.35.4
 
@@ -24,5 +25,8 @@ overrides:
 # (see the CI guide, "Audit exceptions").
 auditConfig:
   ignoreGhsas:
+    # extract-zip inside the Netlify adapter's development tooling (symlink path traversal).
     - GHSA-jmr9-qjv8-65gv
     - GHSA-7pqw-9j4j-h8q3
+    # esbuild 0.18 pinned by drizzle-kit's config loader; the flaw is in esbuild's dev server.
+    - GHSA-67mh-4wv8-2f99
