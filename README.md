@@ -40,7 +40,7 @@ which is built from this exact code.
 | **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, verification, password reset, protected routes, rate limiting  |
 | **Accounts**  | Data export, account deletion, change password; admin area with a contact inbox, user management (roles, bans, sessions) and an audit log           |
 | **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                         |
-| **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, Pagefind search                                |
+| **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, command palette with Pagefind search           |
 | **Security**  | Hash-based Content Security Policy, hardened response headers, CSRF origin checks, open-redirect protection, `security.txt`                         |
 | **Quality**   | TypeScript strict, ESLint 10, Prettier, Vitest (unit + Container API + React Testing Library), Playwright + axe, Lighthouse CI                      |
 | **Delivery**  | One `DEPLOY_TARGET` switch for Vercel, Cloudflare Workers, Netlify and Node; Dockerfile; CI matrix that builds every target; Dependabot; Changesets |

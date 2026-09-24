@@ -1,4 +1,6 @@
 ---
+import PagefindConfig from 'astro-pagefind/components/PagefindConfig.astro';
+
 import BaseLayout from '@/layouts/BaseLayout.astro';
 ---
 
@@ -14,6 +16,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
     Results come from a static Pagefind index generated at build time, so search works without a
     server on every platform.
   </p>
+  <PagefindConfig />
   <search class="mt-8 flex flex-col gap-6" aria-label="Site search">
     <pagefind-input placeholder="Search docs, blog and changelog…"></pagefind-input>
     <pagefind-summary></pagefind-summary>

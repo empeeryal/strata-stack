@@ -64,9 +64,12 @@ static host without a server. `data-pagefind-body` on `<main>` limits indexing t
 and navigation, tables of contents and auth pages are excluded with `data-pagefind-ignore` or
 `searchable={false}`.
 
-The header uses Pagefind's modal component (also available with <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>),
-and `/search` renders an inline results page that understands `?q=`. The index is only produced
-by `pnpm build`; in development the last built index is served.
+The header opens the [command palette](/docs/components/command-palette) (also with
+
+<Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>), which loads Pagefind's JavaScript API on the first query and mixes
+its results with pages, docs and actions. `/search` renders an inline results page with Pagefind's
+own components and understands `?q=`; it is also where the header trigger leads without JavaScript.
+The index is only produced by `pnpm build`; in development the last built index is served.
 
 ## Performance
 

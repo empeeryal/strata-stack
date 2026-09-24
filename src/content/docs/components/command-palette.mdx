@@ -1,0 +1,87 @@
+---
+title: Command palette
+description: A site-wide palette for navigation, actions and Pagefind search, opened with Ctrl+K or the header trigger, built on a native dialog and the combobox pattern.
+publishedDate: 2026-09-24
+sidebar:
+  order: 2
+---
+
+Press <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd> (<Kbd>⌘</Kbd>+<Kbd>K</Kbd> on a Mac) anywhere on this site, or
+use the search button in the header. With nothing typed, the palette lists the main pages, the
+first docs section and a few actions; as you type it filters every page and documentation entry
+and, from two characters on, adds full-text results from the Pagefind index. Arrow keys move,
+
+<Kbd>Enter</Kbd> opens, <Kbd>Esc</Kbd> closes.
+
+<Callout type="tip" title="Try it">
+  <a href="/search" data-palette-trigger>
+    Open the command palette
+  </a>
+  . Without JavaScript the same link takes you to the search page instead.
+</Callout>
+
+## What it lists
+
+- **Pages**: the header navigation from `src/site.config.ts` plus contact and the legal pages.
+- **Docs**: every published documentation page, grouped by section, with the description used as
+  extra search words.
+- **Actions**: switch theme, copy the current link, and either sign in or open the dashboard
+  (plus the admin area for administrators). The signed-in state is fetched from the auth API
+  when the palette opens, so it is right on prerendered pages too.
+- **Search results**: the top six Pagefind hits for the query, with the highlighted excerpt.
+
+## How it is wired
+
+`src/components/site/Search.astro` renders the header triggers as links to `/search` and mounts
+the island with `client:idle`, passing the page and docs links it computed at build time:
+
+```astro title="src/components/site/Search.astro"
+<a href="/search" data-palette-trigger aria-label="Search the site">
+  Search…
+</a>
+
+<CommandPalette client:idle links={[...pages, ...docs]} />
+```
+
+On mount the island claims every `[data-palette-trigger]` on the page and the keyboard
+shortcut. Anything with that attribute opens the palette, which is how the link above works.
+The Pagefind bundle is imported on the first search, not on page load, so the palette costs the
+page nothing until it is used.
+
+### Props
+
+| Prop              | Type                                     | Default                             |
+| ----------------- | ---------------------------------------- | ----------------------------------- |
+| `links`           | `{ label, href, group, keywords? }[]`    | required                            |
+| `loadSearch`      | `() => Promise<SearchApi>`               | Pagefind at `/pagefind/pagefind.js` |
+| `loadSession`     | `() => Promise<{ name, admin } \| null>` | `GET /api/auth/get-session`         |
+| `triggerSelector` | `string`                                 | `'[data-palette-trigger]'`          |
+
+The two loaders exist so tests can inject fakes; the defaults are what the site uses.
+
+## Accessibility
+
+The palette renders into a native `<dialog>` opened with `showModal()`, so the browser provides
+focus containment, the backdrop, <Kbd>Esc</Kbd> and the inert page behind it. The text field is a
+`combobox` that controls a `listbox`; focus stays in the field and `aria-activedescendant` points
+at the highlighted option, which is the pattern screen readers expect from a search picker.
+Groups carry `aria-label`s, the empty state is a live region, and the axe scan in
+`tests/e2e/a11y.spec.ts` runs against the open palette with results.
+
+## Customising
+
+- Add or remove pages by editing the `pages` array in `Search.astro`; docs entries come from the
+  content collection automatically.
+- Actions live in the island itself, in the `actionItems` array: each is a label, an icon and a
+  `run` function. Keep them few; the list is for things a visitor does often.
+- The full search page at `/search` still uses Pagefind's own components and understands `?q=`,
+  which the JSON-LD `SearchAction` and the palette's footer link both rely on.
+
+## Tests
+
+`src/components/react/CommandPalette.test.tsx` covers the shortcut, filtering, keyboard
+selection, injected search results and the theme action. `tests/e2e/search.spec.ts` opens the
+palette in the built site, checks the docs entries and live Pagefind results, presses
+
+<Kbd>Esc</Kbd>, navigates with <Kbd>Enter</Kbd> and confirms the link fallback with JavaScript
+disabled.
