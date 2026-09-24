@@ -30,6 +30,17 @@ export async function waitForIslands(page: Page): Promise<void> {
   await page.waitForFunction(() => !document.querySelector('astro-island[ssr]'));
 }
 
+/**
+ * Waits until the command palette has attached its shortcut and trigger listeners. The island
+ * hydrates on idle, and React runs that effect after Astro clears the island's `ssr` flag, so
+ * the palette marks readiness itself.
+ */
+export async function waitForPalette(page: Page): Promise<void> {
+  await page.locator('dialog[aria-label="Command palette"][data-ready]').waitFor({
+    state: 'attached',
+  });
+}
+
 /** Fills and submits the sign-up form; the caller asserts where the page lands. */
 export async function signUp(page: Page, name: string, email: string, password = E2E_PASSWORD) {
   await page.goto('/signup');

@@ -1,0 +1,46 @@
+---
+title: Islands overview
+description: The React islands the template ships, where they live, how they share the design system with the Astro components, and how each one is tested.
+publishedDate: 2026-09-24
+sidebar:
+  order: 1
+  label: Overview
+---
+
+The site is static first: Astro renders every page to HTML, and JavaScript ships only where a
+component needs it. Those components are React islands under `src/components/react`, hydrated
+with a `client:*` directive where they are used. This section documents the ones that are worth
+copying into your own project, with a live example of each.
+
+## What ships
+
+| Island                 | Used on                     | Hydration        | Page                                                 |
+| ---------------------- | --------------------------- | ---------------- | ---------------------------------------------------- |
+| `CommandPalette`       | Every page, from the header | `client:idle`    | [Command palette](/docs/components/command-palette)  |
+| `ContactForm`          | `/contact`                  | `client:load`    | [Actions and forms](/docs/guides/actions-and-forms)  |
+| `DeployTargets`        | Home page                   | `client:visible` | [Styling and dark mode](/docs/guides/styling#motion) |
+| Auth and account forms | Sign-in, sign-up, dashboard | `client:load`    | [Authentication](/docs/guides/authentication)        |
+
+## Conventions
+
+- **One class recipe for both worlds.** `src/components/react/primitives.tsx` exports `Button`,
+  `Input`, `Field` and `Alert` built on the same `class-variance-authority` variants as the Astro
+  primitives in `src/components/ui`, so an island looks like the page around it.
+- **Tokens, not colours.** Islands use the semantic classes (`bg-card`, `text-muted-foreground`)
+  and therefore follow light and dark mode without any theme code of their own.
+- **No inline scripts.** The Content Security Policy only allows scripts Astro processed, which
+  is exactly what an island is. Nothing needs a nonce or a hash by hand.
+- **Edge-safe.** Islands run in the browser, but the pages that render them may run on Cloudflare
+  Workers, so an island never imports Node-only modules at the top level.
+- **A path without JavaScript.** Where an island replaces something a link or a form could do,
+  the static markup still works: the search trigger is a link to `/search`, the contact form
+  posts to an action.
+- **Tests at two levels.** React Testing Library through Vitest for behaviour in isolation, and
+  Playwright for the island inside the real page, including the axe scan of its open state.
+
+## Adding one
+
+Create the component under `src/components/react`, use the primitives, and render it from an
+Astro component with the least eager directive that works: `client:visible` below the fold,
+`client:idle` for chrome such as the palette, `client:load` only when the island is the point of
+the page. Add a `*.test.tsx` next to it and a page in this section when it is reusable.

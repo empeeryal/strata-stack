@@ -4,6 +4,7 @@ import type { CollectionEntry } from 'astro:content';
 export const DOCS_SECTIONS = [
   { id: 'getting-started', label: 'Getting started' },
   { id: 'guides', label: 'Guides' },
+  { id: 'components', label: 'Components' },
   { id: 'deploy', label: 'Deploy' },
   { id: 'reference', label: 'Reference' },
 ] as const;

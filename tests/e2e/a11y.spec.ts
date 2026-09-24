@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 
 import { serverEnv } from '../../playwright.config';
-import { E2E_PASSWORD, fillContactForm, signIn, waitForIslands } from './helpers';
+import { E2E_PASSWORD, fillContactForm, signIn, waitForIslands, waitForPalette } from './helpers';
 
 const [ADMIN_EMAIL] = serverEnv.ADMIN_EMAILS.split(',') as [string, string];
 
@@ -61,12 +61,16 @@ test.describe('interactive states', { tag: '@a11y' }, () => {
     await expectNoViolations(page);
   });
 
-  test('the open search dialog with results', async ({ page }) => {
+  test('the open command palette with results', async ({ page }) => {
     await page.goto('/docs');
-    await page.getByRole('button', { name: 'Search the site' }).first().click();
-    await expect(page.locator('pagefind-modal dialog')).toBeVisible();
+    await waitForPalette(page);
+    await page.getByRole('link', { name: 'Search the site' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Command palette' });
+    await expect(dialog).toBeVisible();
     await page.keyboard.type('deploy');
-    await expect(page.locator('pagefind-modal pagefind-results a').first()).toBeVisible();
+    await expect(
+      dialog.getByRole('group', { name: 'Search results' }).getByRole('option').first(),
+    ).toBeVisible();
     await expectNoViolations(page);
   });
 

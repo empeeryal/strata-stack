@@ -1,25 +1,40 @@
 ---
 /**
- * Site search powered by Pagefind (static index built after `astro build`).
- * Renders a header trigger button and a modal. In `astro dev` the index from the
- * last build is served, so run `pnpm build` once to try search locally.
+ * Header search trigger and the command palette island behind it. The triggers are plain links
+ * to `/search`, so visitors without JavaScript still reach the results page; once the island
+ * hydrates it intercepts them (and Ctrl/⌘+K) and opens the palette instead.
  */
-import PagefindConfig from 'astro-pagefind/components/PagefindConfig.astro';
+import { getCollection } from 'astro:content';
 import { Icon } from 'astro-icon/components';
 
+import CommandPalette, { type PaletteLink } from '@/components/react/CommandPalette';
 import Kbd from '@/components/ui/Kbd.astro';
 import { buttonVariants } from '@/components/ui/button-variants';
+import { buildDocsTree } from '@/lib/docs';
 import { cn } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+const pages: PaletteLink[] = [
+  ...siteConfig.nav.map((item) => ({ label: item.label, href: item.href, group: 'Pages' })),
+  { label: 'Contact', href: '/contact', group: 'Pages' },
+  { label: 'Privacy policy', href: '/legal/privacy', group: 'Pages' },
+  { label: 'Terms of service', href: '/legal/terms', group: 'Pages' },
+];
+
+const docs: PaletteLink[] = buildDocsTree(await getCollection('docs')).flatMap((section) =>
+  section.items.map((item) => ({
+    label: item.title,
+    href: item.href,
+    group: `Docs · ${section.label}`,
+    keywords: item.description,
+  })),
+);
 ---
 
-<PagefindConfig />
-
-{/* Pagefind renders its own trigger button; it stays hidden and is clicked programmatically. */}
-<pagefind-modal-trigger class="pf-trigger-hidden"></pagefind-modal-trigger>
-
 <search-trigger class="contents">
-  <button
-    type="button"
+  <a
+    href="/search"
+    data-palette-trigger
     class={cn(
       buttonVariants({ variant: 'outline', size: 'sm' }),
       'hidden w-56 justify-between text-muted-foreground md:flex',
@@ -36,17 +51,18 @@ import { cn } from '@/lib/utils';
       </Kbd>
       <Kbd>K</Kbd>
     </span>
-  </button>
-  <button
-    type="button"
+  </a>
+  <a
+    href="/search"
+    data-palette-trigger
     class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'md:hidden')}
     aria-label="Search the site"
   >
     <Icon name="lucide:search" class="size-5" aria-hidden="true" />
-  </button>
+  </a>
 </search-trigger>
 
-<pagefind-modal placeholder="Search docs, blog and changelog…"></pagefind-modal>
+<CommandPalette client:idle links={[...pages, ...docs]} />
 
 <script>
   class SearchTrigger extends HTMLElement {
@@ -58,11 +74,6 @@ import { cn } from '@/lib/utils';
       if (/Mac|iPhone|iPad|iOS/.test(platform)) {
         const modifier = this.querySelector('[data-modifier]');
         if (modifier) modifier.textContent = '⌘';
-      }
-      for (const button of this.querySelectorAll('button')) {
-        button.addEventListener('click', () => {
-          document.querySelector<HTMLButtonElement>('pagefind-modal-trigger button')?.click();
-        });
       }
     }
   }
