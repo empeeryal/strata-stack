@@ -1,8 +1,8 @@
 ---
 title: Operating the site
-description: 'The runbook for a deployed site: creating the tables, scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups, collected in one place.'
+description: 'The runbook for a deployed site: creating the tables, the GitHub repository settings, scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups, collected in one place.'
 publishedDate: 2026-09-22
-updatedDate: 2026-09-23
+updatedDate: 2026-09-24
 sidebar:
   order: 12
 ---
@@ -41,13 +41,43 @@ is off, and where each knob lives. Every item links to the guide with the detail
 
 </Steps>
 
+## Once, in the repository settings
+
+The protections the template relies on live in GitHub's settings rather than in the repository,
+so a project started from the template begins with none of them. Everything below is under the
+repository's **Settings** tab and free on public repositories.
+
+- **Code security.** Enable **Private vulnerability reporting**: the security policy and the
+  issue template send reporters to the advisories page, which only works for outsiders while
+  this is on. Enable **Dependabot alerts** and **Dependabot security updates** (grouped),
+  **Secret scanning** with **Push protection**, and **Code scanning** with the CodeQL default
+  setup. Dependabot lists the audit exceptions from `pnpm-workspace.yaml` as open alerts;
+  dismiss those as "vulnerable code is not actually used" so a new alert stands out.
+- **A ruleset for `main`** (Rules → Rulesets): require a pull request with zero required
+  approvals (an author cannot approve their own), require the CI jobs from the
+  [CI guide](/docs/guides/ci-cd) as status checks and, once CodeQL has run on `main`, its code
+  scanning results; block force pushes and deletions; require linear history. Put the
+  repository admin role on the bypass list so the version pull request can still be merged when
+  it has no checks. Leave "require branches to be up to date" off, or every Dependabot pull
+  request needs a rebase whenever `main` moves.
+- **Actions** (Actions → General): keep the approval requirement for first-time contributors,
+  set **Workflow permissions** to read-only (every workflow declares what it needs), and keep
+  **Allow GitHub Actions to create and approve pull requests** on for the Release workflow.
+- **Secrets.** The database pair belongs to the `production` environment, with deployment
+  branches limited to `main`, so no other branch can read it. `RELEASE_TOKEN` is a repository
+  secret, because the release job uses no environment (see [releases](#releases-and-updates)).
+- **General.** Turn off wikis, allow only squash merging with the pull request title and
+  description as the message, delete head branches automatically, and upload the social preview
+  the build generates at `/og/default.png`. Leave **Pull requests** on under Features: with it
+  off nobody, including the workflows, can open one.
+
 ## What runs on a schedule
 
 | Job                  | When                                                     | Where                           | Needs                                                                                                  |
 | -------------------- | -------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | **Migrate database** | Every merge to `main` that touches `drizzle/`; on demand | `.github/workflows/migrate.yml` | The database secrets                                                                                   |
 | **Prune data**       | Sundays 03:00 UTC; on demand                             | `.github/workflows/prune.yml`   | The database secrets; optional `CONTACT_RETENTION_DAYS`, `CONTACT_MAX_AGE_DAYS` repository _variables_ |
-| **Release**          | Every push to `main`                                     | `.github/workflows/release.yml` | Nothing; opens or updates the version PR and tags merged releases                                      |
+| **Release**          | Every push to `main`                                     | `.github/workflows/release.yml` | Optional `RELEASE_TOKEN` so the version PR gets CI; opens or updates it and tags merged releases       |
 | **Dependabot**       | Mondays                                                  | `.github/dependabot.yml`        | Nothing; opens update PRs after the three-day cooldown                                                 |
 
 Look at the Actions tab now and then. A retention policy is only real while the prune job
