@@ -1,0 +1,104 @@
+---
+title: 'Going public: what changed when Strata became a template'
+description: 'Making the repository public and a GitHub template took an afternoon of settings, one checkbox that removed the Pull requests tab, and eighteen red CI runs that turned out to be a permission gate.'
+pubDate: 2026-09-24
+author: empeeryal
+tags: [github, template, ci]
+---
+
+Strata's repository is public now, and it is marked as a GitHub template, so the green **Use
+this template** button creates a copy under your account. The code did not change much for
+that. What changed was everything around it: a page of repository settings, a rename checklist
+that grew by half, and two surprises that only a public repository could have produced. This
+post is the record, because the next person to publish a template will hit the same things.
+
+## Template, not fork
+
+A fork keeps a permanent link to its parent. GitHub lists it as a fork, pull requests default to
+the parent, and the parent's history is yours forever. A template copy has none of that: one
+initial commit, no upstream, your name on the first line. That is what a starter should give
+you, so the README and the installation guide now lead with the button and offer two
+alternatives, `pnpm create astro@latest --template empeeryal/strata-stack` for people who
+live in Astro's CLI and a plain clone for people who want the history so they can merge later
+template changes.
+
+The rename checklist was the other half. It already listed the site config, the icons, the
+colours, the author profile and the legal texts. Publishing made the remaining items visible:
+the `CODEOWNERS` file names us, the README's CI badge and deploy buttons point at our
+repository, the issue template links to our security advisories, the Astro config carries a
+redirect for our old announcement slug, and the blog and docs collections are our content, not
+a placeholder. Each is one line to change and easy to forget, so they are on the list now.
+
+## An afternoon of settings
+
+Everything that protects a repository lives in GitHub's settings, not in the repository, and a
+template copy starts with none of it. The operating guide has the checklist; the short version
+is what we turned on in one sitting.
+
+**Private vulnerability reporting** first, because the security policy and the issue template
+had been sending reporters to the advisories page since day one, and that page only works for
+outsiders once the switch is on. **Secret scanning** with **push protection**, so a Turso token
+in a commit is rejected before it lands. **Code scanning** with CodeQL's default setup, which
+adds a check to every pull request. **Dependabot alerts**, which promptly listed the three
+advisories we had already reviewed and ignored in `pnpm-workspace.yaml`; GitHub does not read
+pnpm's ignore list, so each was dismissed by hand with the reason "vulnerable code is not
+actually used".
+
+Then a **ruleset** for `main`: a pull request required, zero approvals required (a solo
+maintainer cannot approve their own), the eight CI jobs and the CodeQL results required, linear
+history, no force pushes, no deletions. The repository admin role went on the bypass list for
+one reason that becomes clear below. **Workflow permissions** dropped to read-only, which cost
+nothing because every workflow already declares what it needs. And the database secrets moved
+from repository secrets into the `production` environment, whose deployments are limited to
+`main`. The branch restriction on an environment only protects the secrets stored in that
+environment; repository secrets stay readable from any branch.
+
+## The checkbox that removed a tab
+
+Halfway through, the **Pull requests** tab disappeared from the repository. The API confirmed
+it: `has_pull_requests: false`. GitHub's Features section on the General settings page has a
+checkbox for pull requests right below the one for wikis, and unticking wikis, as recommended,
+took the neighbour with it. With that box off nobody can open a pull request, which includes
+Dependabot, the Release workflow's version pull request and every change we make.
+
+The fix took a second. The lesson is worth keeping: after touching the Features list, look at
+the tabs.
+
+## Eighteen red runs
+
+Every release the template has made opens a **chore: version packages** pull request, and every
+one of those pull requests left a failed CI run behind. Eighteen of them, all with zero jobs, all
+closed as "failure" at the exact moment the pull request merged and its branch was deleted.
+
+The comfortable explanation was the documented rule that events caused by the workflow's own
+`GITHUB_TOKEN` never trigger workflows. It was wrong in an instructive way. GitHub did create a
+run for each of those pull requests, then held it for approval: the Actions bot has never had a
+commit of its own merged, so the "require approval for first-time contributors" setting applied
+to it. A run waiting for approval shows as "action required", and when the branch it belongs to
+is deleted, GitHub closes it as failed. Nobody ever saw the waiting state because we merged the
+version pull request within minutes.
+
+The fix is the one the Changesets project recommends: open the version pull request with a
+token that may trigger workflows. The Release workflow now passes
+`secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN`, a fine-grained personal access token limited to
+the repository with **Contents** and **Pull requests** set to read and write, falling back to the
+built-in token when the secret is absent, so template copies keep working without it. The first
+attempt still opened the pull request as the bot. The secret had gone into the `production`
+environment, and the release job does not use an environment, so it could not see it. Moved to
+the repository secrets and re-run, the push came from a person, no approval was needed, the
+eight jobs and CodeQL ran, and the ruleset let the pull request through without the bypass.
+
+Two consequences follow. The version pull request now carries the maintainer's name instead of
+the bot's, and the token expires in a year at most, after which the fallback quietly returns and
+the red runs with it. The renewal date is in the calendar and the operating guide.
+
+## What to take from it
+
+- A template's repository settings are part of the product. Write them down, because a copy
+  starts without them.
+- A workflow run with zero jobs is not a workflow problem. Look for "action required" before
+  reading YAML.
+- Environment secrets are invisible to jobs that do not name the environment. When a secret
+  "is set" but a job cannot see it, check which list it is in.
+- The `GITHUB_TOKEN` rule you remember may be older than the behaviour you are looking at.
+  Check the run's actor.
