@@ -1,0 +1,90 @@
+---
+title: Bar chart
+description: A column chart drawn as inline SVG with no JavaScript, coloured by the design tokens so it follows light and dark mode, with native tooltips and a table twin.
+publishedDate: 2026-09-27
+sidebar:
+  order: 3
+---
+
+import BarChart from '@/components/ui/BarChart.astro';
+
+export const sample = [
+  { label: 'Mon', detail: 'Monday', value: 3 },
+  { label: 'Tue', detail: 'Tuesday', value: 5 },
+  { label: 'Wed', detail: 'Wednesday', value: 0 },
+  { label: 'Thu', detail: 'Thursday', value: 8 },
+  { label: 'Fri', detail: 'Friday', value: 6 },
+  { label: 'Sat', detail: 'Saturday', value: 2 },
+  { label: 'Sun', detail: 'Sunday', value: 1 },
+];
+
+`BarChart.astro` is the template's chart example. It is not an island: Astro renders the SVG on
+the server, at build time on static pages and per request on the admin overview, so the chart
+costs the visitor no JavaScript at all. Colour comes from the design tokens, which is what makes
+it theme-aware. Hover a column for its value, or open the table view.
+
+<div class="not-prose rounded-xl border bg-card p-6">
+  <BarChart data={sample} title="Sign-ups per day" unit="sign-ups" />
+</div>
+
+## Where it is used
+
+The [admin overview](/docs/guides/admin) shows messages received per day for the last thirty
+days. The page selects the timestamps in the window and `dailyCounts()` in `src/lib/chart.ts`
+turns them into one zero-filled point per UTC day, oldest first.
+
+```astro title="src/pages/admin/index.astro"
+const rows = await db
+  .select({ createdAt: contactMessages.createdAt })
+  .from(contactMessages)
+  .where(gte(contactMessages.createdAt, since));
+
+<BarChart data={dailyCounts(rows.map((row) => row.createdAt), 30)} title="Messages received per day" unit="messages" />
+```
+
+### Props
+
+| Prop     | Type                                      | Default   |
+| -------- | ----------------------------------------- | --------- |
+| `data`   | `{ label, value, detail? }[]`             | required  |
+| `title`  | `string`, the caption and accessible name | required  |
+| `unit`   | `string`, plural noun for the values      | `'items'` |
+| `height` | `number`, drawing height in SVG units     | `160`     |
+
+`label` is the short axis text, `detail` the longer name used in tooltips and the table.
+
+## How it is drawn
+
+- **Tokens, not colours.** Columns are `fill-chart-1`, gridlines `stroke-border`, text
+  `fill-muted-foreground` and `fill-foreground`. `--chart-1` is the primary hue in the light
+  theme and a darker step of it in the dark theme, because a fill needs 3:1 against the surface
+  where a text colour would glare. Both steps were checked against their surface for contrast
+  and lightness before they went into `global.css`.
+- **Thin marks.** Columns are at most 24 units wide with a 2 unit gap, rounded at the top and
+  square at the baseline. Gridlines are one-pixel hairlines at zero, the top and, when it is a
+  whole number, the midpoint. The axis bound comes from `niceMax()`, which rounds the largest
+  value up to a tidy number.
+- **Selective labels.** Only the peak carries a value; the axis, the tooltips and the table hold
+  the rest. Up to seven columns get an axis label each, beyond that the first, middle and last.
+- **Native tooltips.** Each column's slot is a transparent hit target with an SVG `<title>`, so
+  the pointer only has to be near the column, and the hovered column dims slightly in response.
+
+## Accessibility
+
+The SVG has `role="img"`, is named by the caption and described by the summary line (total and
+peak), so a screen reader gets the story in one sentence. The table view under the chart lists
+every day and value and is the equivalent for anyone who cannot use the graphic; nothing is
+only available on hover. The axe scan of the admin overview in `tests/e2e/a11y.spec.ts` covers
+the chart.
+
+## Going interactive
+
+If a chart needs a crosshair, filters or live data, wrap the same SVG in a React island and pass
+the points as props; the helpers in `src/lib/chart.ts` are plain functions and work on either
+side. Keep the tokens, the marks and the table view, and load the island with `client:visible`.
+
+## Tests
+
+`src/lib/chart.test.ts` covers the axis bound, ticks, layout, path, labelling and the daily
+aggregation. `tests/unit/components.test.ts` renders the component through the Container API
+and checks the roles, the columns and the table.

@@ -64,6 +64,7 @@ test.describe('admin area', () => {
 
     await page.goto('/admin');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Overview');
+    await expect(page.getByRole('img', { name: /Messages received per day/ })).toBeVisible();
 
     await page.goto('/admin/messages');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Messages');

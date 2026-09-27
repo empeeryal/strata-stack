@@ -1,0 +1,160 @@
+---
+/**
+ * Column chart rendered as inline SVG at build or request time: no JavaScript, colours from
+ * the design tokens (`--chart-1`, `--border`, `--muted-foreground`) so it follows the theme,
+ * native tooltips through <title>, and a table twin for readers who cannot use the graphic.
+ */
+import {
+  barLayout,
+  type ChartPoint,
+  columnPath,
+  formatCount,
+  labelledIndexes,
+  summarise,
+} from '@/lib/chart';
+import { cn } from '@/lib/utils';
+
+interface Props {
+  /** One entry per column, in display order. */
+  data: ChartPoint[];
+  /** Visible caption and accessible name. */
+  title: string;
+  /** Plural noun for the values, used in tooltips, the summary and the table header. */
+  unit?: string;
+  /** Height of the drawing in SVG units (the width follows the container). */
+  height?: number;
+  class?: string;
+}
+
+const { data, title, unit = 'items', height = 160, class: className } = Astro.props;
+
+const width = 640;
+const layout = barLayout(
+  data.map((point) => point.value),
+  { width, height },
+);
+const { total, peak } = summarise(data);
+const labelled = new Set(labelledIndexes(data.length));
+const summary =
+  total === 0
+    ? `No ${unit} in this period.`
+    : `${formatCount(total)} ${unit} in total; the peak is ${formatCount(peak!.value)} on ${peak!.detail ?? peak!.label}.`;
+const id = `chart-${Math.random().toString(36).slice(2, 8)}`;
+const unitHeading = unit.charAt(0).toUpperCase() + unit.slice(1);
+---
+
+<figure class={cn('text-sm', className)}>
+  <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <span id={`${id}-title`} class="font-semibold">
+      {title}
+    </span>
+    <span class="text-xs text-muted-foreground">{summary}</span>
+  </figcaption>
+
+  <svg
+    viewBox={`0 0 ${width} ${height}`}
+    role="img"
+    aria-labelledby={`${id}-title`}
+    aria-describedby={`${id}-desc`}
+    class="mt-3 h-auto w-full overflow-visible"
+  >
+    <desc id={`${id}-desc`}>{summary}</desc>
+
+    {layout.ticks.map((tick) => (
+      <g>
+        <line
+          x1={28}
+          x2={width - 8}
+          y1={tick.y}
+          y2={tick.y}
+          class="stroke-border"
+          stroke-width="1"
+          shape-rendering="crispEdges"
+        />
+        <text
+          x={22}
+          y={tick.y}
+          text-anchor="end"
+          dominant-baseline="middle"
+          class="fill-muted-foreground text-[10px] tabular-nums"
+        >
+          {formatCount(tick.value)}
+        </text>
+      </g>
+    ))}
+
+    {data.map((point, index) => {
+      const bar = layout.bars[index]!;
+      const path = columnPath(bar);
+      const isPeak = peak !== null && point === peak;
+      return (
+        <g class="group">
+          <rect
+            x={bar.slotX}
+            y={layout.plotTop}
+            width={bar.slotWidth}
+            height={layout.baseline - layout.plotTop}
+            fill="transparent"
+          >
+            <title>{`${point.detail ?? point.label}: ${formatCount(point.value)} ${unit}`}</title>
+          </rect>
+          {path && <path d={path} class="fill-chart-1 transition-opacity group-hover:opacity-75" />}
+          {isPeak && (
+            <text
+              x={bar.x + bar.width / 2}
+              y={bar.y - 4}
+              text-anchor="middle"
+              class="fill-foreground text-[11px] font-medium tabular-nums"
+            >
+              {formatCount(point.value)}
+            </text>
+          )}
+        </g>
+      );
+    })}
+
+    {data.map((point, index) => {
+      if (!labelled.has(index)) return null;
+      const bar = layout.bars[index]!;
+      const anchor = index === 0 ? 'start' : index === data.length - 1 ? 'end' : 'middle';
+      const x =
+        anchor === 'start'
+          ? bar.slotX
+          : anchor === 'end'
+            ? bar.slotX + bar.slotWidth
+            : bar.slotX + bar.slotWidth / 2;
+      return (
+        <text x={x} y={height - 4} text-anchor={anchor} class="fill-muted-foreground text-[10px]">
+          {point.label}
+        </text>
+      );
+    })}
+  </svg>
+
+  <details class="mt-2 text-xs">
+    <summary class="cursor-pointer text-muted-foreground hover:text-foreground">Table view</summary>
+    <table class="mt-2 w-full text-left">
+      <caption class="sr-only">{title}</caption>
+      <thead>
+        <tr class="text-muted-foreground">
+          <th scope="col" class="py-1 font-medium">
+            Day
+          </th>
+          <th scope="col" class="py-1 text-right font-medium">
+            {unitHeading}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((point) => (
+          <tr class="border-t">
+            <th scope="row" class="py-1 font-normal">
+              {point.detail ?? point.label}
+            </th>
+            <td class="py-1 text-right tabular-nums">{formatCount(point.value)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </details>
+</figure>
