@@ -25,6 +25,7 @@ const PUBLIC_PAGES: Array<{ path: string; ready?: (page: Page) => Promise<void> 
   { path: '/about' },
   { path: '/docs' },
   { path: '/docs/getting-started/installation' },
+  { path: '/docs/components/pricing-table' },
   { path: '/blog' },
   { path: '/blog/deploy-anywhere' },
   { path: '/blog/tags' },
@@ -71,6 +72,14 @@ test.describe('interactive states', { tag: '@a11y' }, () => {
     await expect(
       dialog.getByRole('group', { name: 'Search results' }).getByRole('option').first(),
     ).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  test('the pricing table with annual billing selected', async ({ page }) => {
+    await page.goto('/docs/components/pricing-table');
+    const table = page.locator('pricing-table').first();
+    await table.locator('label', { hasText: 'Annual' }).click();
+    await expect(table.getByText('billed annually').first()).toBeVisible();
     await expectNoViolations(page);
   });
 

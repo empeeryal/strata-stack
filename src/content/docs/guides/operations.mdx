@@ -22,10 +22,12 @@ is off, and where each knob lives. Every item links to the guide with the detail
    `CONTACT_TO_EMAIL`. The [environment variables guide](/docs/guides/environment-variables)
    has the full table.
 
-2. **Database secrets in GitHub.** Add the database URL and token as Actions secrets (repository
-   Settings → Secrets and variables → Actions → Secrets), under either pair of names. Platform
-   variables are not visible to GitHub Actions, so this step is separate even when the
-   integration already set them on the platform.
+2. **Database secrets in GitHub.** Add the database URL and token as Actions secrets, under
+   either pair of names, to the environment named exactly `production` (Settings → Environments;
+   GitHub creates it on the workflows' first run) or as repository secrets. The Vercel integration
+   creates an environment of its own with a different name, and secrets stored there are invisible
+   to the migrate and prune jobs. Platform variables are not visible to GitHub Actions either, so
+   this step is separate even when the integration already set them on the platform.
 
 3. **Create the tables.** Run the **Migrate database** workflow from the Actions tab. Its first
    log lines list which secret names the job can see; "migrations applied successfully" means
@@ -63,8 +65,10 @@ repository's **Settings** tab and free on public repositories.
 - **Actions** (Actions → General): keep the approval requirement for first-time contributors,
   set **Workflow permissions** to read-only (every workflow declares what it needs), and keep
   **Allow GitHub Actions to create and approve pull requests** on for the Release workflow.
-- **Secrets.** The database pair belongs to the `production` environment, with deployment
-  branches limited to `main`, so no other branch can read it. `RELEASE_TOKEN` is a repository
+- **Secrets.** The database pair belongs to the environment named `production`, the one the
+  workflows declare, with deployment branches limited to `main`, so no other branch can read it.
+  Check the name: an environment created by a hosting integration is not the same one, even if it
+  is also called production with a suffix. `RELEASE_TOKEN` is a repository
   secret, because the release job uses no environment (see [releases](#releases-and-updates)).
 - **General.** Turn off wikis, allow only squash merging with the pull request title and
   description as the message, delete head branches automatically, and upload the social preview

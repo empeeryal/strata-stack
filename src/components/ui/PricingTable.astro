@@ -1,0 +1,162 @@
+---
+/**
+ * Pricing tiers as cards, rendered statically. When at least one tier has an annual price, a
+ * monthly/annual switch is included but stays hidden until the script below runs, so visitors
+ * without JavaScript see the monthly prices and nothing that does not work.
+ */
+import { Icon } from 'astro-icon/components';
+
+import { formatPrice, hasAnnualPricing, maxAnnualSavings, type PricingTier } from '@/lib/pricing';
+import { cn } from '@/lib/utils';
+
+import Badge from './Badge.astro';
+import Button from './Button.astro';
+
+interface Props {
+  tiers: PricingTier[];
+  /** ISO 4217 code for the prices. */
+  currency?: string;
+  /** Show the monthly/annual switch. Defaults to whether any tier has an annual price. */
+  billing?: boolean;
+  class?: string;
+}
+
+const {
+  tiers,
+  currency = 'USD',
+  billing = hasAnnualPricing(tiers),
+  class: className,
+} = Astro.props;
+
+const id = `pricing-${Math.random().toString(36).slice(2, 8)}`;
+const savings = maxAnnualSavings(tiers);
+const columns =
+  tiers.length >= 4
+    ? 'md:grid-cols-2 xl:grid-cols-4'
+    : tiers.length === 3
+      ? 'md:grid-cols-3'
+      : 'md:grid-cols-2';
+
+const option =
+  'cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground transition-colors has-checked:bg-background has-checked:text-foreground has-checked:shadow-soft has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring';
+---
+
+<pricing-table class={cn('block', className)} data-billing="monthly">
+  {billing && (
+    <div class="mb-8 flex justify-center" data-billing-switch hidden>
+      <fieldset class="inline-flex items-center gap-1 rounded-full border bg-muted p-1">
+        <legend class="sr-only">Billing period</legend>
+        <label class={option}>
+          <input type="radio" name={`${id}-billing`} value="monthly" class="sr-only" checked />
+          Monthly
+        </label>
+        <label class={option}>
+          <input type="radio" name={`${id}-billing`} value="annual" class="sr-only" />
+          Annual
+          {savings > 0 && <span class="ml-1 text-xs text-success">save {savings}%</span>}
+        </label>
+      </fieldset>
+    </div>
+  )}
+
+  <ul class={cn('grid gap-6', columns)}>
+    {tiers.map((tier) => (
+      <li
+        class={cn(
+          'relative flex flex-col rounded-xl border bg-card p-6 text-card-foreground shadow-soft',
+          tier.highlighted && 'border-primary ring-1 ring-primary',
+        )}
+      >
+        {tier.badge && (
+          <Badge
+            class="absolute -top-3 left-6"
+            variant={tier.highlighted ? 'default' : 'secondary'}
+          >
+            {tier.badge}
+          </Badge>
+        )}
+        <h3 class="text-lg font-semibold">{tier.name}</h3>
+        <p class="mt-1 text-sm text-muted-foreground">{tier.description}</p>
+
+        <p class="mt-6 flex flex-wrap items-baseline gap-x-1">
+          {tier.monthly === null ? (
+            <span class="text-4xl font-bold tracking-tight">Custom</span>
+          ) : (
+            <>
+              <span data-price={tier.annual === undefined ? undefined : 'monthly'} class="contents">
+                <span class="text-4xl font-bold tracking-tight">
+                  {formatPrice(tier.monthly, currency)}
+                </span>
+                <span class="text-sm text-muted-foreground">/ month</span>
+              </span>
+              {tier.annual !== undefined && (
+                <span data-price="annual" class="contents" hidden>
+                  <span class="text-4xl font-bold tracking-tight">
+                    {formatPrice(tier.annual, currency)}
+                  </span>
+                  <span class="text-sm text-muted-foreground">/ month, billed annually</span>
+                </span>
+              )}
+            </>
+          )}
+        </p>
+
+        <Button
+          href={tier.cta.href}
+          variant={tier.highlighted ? 'primary' : 'outline'}
+          class="mt-6 w-full"
+        >
+          {tier.cta.label}
+        </Button>
+
+        <ul class="mt-6 space-y-2 text-sm">
+          {tier.features.map((feature) => (
+            <li class="flex gap-2">
+              <Icon
+                name="lucide:check"
+                class="mt-0.5 size-4 shrink-0 text-success"
+                aria-hidden="true"
+              />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+
+        {tier.footnote && <p class="mt-auto pt-4 text-xs text-muted-foreground">{tier.footnote}</p>}
+      </li>
+    ))}
+  </ul>
+</pricing-table>
+
+<style>
+  /* `hidden` must win over `display: contents` on the price groups. */
+  [data-price][hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  class PricingTable extends HTMLElement {
+    connectedCallback() {
+      const toggle = this.querySelector('[data-billing-switch]');
+      if (!toggle) return;
+      toggle.removeAttribute('hidden');
+      for (const input of this.querySelectorAll<HTMLInputElement>('input[type="radio"]')) {
+        input.addEventListener('change', () => {
+          if (input.checked) this.setBilling(input.value);
+        });
+      }
+    }
+
+    setBilling(billing: string) {
+      this.dataset.billing = billing;
+      for (const price of this.querySelectorAll<HTMLElement>('[data-price]')) {
+        price.hidden = price.dataset.price !== billing;
+      }
+    }
+  }
+
+  if (!customElements.get('pricing-table')) {
+    customElements.define('pricing-table', PricingTable);
+  }
+</script>
