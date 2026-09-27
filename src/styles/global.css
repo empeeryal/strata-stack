@@ -49,6 +49,10 @@
   --code: oklch(96.5% 0.006 262);
   --code-foreground: oklch(30% 0.05 275);
 
+  /* Chart marks. The dark step is darker than the dark primary on purpose: marks need
+     3:1 against the surface without the glare a text colour would have as a fill. */
+  --chart-1: var(--primary);
+
   --radius: 0.75rem;
 }
 
@@ -89,6 +93,8 @@
 
   --code: oklch(20% 0.02 262);
   --code-foreground: oklch(85% 0.06 275);
+
+  --chart-1: oklch(62% 0.19 275);
 }
 
 @theme inline {
@@ -117,6 +123,7 @@
   --color-danger-foreground: var(--danger-foreground);
   --color-code: var(--code);
   --color-code-foreground: var(--code-foreground);
+  --color-chart-1: var(--chart-1);
 
   /* Self-hosted fonts registered through Astro's Fonts API (see astro.config.ts). */
   --font-sans: var(--font-inter);

@@ -1,13 +1,15 @@
 ---
-import { count, desc, eq } from 'drizzle-orm';
+import { count, desc, eq, gte } from 'drizzle-orm';
 
 import Badge from '@/components/ui/Badge.astro';
+import BarChart from '@/components/ui/BarChart.astro';
 import Card from '@/components/ui/Card.astro';
 import { db } from '@/db/client';
 import { auditLog, contactMessages, user as userTable } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
 import { countActiveAdmins } from '@/lib/admin';
 import { guardAdminPage } from '@/lib/admin-page';
+import { dailyCounts } from '@/lib/chart';
 import { isEmailConfigured } from '@/lib/email';
 import { getEnv } from '@/lib/env';
 import { formatDate, toISODate } from '@/lib/utils';
@@ -17,21 +19,40 @@ export const prerender = false;
 const denied = await guardAdminPage(Astro);
 if (denied) return denied;
 
-const [[users], admins, messageCounts, [failedDeliveries], recentMessages, recentAudit] =
-  await Promise.all([
-    db.select({ value: count() }).from(userTable),
-    countActiveAdmins(db),
-    db
-      .select({ status: contactMessages.status, value: count() })
-      .from(contactMessages)
-      .groupBy(contactMessages.status),
-    db
-      .select({ value: count() })
-      .from(contactMessages)
-      .where(eq(contactMessages.deliveryStatus, 'failed')),
-    db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)).limit(5),
-    db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(5),
-  ]);
+const CHART_DAYS = 30;
+const chartSince = new Date(Date.now() - CHART_DAYS * 86_400_000);
+
+const [
+  [users],
+  admins,
+  messageCounts,
+  [failedDeliveries],
+  recentMessages,
+  recentAudit,
+  recentArrivals,
+] = await Promise.all([
+  db.select({ value: count() }).from(userTable),
+  countActiveAdmins(db),
+  db
+    .select({ status: contactMessages.status, value: count() })
+    .from(contactMessages)
+    .groupBy(contactMessages.status),
+  db
+    .select({ value: count() })
+    .from(contactMessages)
+    .where(eq(contactMessages.deliveryStatus, 'failed')),
+  db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)).limit(5),
+  db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(5),
+  db
+    .select({ createdAt: contactMessages.createdAt })
+    .from(contactMessages)
+    .where(gte(contactMessages.createdAt, chartSince)),
+]);
+
+const messagesPerDay = dailyCounts(
+  recentArrivals.map((row) => row.createdAt),
+  CHART_DAYS,
+);
 
 const messagesByStatus = Object.fromEntries(messageCounts.map((row) => [row.status, row.value]));
 const stats = [
@@ -79,7 +100,15 @@ const configuration = [
     ))}
   </ul>
 
-  <div class="mt-8 grid gap-6 lg:grid-cols-2">
+  <Card class="mt-6">
+    <BarChart
+      data={messagesPerDay}
+      title={`Messages received per day, last ${CHART_DAYS} days`}
+      unit="messages"
+    />
+  </Card>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
     <Card>
       <h2 class="font-semibold">Configuration</h2>
       <ul class="mt-4 space-y-3 text-sm">

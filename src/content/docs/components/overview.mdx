@@ -10,7 +10,8 @@ sidebar:
 The site is static first: Astro renders every page to HTML, and JavaScript ships only where a
 component needs it. Those components are React islands under `src/components/react`, hydrated
 with a `client:*` directive where they are used. This section documents the ones that are worth
-copying into your own project, with a live example of each.
+copying into your own project, with a live example of each, plus the chart component, which
+shows how far a plain Astro component gets before an island is needed.
 
 ## What ships
 
@@ -18,6 +19,7 @@ copying into your own project, with a live example of each.
 | ---------------------- | --------------------------- | ---------------- | ---------------------------------------------------- |
 | `CommandPalette`       | Every page, from the header | `client:idle`    | [Command palette](/docs/components/command-palette)  |
 | `ContactForm`          | `/contact`                  | `client:load`    | [Actions and forms](/docs/guides/actions-and-forms)  |
+| `BarChart` (Astro)     | Admin overview              | none, server SVG | [Bar chart](/docs/components/bar-chart)              |
 | `DeployTargets`        | Home page                   | `client:visible` | [Styling and dark mode](/docs/guides/styling#motion) |
 | Auth and account forms | Sign-in, sign-up, dashboard | `client:load`    | [Authentication](/docs/guides/authentication)        |
 
