@@ -40,6 +40,7 @@ const summary =
     ? `No ${unit} in this period.`
     : `${formatCount(total)} ${unit} in total; the peak is ${formatCount(peak!.value)} on ${peak!.detail ?? peak!.label}.`;
 const id = `chart-${Math.random().toString(36).slice(2, 8)}`;
+const unitHeading = unit.charAt(0).toUpperCase() + unit.slice(1);
 ---
 
 <figure class={cn('text-sm', className)}>
@@ -139,8 +140,8 @@ const id = `chart-${Math.random().toString(36).slice(2, 8)}`;
           <th scope="col" class="py-1 font-medium">
             Day
           </th>
-          <th scope="col" class="py-1 text-right font-medium capitalize">
-            {unit}
+          <th scope="col" class="py-1 text-right font-medium">
+            {unitHeading}
           </th>
         </tr>
       </thead>
