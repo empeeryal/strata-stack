@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge.astro';
 import BarChart from '@/components/ui/BarChart.astro';
 import Button from '@/components/ui/Button.astro';
 import Callout from '@/components/ui/Callout.astro';
+import PricingTable from '@/components/ui/PricingTable.astro';
 import Prose from '@/components/ui/Prose.astro';
 
 let container: AstroContainer;
@@ -111,5 +112,63 @@ describe('<BarChart>', () => {
     });
     expect(html).toContain('No items in this period.');
     expect(html).not.toContain('fill-chart-1');
+  });
+});
+
+describe('<PricingTable>', () => {
+  const tiers = [
+    {
+      name: 'Starter',
+      description: 'Personal sites.',
+      monthly: 0,
+      features: ['One site'],
+      cta: { label: 'Start', href: '/signup' },
+    },
+    {
+      name: 'Pro',
+      description: 'Business sites.',
+      monthly: 19,
+      annual: 15,
+      features: ['Unlimited sites', 'Email support'],
+      cta: { label: 'Choose Pro', href: '/contact' },
+      highlighted: true,
+      badge: 'Most popular',
+    },
+    {
+      name: 'Enterprise',
+      description: 'Call us.',
+      monthly: null,
+      features: ['Everything'],
+      cta: { label: 'Talk to us', href: '/contact' },
+    },
+  ];
+
+  it('renders every tier with monthly prices visible and annual ones hidden', async () => {
+    const html = await container.renderToString(PricingTable, { props: { tiers } });
+    expect(html).toContain('Starter');
+    expect(html).toContain('$0');
+    expect(html).toContain('$19');
+    expect(html).toMatch(/data-price="annual"[^>]*hidden/);
+    // Only tiers with two prices take part in the switch.
+    expect(html.match(/data-price="monthly"/g)).toHaveLength(1);
+    expect(html).toContain('$15');
+    expect(html).toContain('Custom');
+    expect(html).toContain('Most popular');
+    expect(html).toContain('ring-primary');
+    expect(html).toContain('href="/contact"');
+  });
+
+  it('includes the billing switch, hidden until the script runs, with the best saving', async () => {
+    const html = await container.renderToString(PricingTable, { props: { tiers } });
+    expect(html).toMatch(/data-billing-switch[^>]*hidden/);
+    expect(html).toContain('Billing period');
+    expect(html).toContain('save 21%');
+  });
+
+  it('omits the switch when no tier has an annual price', async () => {
+    const html = await container.renderToString(PricingTable, {
+      props: { tiers: [tiers[0]!, tiers[2]!] },
+    });
+    expect(html).not.toContain('data-billing-switch');
   });
 });

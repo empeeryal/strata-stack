@@ -1,0 +1,115 @@
+---
+title: Pricing table
+description: Pricing tiers as cards with a highlighted plan, feature lists and a monthly/annual switch that works as plain markup and gets its toggle from a small script.
+publishedDate: 2026-09-27
+sidebar:
+  order: 4
+---
+
+import PricingTable from '@/components/ui/PricingTable.astro';
+
+export const tiers = [
+  {
+    name: 'Starter',
+    description: 'For a personal site or a side project.',
+    monthly: 0,
+    features: ['One site', 'Community support', 'All deploy targets'],
+    cta: { label: 'Start for free', href: '/docs/getting-started/installation' },
+  },
+  {
+    name: 'Pro',
+    description: 'For a business site with an audience.',
+    monthly: 19,
+    annual: 15,
+    features: ['Unlimited sites', 'Email support', 'Custom domains', 'Analytics'],
+    cta: { label: 'Choose Pro', href: '/contact' },
+    highlighted: true,
+    badge: 'Most popular',
+  },
+  {
+    name: 'Team',
+    description: 'For agencies and teams shipping many sites.',
+    monthly: 49,
+    annual: 39,
+    features: ['Everything in Pro', 'Five seats', 'Priority support', 'Shared components'],
+    cta: { label: 'Talk to us', href: '/contact' },
+    footnote: 'Prices shown are examples; the template sells nothing.',
+  },
+];
+
+`PricingTable.astro` renders pricing tiers as cards: a name and description, the price, a call to
+action, a feature list, an optional badge and footnote, and one emphasised tier. When any tier has
+an annual price, a monthly/annual switch appears above the cards. The example below is exactly
+that, an example; Strata has no plans to sell.
+
+<div class="not-prose">
+  <PricingTable tiers={tiers} />
+</div>
+
+## Usage
+
+Put the tiers in a data file or inline, and render the component wherever the pricing page lives.
+
+```astro title="src/pages/pricing.astro"
+---
+import PricingTable from '@/components/ui/PricingTable.astro';
+import type { PricingTier } from '@/lib/pricing';
+
+const tiers: PricingTier[] = [
+  {
+    name: 'Pro',
+    description: 'For a business site with an audience.',
+    monthly: 19,
+    annual: 15,
+    features: ['Unlimited sites', 'Email support'],
+    cta: { label: 'Choose Pro', href: '/signup' },
+    highlighted: true,
+    badge: 'Most popular',
+  },
+];
+---
+
+<PricingTable tiers={tiers} currency="USD" />
+```
+
+### Props
+
+| Prop       | Type            | Default                              |
+| ---------- | --------------- | ------------------------------------ |
+| `tiers`    | `PricingTier[]` | required                             |
+| `currency` | ISO 4217 code   | `'USD'`                              |
+| `billing`  | `boolean`       | `true` when any tier has an `annual` |
+
+A `PricingTier` has `name`, `description`, `monthly` (a number, or `null` for a "Custom" price),
+an optional `annual` price per month, `features`, a `cta` with `label` and `href`, and optional
+`highlighted`, `badge` and `footnote`. Types and the price formatting live in `src/lib/pricing.ts`;
+`formatPrice()` drops decimals for whole amounts and `annualSavingsPercent()` feeds the "save
+20%" label on the switch.
+
+## Without JavaScript
+
+The markup contains both prices for every tier, with the annual ones hidden, and the switch itself
+carries the `hidden` attribute. A visitor without JavaScript sees the monthly prices and no
+control that would not work. The processed `<script>` in the component registers a
+`<pricing-table>` custom element that reveals the switch and flips the `hidden` attributes when a
+radio changes; because Astro processes the script, it is covered by the Content Security Policy's
+hashes without any inline code.
+
+This is the same pattern as the theme toggle and the mobile navigation: a static component with a
+few lines of behaviour does not need a React island, and it costs the page nothing until it runs.
+
+## Accessibility
+
+The switch is a `fieldset` with a visually hidden legend and two real radio buttons, so it is
+operable with the arrow keys and announced as "Billing period, Monthly, Annual". The selected
+option is styled through `has-checked:`, which keeps the state in the form control rather than in
+a class. Tiers are a list, each with a heading, and the highlighted tier is marked by a border and
+ring rather than colour alone, with its badge as text. The axe scan in `tests/e2e/a11y.spec.ts`
+runs on this page with the annual option selected.
+
+## Tests
+
+`src/lib/pricing.test.ts` covers the formatting and savings helpers. `tests/unit/components.test.ts`
+renders the component through the Container API and checks the hidden annual prices, the switch
+and the custom price. `tests/e2e/components.spec.ts` selects the annual option in the built site
+and checks the prices change, and confirms the switch is absent with JavaScript disabled.
