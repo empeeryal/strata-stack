@@ -11,6 +11,7 @@ import { siteConfig } from '../site.config';
 import { isLastActiveAdmin, LAST_ADMIN_MESSAGE, recordAudit } from './admin';
 import { isEmailConfigured, sendEmail } from './email';
 import { getAdminEmails, getEnv, getSiteUrl, getTrustedOrigins } from './env';
+import { ProfileValidationError, validateProfileUpdate } from './profile';
 
 const githubId = getEnv('GITHUB_CLIENT_ID');
 const githubSecret = getEnv('GITHUB_CLIENT_SECRET');
@@ -135,6 +136,22 @@ export const auth = betterAuth({
             return { data: { ...user, role: 'admin' } };
           }
           return undefined;
+        },
+      },
+      update: {
+        // The profile form (name, avatar URL) is validated here, where every client ends up:
+        // `updateUser` accepts any string for `image`, and an avatar is rendered as an <img>
+        // on every page. Other updates (roles, bans) carry neither field and pass through.
+        before: async (user) => {
+          if (user.name === undefined && user.image === undefined) return undefined;
+          try {
+            return { data: { ...user, ...validateProfileUpdate(user) } };
+          } catch (error) {
+            if (error instanceof ProfileValidationError) {
+              throw new APIError('BAD_REQUEST', { message: error.message });
+            }
+            throw error;
+          }
         },
       },
     },

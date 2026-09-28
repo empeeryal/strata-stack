@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { initials } from './initials';
 import { cn, formatDate, stripTrailingSlash, toISODate } from './utils';
 
 describe('cn', () => {
@@ -15,6 +16,16 @@ describe('dates', () => {
 
   it('produces ISO strings', () => {
     expect(toISODate('2026-09-18T10:00:00.000Z')).toBe('2026-09-18T10:00:00.000Z');
+  });
+});
+
+describe('initials', () => {
+  it('takes the first letters of the first and last words', () => {
+    expect(initials('Ada Lovelace')).toBe('AL');
+    expect(initials('Ada King, Countess of Lovelace')).toBe('AL');
+    expect(initials('  ada ')).toBe('A');
+    expect(initials('')).toBe('?');
+    expect(initials(null)).toBe('?');
   });
 });
 

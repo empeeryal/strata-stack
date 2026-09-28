@@ -10,6 +10,7 @@ import {
 import { alertRole, alertVariants, type AlertVariant } from '@/components/ui/alert-variants';
 import { buttonVariants, type ButtonVariantProps } from '@/components/ui/button-variants';
 import { inputClasses, textareaClasses } from '@/components/ui/field-classes';
+import { initials } from '@/lib/initials';
 import { cn } from '@/lib/utils';
 
 /** React counterparts of the Astro UI primitives, sharing the same class recipes. */
@@ -101,6 +102,34 @@ export function Alert({
     <div role={alertRole(variant)} className={cn(alertVariants[variant], className)}>
       {children}
     </div>
+  );
+}
+
+const AVATAR_SIZES = { sm: 'size-6 text-[10px]', md: 'size-9 text-xs', lg: 'size-16 text-lg' };
+
+/** React counterpart of `Avatar.astro`: the image, or initials on a neutral disc. */
+export function Avatar({
+  name,
+  image,
+  size = 'md',
+  className,
+}: {
+  name: string;
+  image?: string | null | undefined;
+  size?: keyof typeof AVATAR_SIZES;
+  className?: string | undefined;
+}) {
+  const classes = cn(
+    'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted font-semibold text-muted-foreground select-none',
+    AVATAR_SIZES[size],
+    className,
+  );
+  return image ? (
+    <img src={image} alt="" className={cn(classes, 'object-cover')} referrerPolicy="no-referrer" />
+  ) : (
+    <span className={classes} aria-hidden="true">
+      {initials(name)}
+    </span>
   );
 }
 
