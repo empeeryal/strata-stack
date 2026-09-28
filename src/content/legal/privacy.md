@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy
 description: What data this site collects, why, how long it is kept, and how to access or delete it.
-updatedDate: 2026-09-18
+updatedDate: 2026-09-28
 ---
 
 > This is a starting point, not legal advice. Review it with counsel and adapt it to your
@@ -17,6 +17,10 @@ updatedDate: 2026-09-18
 - **Contact form messages.** Messages you send through the contact form are stored together
   with the name and email address you provide so we can reply. Their workflow state (new,
   read, archived) and whether the notification to us was delivered are stored as well.
+- **Newsletter subscriptions.** If you subscribe to the newsletter we store your email address,
+  where on the site you subscribed, and when the request was made, confirmed and, if applicable,
+  ended. Nothing is sent until you open the confirmation link. If a newsletter provider is
+  configured, confirmed addresses are shared with it for sending.
 - **Audit log.** Administrative actions, data exports and account deletions are recorded with
   the acting account so we can show what happened to your data. The log never contains
   message text or passwords.
@@ -48,6 +52,9 @@ notifications. GitHub or Google only receive data when you choose to sign in wit
 - Contact messages are kept while they are open. Archived messages are deleted after one year
   (or the retention period configured for this deployment). Where a maximum age is configured,
   messages are deleted after it regardless of their state.
+- Newsletter addresses are kept while the subscription is active. Requests that are not
+  confirmed, and addresses that have unsubscribed, are deleted after seven days (or the period
+  configured for this deployment).
 - Audit log entries are kept indefinitely. They reference accounts and messages by
   identifier only.
 
@@ -61,6 +68,8 @@ You can exercise your rights yourself from your account dashboard:
   messages sent from a verified email address are deleted with it.
 - **Rectification.** Change your password from the dashboard, or contact us to correct other
   details.
+- **Newsletter.** Every newsletter ends with an unsubscribe link; using it stops all further
+  email and removes the address after the retention period above.
 
 If you do not have an account, or need help, use the contact form. Requests are handled by a
 site administrator and answered within 30 days.

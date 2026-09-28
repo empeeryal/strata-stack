@@ -46,7 +46,7 @@ export async function signUp(page: Page, name: string, email: string, password =
   await page.goto('/signup');
   await waitForIslands(page);
   await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
 }
@@ -82,7 +82,8 @@ export async function fillContactForm(
   await page.goto('/contact');
   await waitForIslands(page);
   await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Email').fill(`contact-${Date.now()}@example.com`);
+  // Exact: the footer's newsletter field is labelled "Email address".
+  await page.getByLabel('Email', { exact: true }).fill(`contact-${Date.now()}@example.com`);
   await page.getByLabel('Message').fill(message);
   if (honeypot) {
     // The field is off-screen for people; bots fill it programmatically.

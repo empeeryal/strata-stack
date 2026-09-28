@@ -10,21 +10,22 @@ sidebar:
 `src/site.config.ts` exports a single `siteConfig` object. It is imported by `astro.config.ts`,
 layouts, components, endpoints and scripts, so it must stay free of Astro virtual imports.
 
-| Field                                                 | Used by                                                                              |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `name`                                                | Header, footer, `<title>` suffix, Open Graph site name, JSON-LD, manifest, OG images |
-| `shortName`                                           | Web manifest `short_name`, default OG label                                          |
-| `tagline`                                             | Home page title and hero, default OG image, RSS and llms.txt                         |
-| `description`                                         | Default meta description, home hero copy, manifest                                   |
-| `url`                                                 | Canonical origin when `SITE_URL` is not set                                          |
-| `locale`, `ogLocale`                                  | `<html lang>`, `og:locale`, RSS language, JSON-LD `inLanguage`                       |
-| `author`                                              | JSON-LD author, footer copyright, docs `TechArticle` author                          |
-| `repo.url`, `repo.branch`, `repo.editPath`            | "Edit this page" links, GitHub buttons, changelog releases link                      |
-| `social`                                              | Header/footer icons, JSON-LD `sameAs`                                                |
-| `nav`                                                 | Desktop navigation and mobile drawer                                                 |
-| `footer`                                              | Footer link groups                                                                   |
-| `themeColor`                                          | `<meta name="theme-color">` for light and dark, manifest colours                     |
-| `blog.postsPerPage`, `blog.title`, `blog.description` | Blog listing, pagination, RSS                                                        |
+| Field                                                              | Used by                                                                                                                                           |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                                                             | Header, footer, `<title>` suffix, Open Graph site name, JSON-LD, manifest, OG images                                                              |
+| `shortName`                                                        | Web manifest `short_name`, default OG label                                                                                                       |
+| `tagline`                                                          | Home page title and hero, default OG image, RSS and llms.txt                                                                                      |
+| `description`                                                      | Default meta description, home hero copy, manifest                                                                                                |
+| `url`                                                              | Canonical origin when `SITE_URL` is not set                                                                                                       |
+| `locale`, `ogLocale`                                               | `<html lang>`, `og:locale`, RSS language, JSON-LD `inLanguage`                                                                                    |
+| `author`                                                           | JSON-LD author, footer copyright, docs `TechArticle` author                                                                                       |
+| `repo.url`, `repo.branch`, `repo.editPath`                         | "Edit this page" links, GitHub buttons, changelog releases link                                                                                   |
+| `social`                                                           | Header/footer icons, JSON-LD `sameAs`                                                                                                             |
+| `nav`                                                              | Desktop navigation and mobile drawer                                                                                                              |
+| `footer`                                                           | Footer link groups                                                                                                                                |
+| `newsletter.enabled`, `newsletter.title`, `newsletter.description` | The [newsletter](/docs/components/newsletter-form) block in the footer, after blog posts and on `/newsletter`; `enabled: false` hides all of them |
+| `themeColor`                                                       | `<meta name="theme-color">` for light and dark, manifest colours                                                                                  |
+| `blog.postsPerPage`, `blog.title`, `blog.description`              | Blog listing, pagination, RSS                                                                                                                     |
 
 The object is declared `as const`, so TypeScript knows the exact shape everywhere it is used.
 The [rename checklist](/docs/getting-started/installation#rename-checklist) lists the other

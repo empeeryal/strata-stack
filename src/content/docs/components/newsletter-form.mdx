@@ -1,0 +1,123 @@
+---
+title: Newsletter form
+description: A double opt-in newsletter sign-up, as a small React island over an Astro Action, with confirmation and unsubscribe pages, an admin list with CSV export and an optional Resend audience mirror.
+publishedDate: 2026-09-28
+sidebar:
+  order: 5
+  badge: new
+---
+
+import NewsletterForm from '@/components/react/NewsletterForm';
+
+The newsletter form appears in the footer of every page, after each blog post and on
+[/newsletter](/newsletter). It asks for an address only. Submitting it stores the address as
+_pending_ and sends one email with a confirmation link; nothing else is sent until that link is
+opened. Every newsletter then carries an unsubscribe link that ends the subscription with one
+click on a confirmation page.
+
+<Callout type="tip" title="Try it">
+  <NewsletterForm client:visible source="docs" />
+  <p class="mt-3 text-sm">
+    This is the real form: the confirmation email is real too, and confirming subscribes you to the
+    Strata newsletter.
+  </p>
+</Callout>
+
+## The flow
+
+<Steps>
+
+1. **Request.** `NewsletterForm.tsx` posts the address to the `newsletter.subscribe` action. The
+   action applies the same protections as the contact form: a honeypot field, per-address and
+   per-IP throttles in the `throttle` table, and Zod validation.
+2. **Store, then send.** `subscribeToNewsletter()` in `src/lib/newsletter.ts` inserts a
+   `pending` row in `newsletter_subscriber` with a random 256-bit token and emails the
+   confirmation link. A second request for a pending address issues a new token, which retires
+   the earlier email; a request for a confirmed address sends an "already subscribed" email
+   with the unsubscribe link instead. The visitor sees the same message in every case, so the
+   form cannot be used to find out who is subscribed.
+3. **Confirm.** Opening `/newsletter/confirm?token=…` marks the row `confirmed`, records the
+   time and, when `RESEND_AUDIENCE_ID` is set, adds the address to the Resend audience.
+4. **Unsubscribe.** `/newsletter/unsubscribe?token=…` shows the address and a button. The
+   button posts the `newsletter.unsubscribe` action; opening the link alone changes nothing,
+   because mail clients and security scanners fetch links from emails. The audience is updated
+   and an old confirmation link can no longer revive the subscription.
+
+</Steps>
+
+The token is the only secret, it lives in the recipient's inbox, and it can do exactly two
+things: confirm or end its own subscription. It is stored as is, like Better Auth's verification
+tokens, so the CSV export can include an unsubscribe link for each address.
+
+## Props
+
+| Prop        | Type                                     | Default  |
+| ----------- | ---------------------------------------- | -------- |
+| `source`    | `'footer' \| 'blog' \| 'page' \| 'docs'` | `'page'` |
+| `compact`   | `boolean`, input and button on one row   | `false`  |
+| `className` | extra classes for the `<form>`           | –        |
+
+`source` is stored with the subscription and shown on the admin page; it says where people
+subscribe, nothing more.
+
+## Without JavaScript
+
+The island's form has a real `action`: `/newsletter?_action=newsletter.subscribe`. Without
+JavaScript the browser posts there, the on-demand `/newsletter` page runs the action through
+`Astro.getActionResult()`, redirects to `/newsletter?sent=1` on success and renders the
+validation or delivery error above the form otherwise. This is the plain-form pattern from the
+[actions guide](/docs/guides/actions-and-forms#progressive-enhancement), used for a form that
+sits on static pages. The confirm and unsubscribe pages are server rendered and need no
+JavaScript at all.
+
+## Sending a newsletter
+
+The template stores subscribers; it does not send newsletters. Two ways to do that:
+
+- **Resend audience.** Create an audience in Resend, set `RESEND_AUDIENCE_ID` next to
+  `RESEND_API_KEY`, and confirmed addresses are mirrored into it (unsubscribes are mirrored as
+  well). Write and send from Resend's broadcasts, whose footer includes its own unsubscribe
+  link. The admin page shows an **Audience** column with the addresses the provider has not
+  received yet, for example because the API was unavailable; the next change to that address
+  retries.
+- **CSV export.** The **Download confirmed (CSV)** button on `/admin/subscribers` produces
+  `email,confirmed_at,unsubscribe_url`. Whatever tool sends the newsletter must put each
+  address's `unsubscribe_url` in the footer. Each download is recorded in the audit log.
+
+## Data and retention
+
+| Status         | Meaning                                        | Kept                                         |
+| -------------- | ---------------------------------------------- | -------------------------------------------- |
+| `pending`      | Requested, confirmation not opened yet         | `NEWSLETTER_RETENTION_DAYS` (default 7)      |
+| `confirmed`    | Receives email                                 | Until unsubscribed or removed by an admin    |
+| `unsubscribed` | Opted out; the address is no longer written to | `NEWSLETTER_RETENTION_DAYS` after opting out |
+
+`pnpm db:prune` (the weekly **Prune data** workflow) deletes the rows in the last column, so an
+address that never confirmed or that opted out disappears from the database within days. The
+subscription is tied to the address, not to an account: it appears in a signed-in user's data
+export when the address is verified, and it is not removed with the account, because the
+consent was given separately and ends through the unsubscribe link. Administrators can remove
+any row from `/admin/subscribers`, for requests that arrive by other means.
+
+## Turning it off
+
+Set `newsletter.enabled` to `false` in `src/site.config.ts`. The footer block, the blog card,
+the palette entry and `/newsletter` disappear; the confirm and unsubscribe pages keep working
+so existing links in inboxes still do what they say.
+
+## Accessibility
+
+The email field has a visually hidden label, the error is announced through `role="alert"` and
+referenced with `aria-describedby`, and the success message is a status region. The unsubscribe
+page names the address it is about and uses a real button for the change. The axe scan in
+`tests/e2e/a11y.spec.ts` covers `/newsletter` and the confirmation page.
+
+## Tests
+
+- `src/lib/newsletter.test.ts` runs the whole flow against an in-memory database: storage,
+  token rotation, the already-subscribed email, throttling, a delivery failure, confirmation,
+  audience sync and its failure mode, and unsubscribing.
+- `src/components/react/NewsletterForm.test.tsx` covers the island with the action mocked.
+- `tests/e2e/newsletter.spec.ts` subscribes from the footer, reads the token from the test
+  database, confirms, unsubscribes and checks the 404 for unknown links, plus the no-JavaScript
+  path through `/newsletter`.

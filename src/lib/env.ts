@@ -113,6 +113,18 @@ export function getContactMaxAgeDays(
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
 }
 
+/**
+ * How long unconfirmed newsletter requests and unsubscribed addresses are kept before
+ * `pnpm db:prune` deletes them (NEWSLETTER_RETENTION_DAYS, default 7). Confirmed subscribers
+ * are never pruned.
+ */
+export function getNewsletterRetentionDays(
+  env: Record<string, string | undefined> = process.env,
+): number {
+  const value = Number(env.NEWSLETTER_RETENTION_DAYS ?? 7);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 7;
+}
+
 export interface ConfigIssue {
   level: 'error' | 'warn';
   message: string;

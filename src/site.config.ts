@@ -70,6 +70,17 @@ export const siteConfig = {
       ],
     },
   ],
+  /**
+   * Newsletter sign-up shown in the footer, after blog posts and on /newsletter. Set `enabled`
+   * to false to hide every form; the confirm and unsubscribe pages keep working for existing
+   * subscribers.
+   */
+  newsletter: {
+    enabled: true as boolean,
+    title: 'Newsletter',
+    description:
+      'Release notes and new posts by email, a few times a month at most. Unsubscribe any time.',
+  },
   /** Theme colors reported to the browser UI (address bar, etc.). */
   themeColor: {
     light: '#ffffff',

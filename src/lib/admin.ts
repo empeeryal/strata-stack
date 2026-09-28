@@ -204,6 +204,8 @@ export const AUDIT_ACTIONS = [
   'user.revoke_sessions',
   'user.delete',
   'session.revoke',
+  'subscriber.delete',
+  'subscribers.export',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -211,7 +213,7 @@ export interface AuditEntry {
   actorId?: string | null | undefined;
   actorEmail?: string | null | undefined;
   action: AuditAction;
-  targetType?: 'user' | 'message' | 'session' | undefined;
+  targetType?: 'user' | 'message' | 'session' | 'subscriber' | 'newsletter' | undefined;
   targetId?: string | null | undefined;
   /** JSON-serialisable context. Never include secrets or message bodies. */
   details?: unknown;

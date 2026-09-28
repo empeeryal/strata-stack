@@ -34,6 +34,32 @@ test.describe('home page', () => {
     expect(errors).toEqual([]);
   });
 
+  test('copies the quick start commands from the code block', async ({ page }) => {
+    // Headless browsers have no reliable clipboard; capture what the button writes instead.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: (text: string) => {
+            (window as unknown as { copied: string }).copied = text;
+            return Promise.resolve();
+          },
+        },
+      });
+    });
+    await page.goto('/');
+    const block = page.locator('figure.code-block').first();
+    await block.scrollIntoViewIfNeeded();
+    // Located by attribute: the label changes to "Copied", which a role query by name loses.
+    const button = block.locator('[data-copy-code]');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveText('Copy');
+    await button.click();
+    await expect(button).toHaveText('Copied');
+    expect(await page.evaluate(() => (window as unknown as { copied: string }).copied)).toContain(
+      'pnpm install',
+    );
+  });
+
   test('deploy target island switches panels', async ({ page }) => {
     await page.goto('/');
     const tablist = page.getByRole('tablist', { name: 'Deploy targets' });

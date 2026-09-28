@@ -116,7 +116,8 @@ table.
 
 `.github/workflows/prune.yml` runs `pnpm db:prune` every Sunday at 03:00 UTC and on demand. It
 reads the same database secrets as the migration workflow plus the optional
-`CONTACT_RETENTION_DAYS` and `CONTACT_MAX_AGE_DAYS` repository variables (see
+`CONTACT_RETENTION_DAYS`, `CONTACT_MAX_AGE_DAYS` and `NEWSLETTER_RETENTION_DAYS` repository
+variables (see
 [privacy and data](/docs/guides/privacy-and-data#retention)). Check its runs now and then: a
 retention policy is only real while the job succeeds.
 

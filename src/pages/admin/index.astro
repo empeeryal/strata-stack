@@ -5,7 +5,7 @@ import Badge from '@/components/ui/Badge.astro';
 import BarChart from '@/components/ui/BarChart.astro';
 import Card from '@/components/ui/Card.astro';
 import { db } from '@/db/client';
-import { auditLog, contactMessages, user as userTable } from '@/db/schema';
+import { auditLog, contactMessages, newsletterSubscribers, user as userTable } from '@/db/schema';
 import AdminLayout from '@/layouts/AdminLayout.astro';
 import { countActiveAdmins } from '@/lib/admin';
 import { guardAdminPage } from '@/lib/admin-page';
@@ -13,6 +13,7 @@ import { dailyCounts } from '@/lib/chart';
 import { isEmailConfigured } from '@/lib/email';
 import { getEnv } from '@/lib/env';
 import { formatDate, toISODate } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
 
 export const prerender = false;
 
@@ -30,6 +31,7 @@ const [
   recentMessages,
   recentAudit,
   recentArrivals,
+  [subscribers],
 ] = await Promise.all([
   db.select({ value: count() }).from(userTable),
   countActiveAdmins(db),
@@ -47,6 +49,10 @@ const [
     .select({ createdAt: contactMessages.createdAt })
     .from(contactMessages)
     .where(gte(contactMessages.createdAt, chartSince)),
+  db
+    .select({ value: count() })
+    .from(newsletterSubscribers)
+    .where(eq(newsletterSubscribers.status, 'confirmed')),
 ]);
 
 const messagesPerDay = dailyCounts(
@@ -64,9 +70,11 @@ const stats = [
     value: failedDeliveries?.value ?? 0,
     href: '/admin/messages?delivery=failed',
   },
+  { label: 'Subscribers', value: subscribers?.value ?? 0, href: '/admin/subscribers' },
 ];
 
 const recipient = getEnv('CONTACT_TO_EMAIL');
+const audienceId = getEnv('RESEND_AUDIENCE_ID');
 const configuration = [
   {
     label: 'Email delivery',
@@ -82,11 +90,23 @@ const configuration = [
       ? `New messages are forwarded to ${recipient}.`
       : 'CONTACT_TO_EMAIL is not set. Messages are only visible in this inbox.',
   },
+  ...(siteConfig.newsletter.enabled
+    ? [
+        {
+          label: 'Newsletter audience',
+          ok: Boolean(audienceId && isEmailConfigured()),
+          detail:
+            audienceId && isEmailConfigured()
+              ? 'Confirmed subscribers are mirrored to the Resend audience for sending.'
+              : 'RESEND_AUDIENCE_ID is not set. Subscribers are stored here only; download them as CSV from the subscribers page.',
+        },
+      ]
+    : []),
 ];
 ---
 
 <AdminLayout title="Overview" description="Site administration overview.">
-  <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
     {stats.map((stat) => (
       <li>
         <a

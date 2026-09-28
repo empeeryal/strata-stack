@@ -40,6 +40,49 @@ export const contactMessages = sqliteTable(
   ],
 );
 
+/** Lifecycle of a newsletter subscription (see src/lib/newsletter.ts). */
+export const NEWSLETTER_STATUSES = ['pending', 'confirmed', 'unsubscribed'] as const;
+export type NewsletterStatus = (typeof NEWSLETTER_STATUSES)[number];
+
+/**
+ * Newsletter subscribers with double opt-in. A row is created as `pending` when the form is
+ * submitted, becomes `confirmed` when the link in the confirmation email is opened and
+ * `unsubscribed` when the link in a newsletter footer is used. The token in those links is a
+ * random 256-bit value that only grants confirming or ending this one subscription; it is
+ * stored as is (like Better Auth's verification tokens) so the owner can build unsubscribe
+ * links for newsletters sent from outside the provider's audience.
+ */
+export const newsletterSubscribers = sqliteTable(
+  'newsletter_subscriber',
+  {
+    id: text('id').primaryKey(),
+    email: text('email').notNull().unique(),
+    status: text('status', { enum: NEWSLETTER_STATUSES }).notNull().default('pending'),
+    /** Confirm/unsubscribe token; rotated whenever a confirmation email is sent. */
+    token: text('token').notNull().unique(),
+    /** Where the form was submitted from (`footer`, `blog`, `page`), for the owner's curiosity. */
+    source: text('source'),
+    confirmationSentAt: integer('confirmation_sent_at', { mode: 'timestamp_ms' }),
+    confirmedAt: integer('confirmed_at', { mode: 'timestamp_ms' }),
+    unsubscribedAt: integer('unsubscribed_at', { mode: 'timestamp_ms' }),
+    /** When the address was last pushed to the email provider's audience; null when never. */
+    audienceSyncedAt: integer('audience_synced_at', { mode: 'timestamp_ms' }),
+    /** Last error from the audience sync, cleared on success. */
+    audienceError: text('audience_error'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    // The admin list filters by status, newest first; the retention job scans by status and age.
+    index('newsletter_subscriber_status_updated_at_idx').on(table.status, table.updatedAt),
+    index('newsletter_subscriber_created_at_idx').on(table.createdAt),
+  ],
+);
+
 /**
  * Fixed-window counters used to throttle anonymous actions (see src/lib/throttle.ts).
  * Keys are hashed, so no raw addresses are stored.

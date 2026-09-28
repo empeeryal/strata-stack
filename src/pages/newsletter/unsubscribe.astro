@@ -1,0 +1,96 @@
+---
+import { actions } from 'astro:actions';
+import { Icon } from 'astro-icon/components';
+
+import Alert from '@/components/ui/Alert.astro';
+import Button from '@/components/ui/Button.astro';
+import { db } from '@/db/client';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { findSubscriberByToken } from '@/lib/newsletter';
+import { siteConfig } from '@/site.config';
+
+export const prerender = false;
+
+// Unsubscribing is a POST behind a button rather than the effect of opening the link: mail
+// clients and link scanners fetch URLs from emails, and a GET must not end a subscription.
+const result = Astro.getActionResult(actions.newsletter.unsubscribe);
+if (result && !result.error) {
+  // The form's action replaces the query string, so the token comes back with the result.
+  return Astro.redirect(`/newsletter/unsubscribe?token=${encodeURIComponent(result.data.token)}`);
+}
+const token = Astro.url.searchParams.get('token') ?? '';
+const subscriber = token ? await findSubscriberByToken(db, token) : null;
+const error = result?.error?.message ?? null;
+
+const state = !subscriber ? 'invalid' : subscriber.status === 'unsubscribed' ? 'done' : 'ask';
+const title =
+  state === 'invalid'
+    ? 'This link is not valid'
+    : state === 'done'
+      ? 'You are unsubscribed'
+      : `Unsubscribe from ${siteConfig.name}?`;
+if (state === 'invalid') Astro.response.status = 404;
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<BaseLayout
+  title={title}
+  description="Manage your newsletter subscription."
+  noindex
+  searchable={false}
+  class="container max-w-2xl py-16"
+>
+  <div class="rounded-xl border bg-card p-8 text-center shadow-soft" data-newsletter-state={state}>
+    <Icon
+      name={state === 'invalid' ? 'lucide:mail-x' : 'lucide:mail-minus'}
+      class="mx-auto size-10 text-primary"
+      aria-hidden="true"
+    />
+    <h1 class="mt-4 text-3xl font-bold tracking-tight text-balance">{title}</h1>
+    {error && <Alert class="mt-4 text-left">{error}</Alert>}
+
+    {state === 'invalid' && (
+      <p class="mt-3 text-pretty text-muted-foreground">
+        It may belong to an address that was already removed. If you still receive email from us,
+        use the link in the most recent message or{' '}
+        <a href="/contact" class="underline underline-offset-4 hover:text-foreground">
+          contact us
+        </a>
+        .
+      </p>
+    )}
+
+    {state === 'done' && subscriber && (
+      <p class="mt-3 text-pretty text-muted-foreground">
+        <strong class="font-medium text-foreground">{subscriber.email}</strong> will not receive
+        further email from {siteConfig.name}. The address is removed from our records after a short
+        period.
+      </p>
+    )}
+
+    {state === 'ask' && subscriber && (
+      <p class="mt-3 text-pretty text-muted-foreground">
+        Stop sending email to{' '}
+        <strong class="font-medium text-foreground">{subscriber.email}</strong>. You can subscribe
+        again at any time.
+      </p>
+    )}
+
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      {state === 'ask' && (
+        <form method="POST" action={actions.newsletter.unsubscribe}>
+          <input type="hidden" name="token" value={token} />
+          <Button type="submit">Unsubscribe</Button>
+        </form>
+      )}
+      {state === 'done' && siteConfig.newsletter.enabled && (
+        <Button href="/newsletter" variant="outline">
+          Subscribe again
+        </Button>
+      )}
+      <Button href="/" variant={state === 'ask' ? 'outline' : 'primary'}>
+        {state === 'ask' ? 'Keep my subscription' : 'Back to the site'}
+      </Button>
+    </div>
+  </div>
+</BaseLayout>

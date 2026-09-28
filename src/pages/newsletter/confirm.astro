@@ -1,0 +1,62 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import Button from '@/components/ui/Button.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { confirmSubscription, type ConfirmOutcome } from '@/lib/newsletter';
+import { newsletterDeps } from '@/lib/newsletter-deps';
+import { siteConfig } from '@/site.config';
+
+export const prerender = false;
+
+// The link in the confirmation email lands here. Opening it is the confirmation, as with
+// email verification links; the token is single-purpose and only ever in the recipient's inbox.
+const token = Astro.url.searchParams.get('token') ?? '';
+const outcome = await confirmSubscription(token, newsletterDeps());
+
+const copy: Record<ConfirmOutcome, { title: string; text: string; icon: string }> = {
+  confirmed: {
+    title: 'You are subscribed',
+    text: `Thanks for confirming. ${siteConfig.name} updates will arrive at this address; every email ends with an unsubscribe link.`,
+    icon: 'lucide:mail-check',
+  },
+  'already-confirmed': {
+    title: 'You were already subscribed',
+    text: 'This address was confirmed earlier, so nothing has changed.',
+    icon: 'lucide:mail-check',
+  },
+  invalid: {
+    title: 'This link is not valid',
+    text: 'It may have been replaced by a newer confirmation email, or the request was withdrawn. Subscribe again to receive a fresh link.',
+    icon: 'lucide:mail-x',
+  },
+};
+const { title, text, icon } = copy[outcome];
+if (outcome === 'invalid') Astro.response.status = 404;
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+
+<BaseLayout
+  title={title}
+  description="Newsletter subscription confirmation."
+  noindex
+  searchable={false}
+  class="container max-w-2xl py-16"
+>
+  <div
+    class="rounded-xl border bg-card p-8 text-center shadow-soft"
+    data-newsletter-outcome={outcome}
+  >
+    <Icon name={icon} class="mx-auto size-10 text-primary" aria-hidden="true" />
+    <h1 class="mt-4 text-3xl font-bold tracking-tight text-balance">{title}</h1>
+    <p class="mt-3 text-pretty text-muted-foreground">{text}</p>
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      {outcome === 'invalid' && siteConfig.newsletter.enabled && (
+        <Button href="/newsletter">Subscribe again</Button>
+      )}
+      <Button href="/" variant={outcome === 'invalid' ? 'outline' : 'primary'}>
+        Back to the site
+      </Button>
+    </div>
+  </div>
+</BaseLayout>

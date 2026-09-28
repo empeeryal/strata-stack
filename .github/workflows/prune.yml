@@ -1,9 +1,10 @@
 name: Prune data
 
 # Retention job: deletes archived contact messages older than CONTACT_RETENTION_DAYS, every
-# message older than CONTACT_MAX_AGE_DAYS when that is set, and expired throttle counters.
-# Runs weekly and on demand against the database in the Actions secrets (the same names the
-# Migrate database workflow reads). The two retention settings are repository variables.
+# message older than CONTACT_MAX_AGE_DAYS when that is set, newsletter addresses that were never
+# confirmed or have unsubscribed more than NEWSLETTER_RETENTION_DAYS ago, and expired throttle
+# counters. Runs weekly and on demand against the database in the Actions secrets (the same
+# names the Migrate database workflow reads). The retention settings are repository variables.
 
 on:
   workflow_dispatch:
@@ -26,6 +27,7 @@ jobs:
       DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN || secrets.TURSO_AUTH_TOKEN }}
       CONTACT_RETENTION_DAYS: ${{ vars.CONTACT_RETENTION_DAYS }}
       CONTACT_MAX_AGE_DAYS: ${{ vars.CONTACT_MAX_AGE_DAYS }}
+      NEWSLETTER_RETENTION_DAYS: ${{ vars.NEWSLETTER_RETENTION_DAYS }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
