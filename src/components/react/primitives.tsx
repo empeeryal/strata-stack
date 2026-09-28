@@ -1,6 +1,7 @@
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import {
   type ButtonHTMLAttributes,
+  type HTMLAttributes,
   type InputHTMLAttributes,
   type LabelHTMLAttributes,
   type ReactNode,
@@ -8,6 +9,7 @@ import {
 } from 'react';
 
 import { alertRole, alertVariants, type AlertVariant } from '@/components/ui/alert-variants';
+import { badgeVariants, type BadgeVariantProps } from '@/components/ui/badge-variants';
 import { buttonVariants, type ButtonVariantProps } from '@/components/ui/button-variants';
 import { inputClasses, textareaClasses } from '@/components/ui/field-classes';
 import { initials } from '@/lib/initials';
@@ -93,16 +95,25 @@ export function Alert({
   variant = 'danger',
   children,
   className,
-}: {
+  ...props
+}: HTMLAttributes<HTMLDivElement> & {
   variant?: AlertVariant;
   children: ReactNode;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
-    <div role={alertRole(variant)} className={cn(alertVariants[variant], className)}>
+    <div role={alertRole(variant)} className={cn(alertVariants[variant], className)} {...props}>
       {children}
     </div>
   );
+}
+
+export function Badge({
+  variant,
+  className,
+  children,
+}: BadgeVariantProps & { className?: string | undefined; children: ReactNode }) {
+  return <span className={cn(badgeVariants({ variant }), className)}>{children}</span>;
 }
 
 const AVATAR_SIZES = { sm: 'size-6 text-[10px]', md: 'size-9 text-xs', lg: 'size-16 text-lg' };

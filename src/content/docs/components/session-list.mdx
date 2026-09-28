@@ -1,0 +1,74 @@
+---
+title: Session list
+description: The dashboard's list of signed-in devices as an island over plain forms, so signing out a session updates the list in place with JavaScript and still works as a page reload without it.
+publishedDate: 2026-09-28
+sidebar:
+  order: 7
+  badge: new
+---
+
+The **Sessions** card on the dashboard lists every device signed in to the account, with the
+browser and platform, the address, and the sign-in and expiry times, and offers to sign out of
+any single one or of all the others. Since the first release it has been a server-rendered list
+of forms posting to two actions. It is now an island, `src/components/react/account/SessionList.tsx`,
+that renders the same forms and, once hydrated, submits them without leaving the page.
+
+## Island over forms
+
+The island's markup is the fallback. Every "Sign out" button sits in a form whose `action`
+attribute comes from the action object itself:
+
+```tsx title="src/components/react/account/SessionList.tsx"
+<form
+  method="POST"
+  action={actions.account.revokeSession.queryString}
+  onSubmit={(event) => revoke(event, session.id)}
+>
+  <input type="hidden" name="id" value={session.id} />
+  <Button type="submit" variant="ghost" size="sm">
+    Sign out
+  </Button>
+</form>
+```
+
+Without JavaScript the browser posts the form to `/dashboard?_action=account.revokeSession`,
+the page runs the action through `Astro.getActionResult()`, redirects to
+`/dashboard?notice=session-revoked` and shows the notice, as before. With JavaScript the submit
+handler calls the same action through the actions client, removes the row from the list and
+shows the confirmation in a status region. There is one server implementation and one
+authorization check either way: `revokeOwnSession()` in `src/lib/account.ts`, which refuses the
+current session, treats a session that is not the caller's as unknown, and writes the audit
+entry in the same transaction.
+
+The page prepares the rows, so the island stays free of server code and of date formatting:
+`describeUserAgent()` turns the user agent into "Chrome on macOS", and the timestamps arrive
+both as ISO strings for `<time datetime>` and as text formatted on the server, so the island and
+the page never disagree about a date.
+
+## When to use this pattern
+
+Use it for a list or a form that must work without JavaScript, where JavaScript mostly saves a
+reload: session management, an inbox row's archive button, a settings toggle. The contact and
+newsletter forms use the same idea in the other direction: the island is the primary experience
+and the `action` attribute is the fallback. The [actions guide](/docs/guides/actions-and-forms)
+covers both.
+
+Reach for a plain island without forms when there is nothing sensible to post, such as the
+[command palette](/docs/components/command-palette), and for plain forms without an island when
+nothing is gained by staying on the page, as in the admin area.
+
+## Accessibility
+
+The list is a real list, each row names the device and the current one carries a "This device"
+badge; there is no sign-out control for it, so the only way to end the current session is the
+Sign out button in the header. Confirmations use a status region and errors an alert, and the
+buttons are disabled while a request is in flight so a double click cannot send two.
+
+## Tests
+
+- `src/components/react/account/SessionList.test.tsx` checks the rendered forms (method,
+  action, hidden id), signing out one session and all the others in place, and an action error
+  leaving the list intact.
+- `tests/e2e/account.spec.ts` signs the same account in from a second browser context, signs
+  that session out from the first one and checks the second one is locked out; a further test
+  does the same without JavaScript through the page redirect.

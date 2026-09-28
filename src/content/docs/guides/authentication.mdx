@@ -82,9 +82,11 @@ The dashboard lets signed-in users:
   again in the `user.update` database hook, and shown in the header, on the dashboard and in
   the admin users list; without one, initials are shown;
 - see every session on their account (browser and platform, address, sign-in and expiry
-  times) and sign out of any single one or of all the others. Sessions are revoked by id
-  through the `account.revokeSession` and `account.revokeOtherSessions` actions, so no session
-  token ever appears in a page;
+  times) and sign out of any single one or of all the others. The
+  [session list](/docs/components/session-list) island updates in place and falls back to the
+  same forms without JavaScript. Sessions are revoked by id through the
+  `account.revokeSession` and `account.revokeOtherSessions` actions, so no session token ever
+  appears in a page;
 - download their data as JSON (`/api/account/export`: profile, sign-in methods, sessions and,
   for verified addresses, contact messages; never tokens or password hashes);
 - delete their account (`user.deleteUser` in Better Auth). Password accounts confirm with
@@ -101,7 +103,8 @@ Sign-up, sign-in, magic links, password reset and change, email verification and
 deletion are React islands that talk to Better Auth's client, so they need JavaScript. The
 pages themselves render on the server (title, copy, the links between them), but a visitor
 with scripts disabled cannot submit them. The dashboard's session controls and the admin area
-are plain forms posting to actions and work without JavaScript.
+are forms posting to actions and work without JavaScript; the session list adds an island on
+top of its forms rather than replacing them.
 
 ## Administrators
 

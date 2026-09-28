@@ -1,0 +1,85 @@
+---
+title: 'Three more islands: newsletter, profile and sessions'
+description: 'Three small islands from releases 0.14 to 0.16: a double opt-in newsletter, profile editing with an avatar and a session list that updates in place, each with a plan for life without JavaScript.'
+pubDate: 2026-09-28
+author: empeeryal
+tags: [islands, react, actions, release]
+---
+
+The roadmap had two islands left after the command palette, the bar chart and the pricing
+table: a newsletter and profile editing. Both shipped this week, followed by a third that was
+not on the list but earned its place: the session list on the dashboard, rebuilt as an island
+that keeps working as plain forms. This post is about the decisions behind them, because the
+components are small and the decisions are what you will copy.
+
+## The newsletter stores first and answers the same way every time
+
+A newsletter form looks like the smallest possible feature: one field, one button. The work is
+in what happens after the click. Strata's `newsletter.subscribe` action stores the address as
+_pending_ with a random 256-bit token, then sends a confirmation email carrying that token.
+Nothing else is ever sent until the link is opened. That is double opt-in, and it is also what
+keeps the form from becoming a spam tool: a form that sends email to any address someone types
+is a form that sends email to any address someone types.
+
+The second decision is that the form answers every accepted request the same way. A visitor
+sees "check your inbox" whether the address is new, pending or already confirmed. The
+difference is in the email: a fresh confirmation link, or a note that says the address is
+already subscribed and offers the unsubscribe link. Without that, the form would be a way to
+find out who is on the list, one address at a time.
+
+The third is that opening the unsubscribe link changes nothing. Mail clients and security
+scanners fetch links from emails; a link that unsubscribes on GET would unsubscribe people whose
+corporate mail gateway was merely curious. The page shows the address and a button, and the
+button posts the action. An old confirmation link cannot revive an ended subscription either.
+
+Then there is the question every form on a static site has to answer: what happens without
+JavaScript? The footer is prerendered, so a form there cannot render a result of its own. The
+island's `action` attribute points at `/newsletter?_action=newsletter.subscribe`, an on-demand
+page that runs the same action, redirects on success and renders the error otherwise. One
+action, two ways in. The [component page](/docs/components/newsletter-form) has the rest:
+retention, the admin list with a CSV export that includes an unsubscribe link per address, and
+the optional Resend audience mirror.
+
+## The profile form validates twice
+
+Profile editing is Better Auth's `updateUser` with two fields, a name and an avatar. The
+avatar is a link, not an upload: the template has no file storage, and a link to an image the
+person already hosts covers the common case with rules that are simple to state. `https://`
+only, at most 2048 characters, an empty value clears it.
+
+Those rules run in the island, where a mistake gets an immediate message, and again in the
+`user.update` database hook, where every client ends up. The island is a convenience; the hook
+is the authority. A `curl` to `/api/auth/update-user` with an `http://` image gets the same
+`400` and the same sentence as the form. Updates that carry neither field, such as a role
+change, pass through the hook untouched.
+
+An avatar link can also stop working later. The `Avatar` component that shows the image in the
+header, on the dashboard and in the admin users list listens for image errors and swaps a
+broken image for the person's initials, which is what it shows when there is no link at all. It
+handles images that failed before the script ran too, which is a race worth knowing about: a
+module script runs after parsing, and an image can fail before that.
+
+## The session list is an island over forms
+
+The dashboard listed sessions from the first release, as a server-rendered list of forms
+posting to two actions. It worked, and it worked without JavaScript. Turning it into an island
+was only worth doing if it kept both properties, so the island renders the same forms, with
+the `action` attribute taken from the action object's `queryString`, and intercepts them once
+hydrated to call the action through the client and update the list in place.
+
+That is the pattern in one sentence: **the fallback is the markup the island renders.** There is
+no second code path to keep honest, and there is one server implementation, one authorization
+check and one audit entry whether the request came from a form post or from `fetch`. The
+[session list page](/docs/components/session-list) shows the code; the
+[actions guide](/docs/guides/actions-and-forms) explains the mechanics, including why the
+newsletter form does the same thing the other way round.
+
+One side effect for the test suite: the dashboard now stacks several `client:visible` islands,
+and the helper that waits for hydration used to wait for all of them. It now ignores visible-only
+islands outside the viewport, so a test scrolls to the one it needs and waits for that.
+
+## What is left
+
+The roadmap's planned list has one entry now, the internationalisation layout. The three islands
+here are in the [Components](/docs/components/overview) section with their tests, and the
+[changelog](/changelog) has the details of releases 0.14.0, 0.15.0 and 0.16.0.
