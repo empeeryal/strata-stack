@@ -119,13 +119,21 @@ export function Avatar({
   size?: keyof typeof AVATAR_SIZES;
   className?: string | undefined;
 }) {
+  // A link that fails to load falls back to the initials, like Avatar.astro.
+  const [broken, setBroken] = useState<string | null>(null);
   const classes = cn(
     'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted font-semibold text-muted-foreground select-none',
     AVATAR_SIZES[size],
     className,
   );
-  return image ? (
-    <img src={image} alt="" className={cn(classes, 'object-cover')} referrerPolicy="no-referrer" />
+  return image && broken !== image ? (
+    <img
+      src={image}
+      alt=""
+      className={cn(classes, 'object-cover')}
+      referrerPolicy="no-referrer"
+      onError={() => setBroken(image)}
+    />
   ) : (
     <span className={classes} aria-hidden="true">
       {initials(name)}

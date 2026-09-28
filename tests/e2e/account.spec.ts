@@ -114,6 +114,12 @@ test.describe('account self-service', () => {
     });
     expect(rejected.status()).toBe(400);
     expect((await rejected.json()).message).toContain('https://');
+    // A link that no longer loads falls back to the initials.
+    await page.route('https://github.com/octocat.png', (route) => route.abort());
+    await page.goto('/dashboard');
+    await expect(page.locator('[data-profile-avatar]')).toHaveText('AL');
+    await page.unroute('https://github.com/octocat.png');
+
     const cleared = await page.request.post('/api/auth/update-user', { data: { image: '' } });
     expect(cleared.status()).toBe(200);
     await page.goto('/dashboard');

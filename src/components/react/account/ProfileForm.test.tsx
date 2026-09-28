@@ -61,6 +61,17 @@ describe('<ProfileForm>', () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
+  it('falls back to initials when the preview image cannot load', async () => {
+    const { container } = render(
+      <ProfileForm name="Ada Lovelace" image="https://example.com/gone.png" />,
+    );
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    img?.dispatchEvent(new Event('error'));
+    await waitFor(() => expect(container.querySelector('img')).toBeNull());
+    expect(container.textContent).toContain('AL');
+  });
+
   it('shows the API error', async () => {
     updateUser.mockResolvedValue({
       data: null,

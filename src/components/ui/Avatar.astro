@@ -33,6 +33,8 @@ const classes = cn(
     loading="lazy"
     decoding="async"
     referrerpolicy="no-referrer"
+    data-avatar-image
+    data-fallback={initials(name)}
     {...(rest as HTMLAttributes<'img'>)}
   />
 ) : (
@@ -40,3 +42,36 @@ const classes = cn(
     {initials(name)}
   </span>
 )}
+
+<script>
+  // An avatar link can stop working (the image moved, the host is down). The image is then
+  // replaced by the initials disc it would have shown without a link. Error events do not
+  // bubble, so they are caught in the capture phase for every avatar image, present or added
+  // later; images that already failed before this script ran are handled on load.
+  function showInitials(img: HTMLImageElement): void {
+    const span = document.createElement('span');
+    span.className = img.className.replace('object-cover', '').trim();
+    span.setAttribute('aria-hidden', 'true');
+    span.setAttribute('data-initials', '');
+    for (const { name, value } of img.attributes) {
+      if (name.startsWith('data-') && name !== 'data-avatar-image' && name !== 'data-fallback') {
+        span.setAttribute(name, value);
+      }
+    }
+    span.textContent = img.dataset.fallback ?? '?';
+    img.replaceWith(span);
+  }
+
+  document.addEventListener(
+    'error',
+    (event) => {
+      const img = event.target;
+      if (img instanceof HTMLImageElement && img.hasAttribute('data-avatar-image'))
+        showInitials(img);
+    },
+    true,
+  );
+  for (const img of document.querySelectorAll<HTMLImageElement>('img[data-avatar-image]')) {
+    if (img.complete && img.naturalWidth === 0) showInitials(img);
+  }
+</script>
