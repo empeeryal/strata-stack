@@ -77,6 +77,10 @@ explicitly in `src/lib/auth.ts`.
 
 The dashboard lets signed-in users:
 
+- edit their name and avatar through the [profile form](/docs/components/profile-form). The
+  avatar is a link to an image hosted elsewhere, validated as `https://` on the client and
+  again in the `user.update` database hook, and shown in the header, on the dashboard and in
+  the admin users list; without one, initials are shown;
 - see every session on their account (browser and platform, address, sign-in and expiry
   times) and sign out of any single one or of all the others. Sessions are revoked by id
   through the `account.revokeSession` and `account.revokeOtherSessions` actions, so no session

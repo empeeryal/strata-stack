@@ -77,6 +77,55 @@ test.describe('account self-service', () => {
     await other.close();
   });
 
+  test('edits the name and avatar from the dashboard', async ({ page }) => {
+    const address = `profile-${Date.now()}@example.com`;
+    await signUp(page, 'Profile Tester', address);
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hello, Profile Tester');
+
+    const form = page.getByRole('form', { name: 'Profile' });
+    await form.scrollIntoViewIfNeeded();
+    await waitForIslands(page);
+    await form.getByLabel('Name').fill('  Ada   Lovelace ');
+    await form.getByLabel('Avatar image URL').fill('https://github.com/octocat.png');
+    await form.getByRole('button', { name: 'Save profile' }).click();
+
+    await expect(page).toHaveURL(/\/dashboard\?notice=profile-updated$/);
+    await expect(page.locator('[data-account-notice]')).toHaveText('Profile updated.');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hello, Ada Lovelace');
+    await expect(page.locator('[data-profile-avatar]')).toHaveAttribute(
+      'src',
+      'https://github.com/octocat.png',
+    );
+    await expect(page.getByRole('link', { name: 'Ada Lovelace' }).first()).toBeVisible();
+
+    // Prerendered pages learn the name and avatar from the session request.
+    await page.goto('/about');
+    const menu = page.locator('account-menu').first();
+    await expect(menu.locator('[data-name]')).toHaveText('Ada Lovelace');
+    await expect(menu.locator('[data-avatar] img')).toHaveAttribute(
+      'src',
+      'https://github.com/octocat.png',
+    );
+
+    // The API enforces the same rules for clients that skip the form.
+    const rejected = await page.request.post('/api/auth/update-user', {
+      data: { image: 'http://example.com/avatar.png' },
+    });
+    expect(rejected.status()).toBe(400);
+    expect((await rejected.json()).message).toContain('https://');
+    // A link that no longer loads falls back to the initials.
+    await page.route('https://github.com/octocat.png', (route) => route.abort());
+    await page.goto('/dashboard');
+    await expect(page.locator('[data-profile-avatar]')).toHaveText('AL');
+    await page.unroute('https://github.com/octocat.png');
+
+    const cleared = await page.request.post('/api/auth/update-user', { data: { image: '' } });
+    expect(cleared.status()).toBe(200);
+    await page.goto('/dashboard');
+    await expect(page.locator('[data-profile-avatar]')).toHaveText('AL');
+  });
+
   test('rejects unauthenticated export requests', async ({ request }) => {
     const response = await request.get('/api/account/export');
     expect(response.status()).toBe(401);

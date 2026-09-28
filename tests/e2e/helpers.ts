@@ -25,9 +25,21 @@ export function collectCspViolations(page: Page): string[] {
   return violations;
 }
 
-/** Waits until every Astro island on the page has hydrated (the `ssr` attribute is removed). */
+/**
+ * Waits until every Astro island that can hydrate has hydrated (Astro removes the `ssr`
+ * attribute). Islands with `client:visible` only hydrate once they scroll into view, so those
+ * outside the viewport are not waited for; scroll to one first when a test needs it.
+ */
 export async function waitForIslands(page: Page): Promise<void> {
-  await page.waitForFunction(() => !document.querySelector('astro-island[ssr]'));
+  await page.waitForFunction(() => {
+    for (const island of document.querySelectorAll('astro-island[ssr]')) {
+      if (island.getAttribute('client') !== 'visible') return false;
+      // The island itself is `display: contents`; measure what it renders.
+      const rect = island.firstElementChild?.getBoundingClientRect();
+      if (rect && rect.bottom > 0 && rect.top < window.innerHeight) return false;
+    }
+    return true;
+  });
 }
 
 /**

@@ -6,6 +6,7 @@
 export const ACCOUNT_NOTICES = {
   'session-revoked': 'That session was signed out.',
   'sessions-revoked': 'Every other session was signed out.',
+  'profile-updated': 'Profile updated.',
 } as const;
 
 export type AccountNotice = keyof typeof ACCOUNT_NOTICES;

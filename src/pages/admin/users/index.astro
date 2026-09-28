@@ -2,6 +2,7 @@
 import { actions } from 'astro:actions';
 import { count, desc, or, sql, type SQL } from 'drizzle-orm';
 
+import Avatar from '@/components/ui/Avatar.astro';
 import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
 import { inputClasses } from '@/components/ui/field-classes';
@@ -127,11 +128,16 @@ const summary =
             return (
               <tr>
                 <td class="px-4 py-3 align-top">
-                  <p class="font-medium">
-                    {account.name}
-                    {self && <span class="text-xs text-muted-foreground"> (you)</span>}
-                  </p>
-                  <p class="text-xs text-muted-foreground">{account.email}</p>
+                  <div class="flex items-center gap-3">
+                    <Avatar name={account.name} image={account.image} size="md" />
+                    <div class="min-w-0">
+                      <p class="font-medium">
+                        {account.name}
+                        {self && <span class="text-xs text-muted-foreground"> (you)</span>}
+                      </p>
+                      <p class="text-xs text-muted-foreground">{account.email}</p>
+                    </div>
+                  </div>
                 </td>
                 <td class="px-4 py-3 align-top">
                   <Badge variant={admin ? 'default' : 'outline'}>{admin ? 'Admin' : 'User'}</Badge>

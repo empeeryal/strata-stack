@@ -66,8 +66,8 @@ You can exercise your rights yourself from your account dashboard:
   ("Download my data").
 - **Erasure.** Delete your account, its sessions and connected sign-in methods. Contact
   messages sent from a verified email address are deleted with it.
-- **Rectification.** Change your password from the dashboard, or contact us to correct other
-  details.
+- **Rectification.** Change your name, avatar and password from the dashboard, or contact us
+  to correct other details.
 - **Newsletter.** Every newsletter ends with an unsubscribe link; using it stops all further
   email and removes the address after the retention period above.
 

@@ -1,0 +1,77 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+import { initials } from '@/lib/initials';
+import { cn } from '@/lib/utils';
+
+/**
+ * A user's avatar: the image they set on the dashboard, or their initials on a neutral disc.
+ * Decorative by default (the name is always printed next to it); pass `alt` when it is not.
+ */
+interface Props extends HTMLAttributes<'span'> {
+  name: string | null | undefined;
+  image?: string | null | undefined;
+  size?: 'sm' | 'md' | 'lg';
+  alt?: string;
+  class?: string;
+}
+
+const { name, image, size = 'md', alt = '', class: className, ...rest } = Astro.props;
+const sizes = { sm: 'size-6 text-[10px]', md: 'size-9 text-xs', lg: 'size-16 text-lg' } as const;
+const classes = cn(
+  'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted font-semibold text-muted-foreground select-none',
+  sizes[size],
+  className,
+);
+---
+
+{image ? (
+  <img
+    src={image}
+    alt={alt}
+    class={cn(classes, 'object-cover')}
+    loading="lazy"
+    decoding="async"
+    referrerpolicy="no-referrer"
+    data-avatar-image
+    data-fallback={initials(name)}
+    {...(rest as HTMLAttributes<'img'>)}
+  />
+) : (
+  <span class={classes} aria-hidden={alt ? undefined : 'true'} data-initials {...rest}>
+    {initials(name)}
+  </span>
+)}
+
+<script>
+  // An avatar link can stop working (the image moved, the host is down). The image is then
+  // replaced by the initials disc it would have shown without a link. Error events do not
+  // bubble, so they are caught in the capture phase for every avatar image, present or added
+  // later; images that already failed before this script ran are handled on load.
+  function showInitials(img: HTMLImageElement): void {
+    const span = document.createElement('span');
+    span.className = img.className.replace('object-cover', '').trim();
+    span.setAttribute('aria-hidden', 'true');
+    span.setAttribute('data-initials', '');
+    for (const { name, value } of img.attributes) {
+      if (name.startsWith('data-') && name !== 'data-avatar-image' && name !== 'data-fallback') {
+        span.setAttribute(name, value);
+      }
+    }
+    span.textContent = img.dataset.fallback ?? '?';
+    img.replaceWith(span);
+  }
+
+  document.addEventListener(
+    'error',
+    (event) => {
+      const img = event.target;
+      if (img instanceof HTMLImageElement && img.hasAttribute('data-avatar-image'))
+        showInitials(img);
+    },
+    true,
+  );
+  for (const img of document.querySelectorAll<HTMLImageElement>('img[data-avatar-image]')) {
+    if (img.complete && img.naturalWidth === 0) showInitials(img);
+  }
+</script>

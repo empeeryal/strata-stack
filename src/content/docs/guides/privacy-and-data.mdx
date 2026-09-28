@@ -36,7 +36,8 @@ From the dashboard a signed-in user can:
   `beforeDelete` hook in `src/lib/auth.ts` refuses to remove the last administrator, and
   `afterDelete` removes contact messages from a verified address and records the deletion in
   the audit log.
-- **Change** their password, which signs out other sessions.
+- **Change** their password, which signs out other sessions, and their name and avatar
+  (rectification) from the profile form.
 
 ## Requests from people without an account
 

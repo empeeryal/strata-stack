@@ -1,6 +1,7 @@
 ---
 import { Icon } from 'astro-icon/components';
 
+import Avatar from '@/components/ui/Avatar.astro';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { isAdmin } from '@/lib/admin';
 import { cn } from '@/lib/utils';
@@ -30,7 +31,11 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
     Admin
   </a>
   <a href="/dashboard" class={link('outline')} hidden={!user} data-account>
-    {inHeader && <Icon name="lucide:user" aria-hidden="true" />}
+    {inHeader && (
+      <span class="contents" data-avatar>
+        <Avatar name={user?.name} image={user?.image} size="sm" class="-ml-1" />
+      </span>
+    )}
     <span data-name>{user?.name}</span>
   </a>
   <a
@@ -44,8 +49,11 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
 </account-menu>
 
 <script>
+  import { initials } from '@/lib/initials';
+
   interface SessionUser {
     name: string;
+    image?: string | null;
     role?: string | null;
   }
 
@@ -67,6 +75,25 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
 
       const name = this.querySelector('[data-name]');
       if (name) name.textContent = user.name;
+      // Prerendered pages carry the signed-out avatar (a "?" disc); swap in the user's own.
+      const avatar = this.querySelector('[data-avatar]');
+      if (avatar) {
+        if (user.image && /^https:\/\//.test(user.image)) {
+          const img = document.createElement('img');
+          img.src = user.image;
+          img.alt = '';
+          img.referrerPolicy = 'no-referrer';
+          img.className = avatar.firstElementChild?.className ?? '';
+          img.classList.add('object-cover');
+          // Avatar.astro's error listener swaps a broken image for these initials.
+          img.setAttribute('data-avatar-image', '');
+          img.dataset.fallback = initials(user.name);
+          avatar.replaceChildren(img);
+        } else {
+          const disc = avatar.querySelector('[data-initials]');
+          if (disc) disc.textContent = initials(user.name);
+        }
+      }
       this.querySelector('[data-sign-in]')?.setAttribute('hidden', '');
       this.querySelector('[data-account]')?.removeAttribute('hidden');
       const admin = (user.role ?? '').split(',').some((role) => role.trim() === 'admin');

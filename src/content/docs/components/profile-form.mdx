@@ -1,0 +1,65 @@
+---
+title: Profile form
+description: Editing the signed-in user's name and avatar on the dashboard through Better Auth's updateUser, with the same validation in the island and in the database hook, and an Avatar component with an initials fallback.
+publishedDate: 2026-09-28
+sidebar:
+  order: 6
+  badge: new
+---
+
+The dashboard's **Profile** card lets a signed-in user change the two things Better Auth stores
+about them beyond the address: the name and the avatar. It is a small island,
+`src/components/react/account/ProfileForm.tsx`, over the client's `updateUser()` call, and it
+comes with an `Avatar` component that shows the image or the person's initials everywhere the
+user appears: the header, the dashboard greeting and the admin users list.
+
+## How it works
+
+<Steps>
+
+1. The form is rendered with the current values from the server (`client:visible`; it sits
+   below the fold). Typing an avatar URL updates the preview next to the fields.
+2. On submit the island trims the name, checks its length and checks that the avatar is an
+   `https://` URL, then calls `authClient.updateUser({ name, image })`. An empty avatar field
+   sends `null`, which clears it.
+3. Better Auth runs the `user.update` database hook in `src/lib/auth.ts` before writing. The
+   hook applies `validateProfileUpdate()` from `src/lib/profile.ts`, the same rules as the
+   island, and answers a plain API call with a `400` and the message. Updates that carry
+   neither field (role changes, bans) pass through untouched.
+4. On success the island navigates to `/dashboard?notice=profile-updated`. The name and the
+   avatar also appear in the server rendered header and greeting, so a reload is the honest way
+   to show the new state everywhere; the notice confirms it.
+
+</Steps>
+
+## Why the avatar is a link
+
+The template has no file storage: uploads would need a bucket on every deploy target and a
+moderation story. A link to an image the person already hosts (a GitHub avatar, a Gravatar, a
+CDN) covers the common case, and the rules are simple to state: `https://` only, at most 2048
+characters, fetched by the browser under the page's Content Security Policy (`img-src https:`)
+with `referrerpolicy="no-referrer"`. If you add uploads later, keep the hook: it is where any
+URL ends up being checked.
+
+## The Avatar component
+
+`src/components/ui/Avatar.astro` (and `Avatar` in `src/components/react/primitives.tsx` for
+islands) takes `name`, `image` and a `size`. With an image it renders an `<img>`; without one,
+the initials from `src/lib/initials.ts` on a neutral disc ("Ada Lovelace" becomes "AL"). The
+image is decorative by default because the name is always printed next to it; pass `alt` when
+it stands alone.
+
+The header's account menu is a web component that runs on prerendered pages too, where the
+session is not known at build time. Its script fetches the session and replaces the disc with
+the person's image, or fills in their initials, next to their name.
+
+## Tests
+
+- `src/lib/profile.test.ts` covers the validation: trimming, length limits, `https://` only,
+  clearing with `null` or an empty string, and partial updates passing through.
+- `src/lib/utils.test.ts` covers the initials.
+- `src/components/react/account/ProfileForm.test.tsx` runs the island with the auth client
+  mocked: a successful save and the redirect, clearing the avatar, the client-side `https://`
+  check and an API error.
+- `tests/e2e/account.spec.ts` changes the name and avatar of a fresh account, checks the
+  header and the greeting after the reload, and confirms the API refuses an `http://` avatar.
