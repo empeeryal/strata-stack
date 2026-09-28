@@ -62,18 +62,53 @@ test.describe('account self-service', () => {
     await expect(otherPage).toHaveURL(/\/dashboard$/);
 
     await page.goto('/dashboard');
+    await waitForIslands(page);
     const sessions = page.locator('[data-sessions] > li');
     await expect(sessions).toHaveCount(2);
     await expect(page.getByText('This device')).toHaveCount(1);
 
-    // Signing out the other session works from the first device without JavaScript islands.
+    // The island signs the other session out in place: same URL, a status message, one row.
     await page.locator('[data-sessions]').getByRole('button', { name: 'Sign out' }).click();
-    await expect(page.locator('[data-account-notice]')).toHaveText('That session was signed out.');
+    await expect(page.locator('[data-sessions-status]')).toHaveText('That session was signed out.');
+    await expect(page).toHaveURL(/\/dashboard$/);
     await expect(sessions).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Sign out of other sessions' })).toHaveCount(0);
 
     // The other device's cached cookie no longer opens the dashboard.
     await otherPage.goto('/dashboard');
     await expect(otherPage).toHaveURL(/\/login\?next=(\/|%2F)dashboard$/);
+    await other.close();
+  });
+
+  test('signs out other sessions without JavaScript through the form post', async ({
+    page,
+    browser,
+  }) => {
+    const address = `nojs-sessions-${Date.now()}@example.com`;
+    await signUp(page, 'Form Tester', address);
+    await expect(page).toHaveURL(/\/dashboard$/);
+    const other = await browser.newContext();
+    const otherPage = await other.newPage();
+    await signIn(otherPage, address);
+    await expect(otherPage).toHaveURL(/\/dashboard$/);
+
+    // The same session, in a context without JavaScript: the island's forms post to the page.
+    const noJs = await browser.newContext({
+      javaScriptEnabled: false,
+      storageState: await page.context().storageState(),
+    });
+    const plain = await noJs.newPage();
+    await plain.goto('/dashboard');
+    await expect(plain.locator('[data-sessions] > li')).toHaveCount(2);
+    await plain.getByRole('button', { name: 'Sign out of other sessions' }).click();
+    await expect(plain).toHaveURL(/\/dashboard\?notice=sessions-revoked$/);
+    await expect(plain.locator('[data-account-notice]')).toHaveText(
+      'Every other session was signed out.',
+    );
+    await expect(plain.locator('[data-sessions] > li')).toHaveCount(1);
+    await otherPage.goto('/dashboard');
+    await expect(otherPage).toHaveURL(/\/login\?next=(\/|%2F)dashboard$/);
+    await noJs.close();
     await other.close();
   });
 

@@ -115,7 +115,9 @@ The [newsletter form](/docs/components/newsletter-form) combines both: the islan
 submission when JavaScript runs, and its `action` attribute points at the on-demand
 `/newsletter` page (`/newsletter?_action=newsletter.subscribe`), which runs the same action and
 renders the result when it does not. That is how a form on prerendered pages, such as the
-footer, keeps a working path without JavaScript.
+footer, keeps a working path without JavaScript. The dashboard's
+[session list](/docs/components/session-list) is the same idea from the other side: the island
+renders the plain forms and intercepts them, so the markup is the fallback.
 
 ## The newsletter actions
 
