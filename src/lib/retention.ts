@@ -7,6 +7,8 @@ export interface RetentionOptions {
   retentionDays: number;
   /** Days after which messages of any status are deleted; null keeps open messages. */
   maxAgeDays: number | null;
+  /** Days after which unconfirmed and unsubscribed newsletter addresses are deleted. */
+  newsletterRetentionDays: number;
   now?: number;
 }
 
@@ -14,6 +16,7 @@ export interface RetentionResult {
   archivedRemoved: number;
   /** Null when no maximum age is configured. */
   expiredRemoved: number | null;
+  subscribersRemoved: number;
   countersRemoved: number;
 }
 
@@ -21,7 +24,9 @@ const DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Deletes archived contact messages older than `retentionDays`, every message older than
- * `maxAgeDays` when that is set, and throttle counters whose window has ended.
+ * `maxAgeDays` when that is set, newsletter addresses that were never confirmed or have
+ * unsubscribed more than `newsletterRetentionDays` ago, and throttle counters whose window
+ * has ended.
  */
 export async function pruneStaleData(
   client: Client,
@@ -43,6 +48,13 @@ export async function pruneStaleData(
     expiredRemoved = expired.rowsAffected;
   }
 
+  // `updated_at` moves with every status change, so it dates the last confirmation email for a
+  // pending address and the unsubscribe for an unsubscribed one.
+  const subscribers = await client.execute({
+    sql: "DELETE FROM newsletter_subscriber WHERE status IN ('pending', 'unsubscribed') AND updated_at < ?",
+    args: [now - options.newsletterRetentionDays * DAY],
+  });
+
   const counters = await client.execute({
     sql: 'DELETE FROM throttle WHERE reset_at <= ?',
     args: [now],
@@ -51,6 +63,7 @@ export async function pruneStaleData(
   return {
     archivedRemoved: archived.rowsAffected,
     expiredRemoved,
+    subscribersRemoved: subscribers.rowsAffected,
     countersRemoved: counters.rowsAffected,
   };
 }

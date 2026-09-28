@@ -7,6 +7,7 @@ import {
   getContactMaxAgeDays,
   getContactRetentionDays,
   getDatabaseConfig,
+  getNewsletterRetentionDays,
 } from './env';
 
 const STRONG_SECRET = 'x'.repeat(40);
@@ -114,5 +115,14 @@ describe('getContactMaxAgeDays', () => {
     expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: '0' })).toBeNull();
     expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: 'never' })).toBeNull();
     expect(getContactMaxAgeDays({ CONTACT_MAX_AGE_DAYS: '730.5' })).toBe(730);
+  });
+});
+
+describe('getNewsletterRetentionDays', () => {
+  it('defaults to a week and rejects nonsense', () => {
+    expect(getNewsletterRetentionDays({})).toBe(7);
+    expect(getNewsletterRetentionDays({ NEWSLETTER_RETENTION_DAYS: '30' })).toBe(30);
+    expect(getNewsletterRetentionDays({ NEWSLETTER_RETENTION_DAYS: '0' })).toBe(7);
+    expect(getNewsletterRetentionDays({ NEWSLETTER_RETENTION_DAYS: 'later' })).toBe(7);
   });
 });

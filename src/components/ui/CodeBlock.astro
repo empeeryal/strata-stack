@@ -4,7 +4,11 @@ import type { BundledLanguage } from 'shiki';
 
 import { cn } from '@/lib/utils';
 
-/** Syntax-highlighted code with an optional title bar, for use in .astro pages. */
+/**
+ * Syntax-highlighted code with an optional title bar, for use in .astro pages. A copy button
+ * is rendered hidden and revealed by the processed script below, so it only exists when it
+ * can work; with a title it sits in the title bar, otherwise over the top-right corner.
+ */
 interface Props {
   code: string;
   lang?: BundledLanguage | 'text';
@@ -18,14 +22,33 @@ const { code, lang = 'text', title, wrap = false, class: className } = Astro.pro
 
 <figure
   class={cn(
-    'code-block not-prose my-6 overflow-hidden rounded-lg border bg-code text-sm',
+    'code-block not-prose group relative my-6 overflow-hidden rounded-lg border bg-code text-sm',
     className,
   )}
 >
-  {title && (
-    <figcaption class="flex items-center gap-2 border-b px-4 py-2 font-mono text-xs text-muted-foreground">
-      {title}
+  {title ? (
+    <figcaption class="flex items-center justify-between gap-2 border-b px-4 py-2 font-mono text-xs text-muted-foreground">
+      <span>{title}</span>
+      <button
+        type="button"
+        hidden
+        data-copy-code
+        aria-live="polite"
+        class="rounded-md border bg-background/80 px-2 py-1 font-sans text-xs text-muted-foreground hover:text-foreground"
+      >
+        Copy
+      </button>
     </figcaption>
+  ) : (
+    <button
+      type="button"
+      hidden
+      data-copy-code
+      aria-live="polite"
+      class="absolute top-2 right-2 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground"
+    >
+      Copy
+    </button>
   )}
   <Code
     code={code}
@@ -35,3 +58,15 @@ const { code, lang = 'text', title, wrap = false, class: className } = Astro.pro
     wrap={wrap}
   />
 </figure>
+
+<script>
+  import { bindCopyButton } from './copy-code';
+
+  document.querySelectorAll<HTMLElement>('figure.code-block').forEach((figure) => {
+    const button = figure.querySelector<HTMLButtonElement>('[data-copy-code]');
+    const pre = figure.querySelector('pre');
+    if (!button || !pre) return;
+    button.hidden = false;
+    bindCopyButton(button, pre);
+  });
+</script>

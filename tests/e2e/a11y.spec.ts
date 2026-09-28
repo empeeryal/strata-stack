@@ -32,6 +32,8 @@ const PUBLIC_PAGES: Array<{ path: string; ready?: (page: Page) => Promise<void> 
   { path: '/changelog' },
   { path: '/legal/privacy' },
   { path: '/contact' },
+  { path: '/newsletter' },
+  { path: '/newsletter/confirm?token=not-a-real-token' },
   { path: '/login' },
   { path: '/signup' },
   { path: '/forgot-password' },

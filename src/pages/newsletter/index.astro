@@ -1,0 +1,62 @@
+---
+import { actions, isInputError } from 'astro:actions';
+
+import NewsletterForm, { SUBSCRIBED_MESSAGE } from '@/components/react/NewsletterForm';
+import Alert from '@/components/ui/Alert.astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { siteConfig } from '@/site.config';
+
+export const prerender = false;
+
+if (!siteConfig.newsletter.enabled) return new Response(null, { status: 404 });
+
+// Without JavaScript the sign-up forms post here (see NewsletterForm.tsx): Astro runs the
+// action and this page renders the result. Redirect after a success so a refresh never repeats
+// the request; a validation or delivery error renders above the form.
+const result = Astro.getActionResult(actions.newsletter.subscribe);
+if (result && !result.error) return Astro.redirect('/newsletter?sent=1');
+const error = result?.error
+  ? isInputError(result.error)
+    ? (result.error.fields.email?.[0] ?? 'Please enter a valid email address.')
+    : result.error.message
+  : null;
+const sent = Astro.url.searchParams.get('sent') === '1';
+const { title, description } = siteConfig.newsletter;
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  searchable={false}
+  class="container max-w-2xl py-16"
+>
+  <p class="text-sm font-semibold text-primary">{title}</p>
+  <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">
+    Get {siteConfig.name} updates by email
+  </h1>
+  <p class="mt-4 text-pretty text-muted-foreground">{description}</p>
+
+  {sent ? (
+    <Alert variant="success" class="mt-8" data-newsletter-result>
+      {SUBSCRIBED_MESSAGE}
+    </Alert>
+  ) : (
+    <div class="mt-8 rounded-xl border bg-card p-6 shadow-soft">
+      {error && (
+        <Alert class="mb-4" data-newsletter-result>
+          {error}
+        </Alert>
+      )}
+      <NewsletterForm client:load source="page" />
+    </div>
+  )}
+
+  <p class="mt-6 text-sm text-pretty text-muted-foreground">
+    Subscribing takes two steps: we send a confirmation link, and nothing is sent until you open it.
+    Every email ends with an unsubscribe link. The{' '}
+    <a href="/legal/privacy" class="underline underline-offset-4 hover:text-foreground">
+      privacy policy
+    </a>{' '}
+    describes what is stored.
+  </p>
+</BaseLayout>

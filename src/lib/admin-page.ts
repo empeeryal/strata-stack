@@ -1,6 +1,6 @@
 import type { AstroGlobal } from 'astro';
 
-import type { ContactStatus, DeliveryStatus } from '../db/schema/app';
+import type { ContactStatus, DeliveryStatus, NewsletterStatus } from '../db/schema/app';
 
 import { isAdmin } from './admin';
 import { getAuthoritativeSession } from './session';
@@ -48,6 +48,7 @@ export const ADMIN_NOTICES = {
   'user-unbanned': 'User unbanned.',
   'sessions-revoked': 'The user was signed out everywhere.',
   'user-deleted': 'User deleted.',
+  'subscriber-removed': 'Subscriber removed.',
 } as const;
 
 export type AdminNotice = keyof typeof ADMIN_NOTICES;
@@ -110,4 +111,10 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
   sent: 'Sent',
   failed: 'Failed',
   skipped: 'Skipped',
+};
+
+export const SUBSCRIBER_STATUS_LABELS: Record<NewsletterStatus, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  unsubscribed: 'Unsubscribed',
 };

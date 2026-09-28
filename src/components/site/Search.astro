@@ -17,6 +17,9 @@ import { siteConfig } from '@/site.config';
 const pages: PaletteLink[] = [
   ...siteConfig.nav.map((item) => ({ label: item.label, href: item.href, group: 'Pages' })),
   { label: 'Contact', href: '/contact', group: 'Pages' },
+  ...(siteConfig.newsletter.enabled
+    ? [{ label: 'Newsletter', href: '/newsletter', group: 'Pages' }]
+    : []),
   { label: 'Privacy policy', href: '/legal/privacy', group: 'Pages' },
   { label: 'Terms of service', href: '/legal/terms', group: 'Pages' },
 ];

@@ -1,6 +1,7 @@
 ---
 import { Icon } from 'astro-icon/components';
 
+import NewsletterForm from '@/components/react/NewsletterForm';
 import { deployTargetLabel } from '@/lib/deploy-target';
 import { siteConfig } from '@/site.config';
 
@@ -51,6 +52,22 @@ const year = new Date().getFullYear();
       </nav>
     ))}
   </div>
+  {siteConfig.newsletter.enabled && (
+    <div class="border-t">
+      <div class="container flex flex-col gap-4 py-8 md:flex-row md:items-center md:justify-between">
+        <div class="max-w-md">
+          <p class="font-semibold" id="footer-newsletter-title">
+            {siteConfig.newsletter.title}
+          </p>
+          <p class="mt-1 text-sm text-pretty text-muted-foreground">
+            {siteConfig.newsletter.description}
+          </p>
+        </div>
+        {/* Hydrates on idle: the footer is on every page, and the island is a few lines. */}
+        <NewsletterForm client:idle source="footer" compact className="w-full md:max-w-sm" />
+      </div>
+    </div>
+  )}
   <div class="border-t">
     <div class="container flex flex-col gap-2 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <p>

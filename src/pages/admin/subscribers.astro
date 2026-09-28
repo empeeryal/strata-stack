@@ -1,0 +1,249 @@
+---
+import { actions } from 'astro:actions';
+import { Icon } from 'astro-icon/components';
+import { and, count, desc, eq, sql, type SQL } from 'drizzle-orm';
+
+import Badge from '@/components/ui/Badge.astro';
+import Button from '@/components/ui/Button.astro';
+import { inputClasses } from '@/components/ui/field-classes';
+import Pagination from '@/components/ui/Pagination.astro';
+import { db } from '@/db/client';
+import { NEWSLETTER_STATUSES, newsletterSubscribers, type NewsletterStatus } from '@/db/schema';
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import {
+  guardAdminPage,
+  SUBSCRIBER_STATUS_LABELS,
+  summarizeActionResults,
+  withNotice,
+} from '@/lib/admin-page';
+import { getEnv } from '@/lib/env';
+import { listQuery, paginate } from '@/lib/pagination';
+import { escapeLike } from '@/lib/sql';
+import { cn, formatDate, toISODate } from '@/lib/utils';
+
+export const prerender = false;
+
+const denied = await guardAdminPage(Astro);
+if (denied) return denied;
+
+const PAGE_SIZE = 25;
+const params = Astro.url.searchParams;
+const statusParam = params.get('status');
+const filter: NewsletterStatus | 'all' =
+  statusParam === 'all'
+    ? 'all'
+    : NEWSLETTER_STATUSES.includes(statusParam as NewsletterStatus)
+      ? (statusParam as NewsletterStatus)
+      : 'confirmed';
+const q = (params.get('q') ?? '').trim().slice(0, 100);
+const listUrl = (page = 1) =>
+  `/admin/subscribers${listQuery({ status: filter, q, page: page > 1 ? page : null })}`;
+
+// The remove forms post back here; redirect after a success so refresh never repeats it.
+const outcome = summarizeActionResults([Astro.getActionResult(actions.admin.removeSubscriber)]);
+if (outcome.completed) return Astro.redirect(withNotice(listUrl(), outcome.notice));
+
+// The search matches the address literally (wildcards escaped).
+const pattern = q ? `%${escapeLike(q.toLowerCase())}%` : null;
+const searchCondition: SQL | undefined = pattern
+  ? sql`${newsletterSubscribers.email} like ${pattern} escape '\\'`
+  : undefined;
+const statusCondition = filter === 'all' ? undefined : eq(newsletterSubscribers.status, filter);
+
+const counts = await db
+  .select({ status: newsletterSubscribers.status, value: count() })
+  .from(newsletterSubscribers)
+  .where(searchCondition)
+  .groupBy(newsletterSubscribers.status);
+const byStatus = Object.fromEntries(counts.map((row) => [row.status, row.value]));
+const total = counts.reduce((sum, row) => sum + row.value, 0);
+const matching = filter === 'all' ? total : (byStatus[filter] ?? 0);
+const paging = paginate(matching, params.get('page'), PAGE_SIZE);
+
+const subscribers = await db
+  .select()
+  .from(newsletterSubscribers)
+  .where(and(statusCondition, searchCondition))
+  .orderBy(desc(newsletterSubscribers.updatedAt))
+  .limit(PAGE_SIZE)
+  .offset(paging.offset);
+
+const tabs: Array<{ id: NewsletterStatus | 'all'; label: string; value: number }> = [
+  { id: 'confirmed', label: 'Confirmed', value: byStatus.confirmed ?? 0 },
+  { id: 'pending', label: 'Pending', value: byStatus.pending ?? 0 },
+  { id: 'unsubscribed', label: 'Unsubscribed', value: byStatus.unsubscribed ?? 0 },
+  { id: 'all', label: 'All', value: total },
+];
+
+const summary =
+  paging.total === 0
+    ? q
+      ? `No subscribers match “${q}”.`
+      : 'No subscribers in this view.'
+    : `Showing ${paging.from}–${paging.to} of ${paging.total}${q ? ` matching “${q}”` : ''}.`;
+
+const audienceConfigured = Boolean(getEnv('RESEND_API_KEY') && getEnv('RESEND_AUDIENCE_ID'));
+const statusVariant = { confirmed: 'success', pending: 'muted', unsubscribed: 'outline' } as const;
+const SOURCE_LABELS: Record<string, string> = {
+  footer: 'Footer',
+  blog: 'Blog post',
+  page: 'Newsletter page',
+  docs: 'Docs',
+};
+---
+
+<AdminLayout
+  title="Subscribers"
+  description="Newsletter subscribers with double opt-in."
+  error={outcome.error}
+>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav aria-label="Filter subscribers" class="flex flex-wrap gap-1">
+      {tabs.map((tab) => (
+        <a
+          href={`/admin/subscribers${listQuery({ status: tab.id, q })}`}
+          aria-current={filter === tab.id ? 'page' : undefined}
+          class="rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:text-foreground"
+        >
+          {tab.label} <span class="text-xs">({tab.value})</span>
+        </a>
+      ))}
+    </nav>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <form method="GET" action="/admin/subscribers" role="search" class="flex items-center gap-2">
+        <input type="hidden" name="status" value={filter} />
+        <label for="subscriber-search" class="sr-only">
+          Search by email
+        </label>
+        <input
+          id="subscriber-search"
+          name="q"
+          type="search"
+          value={q}
+          maxlength="100"
+          placeholder="Search by email"
+          class={cn(inputClasses, 'h-9 w-56')}
+        />
+        <Button type="submit" variant="outline" size="sm">
+          Search
+        </Button>
+        {q && (
+          <a
+            href={`/admin/subscribers${listQuery({ status: filter })}`}
+            class="text-sm font-medium underline underline-offset-4"
+          >
+            Clear
+          </a>
+        )}
+      </form>
+      {/* A real download, never prefetched: the export is recorded in the audit log. */}
+      <Button href="/admin/subscribers.csv" variant="outline" size="sm" data-astro-prefetch="false">
+        <Icon name="lucide:download" aria-hidden="true" />
+        Download confirmed (CSV)
+      </Button>
+    </div>
+  </div>
+
+  <p class="mt-4 text-sm text-pretty text-muted-foreground" data-list-summary>
+    {summary}{' '}
+    {audienceConfigured
+      ? 'Confirmed addresses are mirrored to the Resend audience; the Audience column shows addresses the provider has not received yet.'
+      : 'Subscribers live in this database only (RESEND_AUDIENCE_ID is not set); the CSV includes an unsubscribe link for every address.'}
+  </p>
+
+  {subscribers.length > 0 && (
+    <div class="mt-4 overflow-x-auto rounded-xl border bg-card shadow-soft">
+      <table class="w-full text-sm">
+        <caption class="sr-only">Newsletter subscribers</caption>
+        <thead class="bg-muted/60 text-left">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Address
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Status
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Source
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Requested
+            </th>
+            <th scope="col" class="px-4 py-3 font-semibold">
+              Last change
+            </th>
+            {audienceConfigured && (
+              <th scope="col" class="px-4 py-3 font-semibold">
+                Audience
+              </th>
+            )}
+            <th scope="col" class="px-4 py-3 text-right font-semibold">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {subscribers.map((subscriber) => (
+            <tr>
+              <td class="px-4 py-3 align-top font-medium">{subscriber.email}</td>
+              <td class="px-4 py-3 align-top">
+                <Badge variant={statusVariant[subscriber.status]}>
+                  {SUBSCRIBER_STATUS_LABELS[subscriber.status]}
+                </Badge>
+              </td>
+              <td class="px-4 py-3 align-top text-muted-foreground">
+                {subscriber.source ? (SOURCE_LABELS[subscriber.source] ?? subscriber.source) : '—'}
+              </td>
+              <td class="px-4 py-3 align-top whitespace-nowrap">
+                <time datetime={toISODate(subscriber.createdAt)}>
+                  {formatDate(subscriber.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+                </time>
+              </td>
+              <td class="px-4 py-3 align-top whitespace-nowrap">
+                <time datetime={toISODate(subscriber.updatedAt)}>
+                  {formatDate(subscriber.updatedAt, { dateStyle: 'medium', timeStyle: 'short' })}
+                </time>
+              </td>
+              {audienceConfigured && (
+                <td class="px-4 py-3 align-top">
+                  {subscriber.audienceError ? (
+                    <Badge variant="danger" title={subscriber.audienceError}>
+                      Failed
+                    </Badge>
+                  ) : subscriber.audienceSyncedAt ? (
+                    <Badge variant="success">Synced</Badge>
+                  ) : (
+                    <span class="text-muted-foreground">—</span>
+                  )}
+                </td>
+              )}
+              <td class="px-4 py-3 align-top">
+                <div class="flex justify-end">
+                  <form
+                    method="POST"
+                    action={actions.admin.removeSubscriber}
+                    data-confirm={`Remove ${subscriber.email} from the newsletter records?`}
+                  >
+                    <input type="hidden" name="id" value={subscriber.id} />
+                    <Button type="submit" variant="ghost" size="sm" class="text-danger">
+                      Remove
+                    </Button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <Pagination
+    current={paging.page}
+    total={paging.pages}
+    prev={paging.page > 1 ? listUrl(paging.page - 1) : undefined}
+    next={paging.page < paging.pages ? listUrl(paging.page + 1) : undefined}
+    class="mt-4"
+  />
+</AdminLayout>

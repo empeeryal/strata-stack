@@ -1,6 +1,8 @@
 /**
  * Retention job: deletes archived contact messages older than CONTACT_RETENTION_DAYS
- * (default 365) and expired throttle counters. Run it from cron or a scheduled workflow:
+ * (default 365), newsletter addresses that were never confirmed or have unsubscribed more than
+ * NEWSLETTER_RETENTION_DAYS (default 7) ago, and expired throttle counters. Run it from cron
+ * or a scheduled workflow:
  *
  *   pnpm db:prune
  *   CONTACT_RETENTION_DAYS=90 pnpm db:prune
@@ -10,16 +12,25 @@
  *
  *   CONTACT_MAX_AGE_DAYS=730 pnpm db:prune
  */
-import { getContactMaxAgeDays, getContactRetentionDays } from '../src/lib/env.ts';
+import {
+  getContactMaxAgeDays,
+  getContactRetentionDays,
+  getNewsletterRetentionDays,
+} from '../src/lib/env.ts';
 import { pruneStaleData } from '../src/lib/retention.ts';
 
 import { openDatabase } from './lib/db.ts';
 
 const retentionDays = getContactRetentionDays();
 const maxAgeDays = getContactMaxAgeDays();
+const newsletterRetentionDays = getNewsletterRetentionDays();
 const client = openDatabase();
 
-const result = await pruneStaleData(client, { retentionDays, maxAgeDays });
+const result = await pruneStaleData(client, {
+  retentionDays,
+  maxAgeDays,
+  newsletterRetentionDays,
+});
 
 console.log(
   `Removed ${result.archivedRemoved} archived message(s) older than ${retentionDays} days.`,
@@ -28,6 +39,9 @@ console.log(
   result.expiredRemoved === null
     ? 'CONTACT_MAX_AGE_DAYS is not set: open (new/read) messages were kept.'
     : `Removed ${result.expiredRemoved} message(s) of any status older than ${maxAgeDays} days.`,
+);
+console.log(
+  `Removed ${result.subscribersRemoved} unconfirmed or unsubscribed newsletter address(es) older than ${newsletterRetentionDays} days.`,
 );
 console.log(`Removed ${result.countersRemoved} expired throttle counter(s).`);
 client.close();

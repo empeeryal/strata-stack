@@ -3,7 +3,12 @@ import { z } from 'astro/zod';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
-import { CONTACT_STATUSES, contactMessages, type ContactStatus } from '@/db/schema';
+import {
+  CONTACT_STATUSES,
+  contactMessages,
+  newsletterSubscribers,
+  type ContactStatus,
+} from '@/db/schema';
 import {
   banUserAccount,
   changeUserRole,
@@ -28,6 +33,14 @@ import {
 } from '@/lib/contact';
 import { sendEmail } from '@/lib/email';
 import { getEnv } from '@/lib/env';
+import {
+  NEWSLETTER_SOURCES,
+  NewsletterEmailError,
+  NewsletterThrottledError,
+  subscribeToNewsletter,
+  unsubscribeFromNewsletter,
+} from '@/lib/newsletter';
+import { newsletterDeps } from '@/lib/newsletter-deps';
 import { getAuthoritativeSession } from '@/lib/session';
 import { siteConfig } from '@/site.config';
 
@@ -83,6 +96,9 @@ function toActionError(error: unknown, fallback: string): ActionError {
 
 const userId = z.string().min(1);
 const messageId = z.string().min(1);
+const subscriberId = z.string().min(1);
+// Tokens are 32 bytes as base64url (see generateToken in src/lib/newsletter.ts).
+const newsletterToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'This link is not valid.');
 
 const STATUS_NOTICE: Record<ContactStatus, AdminNotice> = {
   new: 'message-unread',
@@ -133,6 +149,65 @@ export const server = {
       }
     },
   }),
+
+  /**
+   * Newsletter with double opt-in. See src/lib/newsletter.ts for the behaviour and its tests.
+   * `subscribe` always answers with the same success so it cannot be used to check whether an
+   * address is subscribed; the difference is in the email the address receives.
+   */
+  newsletter: {
+    subscribe: defineAction({
+      accept: 'form',
+      input: z.object({
+        email: z.email('Please enter a valid email address.'),
+        source: z.enum(NEWSLETTER_SOURCES).optional(),
+        // Honeypot; see the contact action.
+        website: z.string().max(200).optional(),
+      }),
+      handler: async (input, context) => {
+        try {
+          const outcome = await subscribeToNewsletter(
+            input,
+            { ip: clientAddress(context) },
+            newsletterDeps(),
+          );
+          return { ok: true as const, outcome };
+        } catch (error) {
+          if (error instanceof NewsletterThrottledError) {
+            throw new ActionError({
+              code: 'TOO_MANY_REQUESTS',
+              message: 'Too many requests from this sender. Please try again in a little while.',
+            });
+          }
+          if (error instanceof NewsletterEmailError) {
+            throw new ActionError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'We could not send the confirmation email. Please try again later.',
+            });
+          }
+          console.error('[newsletter] subscription failed', error);
+          throw new ActionError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'We could not save your request. Please try again later.',
+          });
+        }
+      },
+    }),
+
+    /** Ends the subscription the token in an email footer belongs to. */
+    unsubscribe: defineAction({
+      accept: 'form',
+      input: z.object({ token: newsletterToken }),
+      handler: async ({ token }) => {
+        const outcome = await unsubscribeFromNewsletter(token, newsletterDeps());
+        if (outcome === 'invalid') {
+          throw new ActionError({ code: 'NOT_FOUND', message: 'This link is not valid.' });
+        }
+        // The page redirects back to its own URL with the token, so it renders the new state.
+        return { outcome, token };
+      },
+    }),
+  },
 
   /**
    * Administrative actions. Authorization is enforced here, not in the pages. Each returns
@@ -267,6 +342,45 @@ export const server = {
           details: { delivery },
         });
         return { delivery, notice: DELIVERY_NOTICE[delivery] };
+      },
+    }),
+
+    /**
+     * Deletes a newsletter address, for requests that arrive outside the unsubscribe link. A
+     * confirmed address is marked unsubscribed at the provider first, best-effort, so the
+     * audience does not keep sending to it.
+     */
+    removeSubscriber: defineAction({
+      accept: 'form',
+      input: z.object({ id: subscriberId }),
+      handler: async ({ id }, context) => {
+        const actor = await requireAdmin(context);
+        const [row] = await db
+          .select()
+          .from(newsletterSubscribers)
+          .where(eq(newsletterSubscribers.id, id))
+          .limit(1);
+        if (!row) {
+          throw new ActionError({ code: 'NOT_FOUND', message: 'Subscriber not found.' });
+        }
+        const deps = newsletterDeps();
+        if (row.status === 'confirmed' && deps.audience) {
+          await deps.audience.remove(row.email).catch((error: unknown) => {
+            console.error('[newsletter] audience remove failed', error);
+          });
+        }
+        await db.transaction(async (tx) => {
+          await tx.delete(newsletterSubscribers).where(eq(newsletterSubscribers.id, id));
+          await writeAudit(tx, {
+            actorId: actor.id,
+            actorEmail: actor.email,
+            action: 'subscriber.delete',
+            targetType: 'subscriber',
+            targetId: id,
+            details: { status: row.status },
+          });
+        });
+        return { notice: 'subscriber-removed' as AdminNotice };
       },
     }),
 

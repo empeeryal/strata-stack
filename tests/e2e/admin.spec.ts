@@ -49,6 +49,10 @@ test.describe('admin area', () => {
     const response = await request.get('/admin', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
     expect(response.headers()['location']).toContain('/login?next=%2Fadmin');
+
+    const csv = await request.get('/admin/subscribers.csv', { maxRedirects: 0 });
+    expect(csv.status()).toBe(302);
+    expect(csv.headers()['location']).toContain('/login?next=%2Fadmin%2Fsubscribers');
   });
 
   test('manages the inbox', async ({ page }) => {
@@ -111,6 +115,14 @@ test.describe('admin area', () => {
 
     await page.goto(`/admin/messages?status=archived&q=${encodeURIComponent(sender)}`);
     await expect(page.getByText(genuine)).toBeVisible();
+
+    await page.goto('/admin/subscribers');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Subscribers');
+    await expect(page.getByRole('link', { name: 'Download confirmed (CSV)' })).toBeVisible();
+    const csv = await page.request.get('/admin/subscribers.csv');
+    expect(csv.status()).toBe(200);
+    expect(csv.headers()['content-type']).toContain('text/csv');
+    expect(await csv.text()).toMatch(/^email,confirmed_at,unsubscribe_url/);
 
     await page.goto('/admin/users');
     await expect(userRow(page, ADMIN_EMAIL)).toContainText('(you)');

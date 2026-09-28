@@ -1,7 +1,8 @@
 ---
 title: Actions and forms
 description: Type-safe form handling with Astro Actions, validation, honeypots and the contact form example.
-\1\nupdatedDate: 2026-09-21
+publishedDate: 2026-09-18
+updatedDate: 2026-09-28
 sidebar:
   order: 5
 ---
@@ -109,3 +110,19 @@ Handle the result with `Astro.getActionResult(actions.contact)` in a server-rend
 template's contact page uses the React island for richer feedback (field errors, a character
 counter, a success state without a reload), so it needs JavaScript; the plain-form pattern
 above is the one to reach for when a form must work without it, as the admin area's forms do.
+
+The [newsletter form](/docs/components/newsletter-form) combines both: the island handles the
+submission when JavaScript runs, and its `action` attribute points at the on-demand
+`/newsletter` page (`/newsletter?_action=newsletter.subscribe`), which runs the same action and
+renders the result when it does not. That is how a form on prerendered pages, such as the
+footer, keeps a working path without JavaScript.
+
+## The newsletter actions
+
+`newsletter.subscribe` and `newsletter.unsubscribe` implement double opt-in on top of
+`src/lib/newsletter.ts`, with the same honeypot and throttles as the contact form. The subscribe
+action answers every accepted request the same way and puts the difference in the email (a
+confirmation link, or an "already subscribed" note with the unsubscribe link), so the form
+cannot be used to check whether an address is subscribed. The
+[component page](/docs/components/newsletter-form) describes the flow, the pages and the
+retention rules.

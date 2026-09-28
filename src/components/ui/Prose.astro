@@ -27,33 +27,7 @@ if (anchors) {
 <Tag class={cn('prose', className)} data-prose set:html={html} />
 
 <script>
-  function enhanceCodeBlocks(root: ParentNode) {
-    for (const pre of root.querySelectorAll<HTMLPreElement>(
-      'pre.astro-code:not([data-copy-ready])',
-    )) {
-      pre.dataset.copyReady = 'true';
-      const wrapper = document.createElement('div');
-      wrapper.className = 'code-wrapper group relative';
-      pre.replaceWith(wrapper);
-      wrapper.append(pre);
-
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className =
-        'absolute top-2 right-2 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground';
-      button.textContent = 'Copy';
-      button.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(pre.innerText);
-          button.textContent = 'Copied';
-          setTimeout(() => (button.textContent = 'Copy'), 1500);
-        } catch {
-          button.textContent = 'Copy failed';
-        }
-      });
-      wrapper.append(button);
-    }
-  }
+  import { enhanceCodeBlocks } from './copy-code';
 
   document.querySelectorAll('[data-prose]').forEach(enhanceCodeBlocks);
 </script>

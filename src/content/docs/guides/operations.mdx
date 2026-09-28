@@ -2,7 +2,7 @@
 title: Operating the site
 description: 'The runbook for a deployed site: creating the tables, the GitHub repository settings, scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups, collected in one place.'
 publishedDate: 2026-09-22
-updatedDate: 2026-09-24
+updatedDate: 2026-09-28
 sidebar:
   order: 12
 ---
@@ -19,7 +19,8 @@ is off, and where each knob lives. Every item links to the guide with the detail
    `SITE_URL` (both the public `https://` origin), the database pair (`DATABASE_URL` and
    `DATABASE_AUTH_TOKEN`, or the `TURSO_*` names the Vercel integration sets), and
    `ADMIN_EMAILS` for the first administrators. Email needs `RESEND_API_KEY`, `EMAIL_FROM` and
-   `CONTACT_TO_EMAIL`. The [environment variables guide](/docs/guides/environment-variables)
+   `CONTACT_TO_EMAIL`; the newsletter needs the same key and, to send from Resend, an audience
+   in `RESEND_AUDIENCE_ID`. The [environment variables guide](/docs/guides/environment-variables)
    has the full table.
 
 2. **Database secrets in GitHub.** Add the database URL and token as Actions secrets, under
@@ -77,12 +78,12 @@ repository's **Settings** tab and free on public repositories.
 
 ## What runs on a schedule
 
-| Job                  | When                                                     | Where                           | Needs                                                                                                  |
-| -------------------- | -------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Migrate database** | Every merge to `main` that touches `drizzle/`; on demand | `.github/workflows/migrate.yml` | The database secrets                                                                                   |
-| **Prune data**       | Sundays 03:00 UTC; on demand                             | `.github/workflows/prune.yml`   | The database secrets; optional `CONTACT_RETENTION_DAYS`, `CONTACT_MAX_AGE_DAYS` repository _variables_ |
-| **Release**          | Every push to `main`                                     | `.github/workflows/release.yml` | Optional `RELEASE_TOKEN` so the version PR gets CI; opens or updates it and tags merged releases       |
-| **Dependabot**       | Mondays                                                  | `.github/dependabot.yml`        | Nothing; opens update PRs after the three-day cooldown                                                 |
+| Job                  | When                                                     | Where                           | Needs                                                                                                                               |
+| -------------------- | -------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Migrate database** | Every merge to `main` that touches `drizzle/`; on demand | `.github/workflows/migrate.yml` | The database secrets                                                                                                                |
+| **Prune data**       | Sundays 03:00 UTC; on demand                             | `.github/workflows/prune.yml`   | The database secrets; optional `CONTACT_RETENTION_DAYS`, `CONTACT_MAX_AGE_DAYS`, `NEWSLETTER_RETENTION_DAYS` repository _variables_ |
+| **Release**          | Every push to `main`                                     | `.github/workflows/release.yml` | Optional `RELEASE_TOKEN` so the version PR gets CI; opens or updates it and tags merged releases                                    |
+| **Dependabot**       | Mondays                                                  | `.github/dependabot.yml`        | Nothing; opens update PRs after the three-day cooldown                                                                              |
 
 Look at the Actions tab now and then. A retention policy is only real while the prune job
 succeeds, and a migration that failed on merge means the new code is running against the old

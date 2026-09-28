@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
-import { account, contactMessages, session } from '@/db/schema';
+import { account, contactMessages, newsletterSubscribers, session } from '@/db/schema';
 import { recordAudit } from '@/lib/admin';
 import { getAuthoritativeSession } from '@/lib/session';
 
@@ -11,7 +11,7 @@ export const prerender = false;
 /**
  * Data export for the signed-in user (privacy "right of access"). Returns the profile,
  * linked sign-in methods and sessions without any tokens or secrets, plus contact messages
- * sent from the address when it has been verified as the user's own.
+ * and the newsletter subscription for the address when it has been verified as the user's own.
  */
 export const GET: APIRoute = async ({ request }) => {
   // Personal data leaves the system here, so the session is verified against the database
@@ -21,7 +21,7 @@ export const GET: APIRoute = async ({ request }) => {
     return Response.json({ error: 'Sign in to export your data.' }, { status: 401 });
   }
 
-  const [accounts, sessions, messages] = await Promise.all([
+  const [accounts, sessions, messages, [newsletter]] = await Promise.all([
     db
       .select({
         providerId: account.providerId,
@@ -52,6 +52,19 @@ export const GET: APIRoute = async ({ request }) => {
           .from(contactMessages)
           .where(eq(contactMessages.email, user.email.toLowerCase()))
       : Promise.resolve([]),
+    user.emailVerified
+      ? db
+          .select({
+            status: newsletterSubscribers.status,
+            source: newsletterSubscribers.source,
+            createdAt: newsletterSubscribers.createdAt,
+            confirmedAt: newsletterSubscribers.confirmedAt,
+            unsubscribedAt: newsletterSubscribers.unsubscribedAt,
+          })
+          .from(newsletterSubscribers)
+          .where(eq(newsletterSubscribers.email, user.email.toLowerCase()))
+          .limit(1)
+      : Promise.resolve([]),
   ]);
 
   await recordAudit(db, {
@@ -78,6 +91,7 @@ export const GET: APIRoute = async ({ request }) => {
     accounts,
     sessions,
     contactMessages: messages,
+    newsletter: newsletter ?? null,
   };
 
   return new Response(JSON.stringify(body, null, 2), {
