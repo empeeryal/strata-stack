@@ -12,14 +12,24 @@ interface Props {
   next?: string | undefined;
   /** Link labels; chronological lists use "Newer" and "Older". */
   labels?: [string, string];
+  /** Accessible name of the navigation landmark. */
+  label?: string;
   class?: string;
 }
 
-const { current, total, prev, next, labels = ['Previous', 'Next'], class: className } = Astro.props;
+const {
+  current,
+  total,
+  prev,
+  next,
+  labels = ['Previous', 'Next'],
+  label = 'Pagination',
+  class: className,
+} = Astro.props;
 ---
 
 {total > 1 && (
-  <nav aria-label="Pagination" class={cn('flex items-center justify-between gap-4', className)}>
+  <nav aria-label={label} class={cn('flex items-center justify-between gap-4', className)}>
     {prev ? (
       <a href={prev} rel="prev" class={buttonVariants({ variant: 'outline', size: 'sm' })}>
         <Icon name="lucide:arrow-left" aria-hidden="true" />

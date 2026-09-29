@@ -1,5 +1,7 @@
 import type { CollectionEntry } from 'astro:content';
 
+import { type Locale, defaultLocale, localizePath, splitLocaleId } from '@/i18n';
+
 /** Sidebar sections in display order. The id is the folder name under src/content/docs. */
 export const DOCS_SECTIONS = [
   { id: 'getting-started', label: 'Getting started' },
@@ -24,13 +26,29 @@ export interface DocsSection {
   items: DocsNavItem[];
 }
 
-export function docsSectionOf(entry: CollectionEntry<'docs'>): string {
-  return entry.id.includes('/') ? entry.id.split('/')[0]! : 'reference';
+/**
+ * Locale of a docs entry from its folder: `de/guides/styling` is the German `guides/styling`.
+ * Entries without a locale folder belong to the default locale.
+ */
+export function docsLocaleOf(entry: Pick<CollectionEntry<'docs'>, 'id'>): Locale {
+  return splitLocaleId(entry.id).locale;
 }
 
-/** Group published docs by section, ordered by DOCS_SECTIONS then `sidebar.order`. */
-export function buildDocsTree(entries: CollectionEntry<'docs'>[]): DocsSection[] {
-  const published = entries.filter((entry) => !entry.data.draft);
+export function docsSectionOf(entry: Pick<CollectionEntry<'docs'>, 'id'>): string {
+  const { slug } = splitLocaleId(entry.id);
+  return slug.includes('/') ? slug.split('/')[0]! : 'reference';
+}
+
+/**
+ * Group the published docs of `locale` by section, ordered by DOCS_SECTIONS then
+ * `sidebar.order`. Entries of other locales are left out, so a translated folder never leaks
+ * into the English sidebar.
+ */
+export function buildDocsTree(
+  entries: CollectionEntry<'docs'>[],
+  locale: Locale = defaultLocale,
+): DocsSection[] {
+  const published = entries.filter((entry) => !entry.data.draft && docsLocaleOf(entry) === locale);
   const order = new Map(published.map((entry) => [entry.id, entry.data.sidebar.order]));
 
   const sections: DocsSection[] = DOCS_SECTIONS.map((section) => ({
@@ -48,7 +66,7 @@ export function buildDocsTree(entries: CollectionEntry<'docs'>[]): DocsSection[]
     }
     const item: DocsNavItem = {
       id: entry.id,
-      href: `/docs/${entry.id}`,
+      href: localizePath(`/docs/${splitLocaleId(entry.id).slug}`, locale),
       label: entry.data.sidebar.label ?? entry.data.title,
       title: entry.data.title,
       description: entry.data.description,

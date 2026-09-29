@@ -1,13 +1,17 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 
-import { buildDocsTree } from '@/lib/docs';
+import { defaultLocale } from '@/i18n';
+import { buildDocsTree, docsLocaleOf } from '@/lib/docs';
 import { siteConfig } from '@/site.config';
 
 /** Every documentation page concatenated as Markdown, for LLM consumption. */
 export const GET: APIRoute = async ({ site }) => {
   const base = site ?? new URL(siteConfig.url);
-  const docs = await getCollection('docs', ({ data }) => !data.draft);
+  const docs = await getCollection(
+    'docs',
+    (entry) => !entry.data.draft && docsLocaleOf(entry) === defaultLocale,
+  );
   const tree = buildDocsTree(docs);
 
   const chunks: string[] = [

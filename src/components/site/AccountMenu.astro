@@ -3,6 +3,7 @@ import { Icon } from 'astro-icon/components';
 
 import Avatar from '@/components/ui/Avatar.astro';
 import { buttonVariants } from '@/components/ui/button-variants';
+import { resolveLocale, useTranslations } from '@/i18n';
 import { isAdmin } from '@/lib/admin';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +14,7 @@ interface Props {
 
 const { placement } = Astro.props;
 const inHeader = placement === 'header';
+const t = useTranslations(resolveLocale(Astro.currentLocale));
 
 // Server-rendered pages already know the visitor. Prerendered pages are built without a
 // session, so they render the signed-out state and the script below asks the auth API.
@@ -28,7 +30,7 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
 <account-menu class="contents" data-resolved={resolved ? '' : undefined}>
   <a href="/admin" class={link('ghost')} hidden={!isAdmin(user)} data-admin>
     <Icon name="lucide:shield" aria-hidden="true" />
-    Admin
+    {t('account.admin')}
   </a>
   <a href="/dashboard" class={link('outline')} hidden={!user} data-account>
     {inHeader && (
@@ -44,7 +46,7 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
     hidden={Boolean(user)}
     data-sign-in
   >
-    Sign in
+    {t('account.signIn')}
   </a>
 </account-menu>
 

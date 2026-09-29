@@ -11,6 +11,7 @@ import { resolveCacheProvider } from './config/cache';
 import { resolveSiteUrl } from './config/site-url';
 import { securityHeaders } from './integrations/security-headers';
 import { themeScript } from './integrations/theme-script';
+import { defaultLocale, locales } from './src/i18n/config';
 import { siteConfig } from './src/site.config';
 
 const deployTarget = resolveDeployTarget();
@@ -45,6 +46,14 @@ export default defineConfig({
   },
   build: {
     inlineStylesheets: 'auto',
+  },
+
+  // English lives at the root, every other locale under its prefix (`/de/...`). There is no
+  // fallback: a page exists in a locale only when it was translated (src/i18n, docs/guides/internationalisation).
+  i18n: {
+    defaultLocale,
+    locales: [...locales],
+    routing: { prefixDefaultLocale: false },
   },
   adapter: await resolveAdapter(deployTarget),
 

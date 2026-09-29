@@ -2,18 +2,36 @@
 import { Icon } from 'astro-icon/components';
 
 import NewsletterForm from '@/components/react/NewsletterForm';
+import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
 import { deployTargetLabel } from '@/lib/deploy-target';
 import { siteConfig } from '@/site.config';
 
 import Logo from './Logo.astro';
 
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
 const year = new Date().getFullYear();
+const groups = siteConfig.footer.map((group) => ({
+  title: labelFor(locale, group.title, group.title),
+  links: group.links.map((link) => ({
+    href: localizeHref(link.href, locale),
+    label: labelFor(locale, link.href, link.label),
+  })),
+}));
+const newsletterLabels = {
+  email: t('newsletter.email'),
+  placeholder: t('newsletter.placeholder'),
+  submit: t('newsletter.submit'),
+  formLabel: t('newsletter.formLabel'),
+  sent: t('newsletter.sent'),
+  invalidEmail: t('newsletter.invalidEmail'),
+};
 ---
 
 <footer class="border-t bg-muted/40">
   <div class="container grid gap-10 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
     <div class="space-y-4">
-      <a href="/" class="flex items-center gap-2 font-semibold">
+      <a href={localizeHref('/', locale)} class="flex items-center gap-2 font-semibold">
         <Logo id="footer" class="size-7" />
         <span>{siteConfig.name}</span>
       </a>
@@ -24,20 +42,20 @@ const year = new Date().getFullYear();
           target="_blank"
           rel="noopener noreferrer"
           class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="GitHub repository"
+          aria-label={t('github.label')}
         >
           <Icon name="simple-icons:github" class="size-5" aria-hidden="true" />
         </a>
         <a
-          href="/rss.xml"
+          href={localizeHref('/rss.xml', locale)}
           class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="RSS feed"
+          aria-label={t('footer.rss')}
         >
           <Icon name="lucide:rss" class="size-5" aria-hidden="true" />
         </a>
       </div>
     </div>
-    {siteConfig.footer.map((group) => (
+    {groups.map((group) => (
       <nav aria-label={group.title}>
         <p class="mb-3 text-sm font-semibold">{group.title}</p>
         <ul class="space-y-2 text-sm">
@@ -57,28 +75,32 @@ const year = new Date().getFullYear();
       <div class="container flex flex-col gap-4 py-8 md:flex-row md:items-center md:justify-between">
         <div class="max-w-md">
           <p class="font-semibold" id="footer-newsletter-title">
-            {siteConfig.newsletter.title}
+            {t('newsletter.title')}
           </p>
           <p class="mt-1 text-sm text-pretty text-muted-foreground">
-            {siteConfig.newsletter.description}
+            {t('newsletter.description')}
           </p>
         </div>
         {/* Hydrates on idle: the footer is on every page, and the island is a few lines. */}
-        <NewsletterForm client:idle source="footer" compact className="w-full md:max-w-sm" />
+        <NewsletterForm
+          client:idle
+          source="footer"
+          compact
+          className="w-full md:max-w-sm"
+          labels={newsletterLabels}
+        />
       </div>
     </div>
   )}
   <div class="border-t">
     <div class="container flex flex-col gap-2 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <p>{t('footer.copyright', { year, author: siteConfig.author.name })}</p>
       <p>
-        &copy; {year} {siteConfig.author.name}. Released under the MIT License.
-      </p>
-      <p>
-        Built with{' '}
+        {t('footer.builtWith')}{' '}
         <a href="https://astro.build" class="underline underline-offset-4 hover:text-foreground">
           Astro
         </a>{' '}
-        and deployed on {deployTargetLabel}.
+        {t('footer.deployedOn', { target: deployTargetLabel })}
       </p>
     </div>
   </div>

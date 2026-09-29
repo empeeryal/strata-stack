@@ -1,7 +1,7 @@
 import type { CollectionEntry } from 'astro:content';
 import { describe, expect, it } from 'vitest';
 
-import { adjacentDocs, buildDocsTree, docsSectionOf, flattenDocsTree } from './docs';
+import { adjacentDocs, buildDocsTree, docsLocaleOf, docsSectionOf, flattenDocsTree } from './docs';
 
 function entry(id: string, order = 100, extra: Partial<CollectionEntry<'docs'>['data']> = {}) {
   return {
@@ -56,5 +56,19 @@ describe('docs tree', () => {
     });
     expect(adjacentDocs(flat, 'getting-started/introduction').prev).toBeUndefined();
     expect(adjacentDocs(flat, 'extras/misc').next).toBeUndefined();
+  });
+});
+
+describe('docs locales', () => {
+  it('keeps translated folders out of the default tree and builds their own', () => {
+    const entries = [entry('guides/styling', 1), entry('de/guides/styling', 1)];
+    expect(
+      buildDocsTree(entries).flatMap((section) => section.items.map((item) => item.href)),
+    ).toEqual(['/docs/guides/styling']);
+    expect(
+      buildDocsTree(entries, 'de').flatMap((section) => section.items.map((item) => item.href)),
+    ).toEqual(['/de/docs/guides/styling']);
+    expect(docsLocaleOf({ id: 'de/guides/styling' })).toBe('de');
+    expect(docsSectionOf({ id: 'de/guides/styling' })).toBe('guides');
   });
 });

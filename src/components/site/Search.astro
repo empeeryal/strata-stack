@@ -10,25 +10,34 @@ import { Icon } from 'astro-icon/components';
 import CommandPalette, { type PaletteLink } from '@/components/react/CommandPalette';
 import Kbd from '@/components/ui/Kbd.astro';
 import { buttonVariants } from '@/components/ui/button-variants';
+import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
 import { buildDocsTree } from '@/lib/docs';
 import { cn } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+const pagesGroup = t('palette.pages');
+const page = (href: string, label: string): PaletteLink => ({
+  label: labelFor(locale, href, label),
+  href: localizeHref(href, locale),
+  group: pagesGroup,
+});
+
 const pages: PaletteLink[] = [
-  ...siteConfig.nav.map((item) => ({ label: item.label, href: item.href, group: 'Pages' })),
-  { label: 'Contact', href: '/contact', group: 'Pages' },
-  ...(siteConfig.newsletter.enabled
-    ? [{ label: 'Newsletter', href: '/newsletter', group: 'Pages' }]
-    : []),
-  { label: 'Privacy policy', href: '/legal/privacy', group: 'Pages' },
-  { label: 'Terms of service', href: '/legal/terms', group: 'Pages' },
+  ...siteConfig.nav.map((item) => page(item.href, item.label)),
+  page('/contact', 'Contact'),
+  ...(siteConfig.newsletter.enabled ? [page('/newsletter', 'Newsletter')] : []),
+  page('/legal/privacy', 'Privacy policy'),
+  page('/legal/terms', 'Terms of service'),
 ];
 
+// The documentation is English only; the palette lists it in every locale.
 const docs: PaletteLink[] = buildDocsTree(await getCollection('docs')).flatMap((section) =>
   section.items.map((item) => ({
     label: item.title,
     href: item.href,
-    group: `Docs · ${section.label}`,
+    group: `${t('palette.docs')} · ${section.label}`,
     keywords: item.description,
   })),
 );
@@ -42,11 +51,11 @@ const docs: PaletteLink[] = buildDocsTree(await getCollection('docs')).flatMap((
       buttonVariants({ variant: 'outline', size: 'sm' }),
       'hidden w-56 justify-between text-muted-foreground md:flex',
     )}
-    aria-label="Search the site"
+    aria-label={t('search.label')}
   >
     <span class="flex items-center gap-2">
       <Icon name="lucide:search" aria-hidden="true" />
-      Search…
+      {t('search.placeholder')}
     </span>
     <span class="flex gap-1">
       <Kbd>
@@ -59,7 +68,7 @@ const docs: PaletteLink[] = buildDocsTree(await getCollection('docs')).flatMap((
     href="/search"
     data-palette-trigger
     class={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'md:hidden')}
-    aria-label="Search the site"
+    aria-label={t('search.label')}
   >
     <Icon name="lucide:search" class="size-5" aria-hidden="true" />
   </a>

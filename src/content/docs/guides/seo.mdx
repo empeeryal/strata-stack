@@ -2,7 +2,7 @@
 title: SEO and discoverability
 description: Metadata, Open Graph images, structured data, sitemap, RSS, robots.txt, llms.txt and search.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-20
+updatedDate: 2026-09-29
 sidebar:
   order: 8
 ---
@@ -26,6 +26,10 @@ metadata from a handful of props.
 
 `Head.astro` emits: title, description, canonical, robots, theme colours, icons, manifest, RSS
 and sitemap links, preloaded fonts, Open Graph and Twitter cards, article metadata and JSON-LD.
+
+Pages that exist in more than one language pass `alternates` to the layout; `Head.astro` then
+emits `<link rel="alternate" hreflang>` for every version, an `x-default` for the English page
+and `og:locale:alternate`. See [Internationalisation](/docs/guides/internationalisation).
 
 ## Structured data
 

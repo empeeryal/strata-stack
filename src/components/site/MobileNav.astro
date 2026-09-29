@@ -2,20 +2,34 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
+import type { Locale } from '@/i18n';
+import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
 import AccountMenu from './AccountMenu.astro';
+import LanguageSwitcher from './LanguageSwitcher.astro';
 
+interface Props {
+  alternates?: Partial<Record<Locale, string>> | undefined;
+}
+
+const { alternates } = Astro.props;
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
 const pathname = Astro.url.pathname;
 const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+const nav = siteConfig.nav.map((item) => ({
+  href: localizeHref(item.href, locale),
+  label: labelFor(locale, item.href, item.label),
+}));
 ---
 
 <mobile-nav class="contents md:hidden">
   <button
     type="button"
     class={buttonVariants({ variant: 'ghost', size: 'icon' })}
-    aria-label="Open menu"
+    aria-label={t('menu.open')}
     aria-haspopup="dialog"
     data-open
   >
@@ -24,21 +38,21 @@ const isActive = (href: string) => pathname === href || pathname.startsWith(`${h
 
   <dialog
     class="m-0 h-dvh max-h-none w-full max-w-none bg-background p-0 text-foreground backdrop:bg-black/40 open:flex open:flex-col"
-    aria-label="Site navigation"
+    aria-label={t('menu.label')}
   >
     <div class="flex h-16 items-center justify-between border-b px-4">
       <span class="font-semibold">{siteConfig.name}</span>
       <button
         type="button"
         class={buttonVariants({ variant: 'ghost', size: 'icon' })}
-        aria-label="Close menu"
+        aria-label={t('menu.close')}
         data-close
       >
         <Icon name="lucide:x" class="size-5" aria-hidden="true" />
       </button>
     </div>
-    <nav aria-label="Main" class="flex flex-1 flex-col gap-1 p-4">
-      {siteConfig.nav.map((item) => (
+    <nav aria-label={t('nav.main')} class="flex flex-1 flex-col gap-1 p-4">
+      {nav.map((item) => (
         <a
           href={item.href}
           aria-current={isActive(item.href) ? 'page' : undefined}
@@ -48,8 +62,9 @@ const isActive = (href: string) => pathname === href || pathname.startsWith(`${h
         </a>
       ))}
       <a href="/search" class="rounded-md px-3 py-3 text-base font-medium hover:bg-muted">
-        Search
+        {t('nav.search')}
       </a>
+      <LanguageSwitcher alternates={alternates} variant="drawer" class="mt-2 border-t pt-2" />
       <div class="mt-auto flex flex-col gap-2 border-t pt-4">
         <AccountMenu placement="drawer" />
         <a

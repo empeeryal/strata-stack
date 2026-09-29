@@ -1,6 +1,12 @@
+---
+import { resolveLocale, useTranslations } from '@/i18n';
+
+const t = useTranslations(resolveLocale(Astro.currentLocale));
+---
+
 <a
   href="#main"
   class="sr-only z-[100] rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
 >
-  Skip to content
+  {t('skip')}
 </a>

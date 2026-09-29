@@ -8,12 +8,22 @@ import {
   serializeJsonLd,
   websiteJsonLd,
 } from '@/lib/seo';
+import { type Locale, defaultLocale, ogLocales } from '@/i18n';
 import { stripTrailingSlash } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
 export interface Props {
+  /** Locale of the page; the layout passes Astro's current locale. */
+  locale?: Locale;
+  /**
+   * Site-relative paths of this page in other locales. Emitted as `hreflang` alternates (with
+   * `x-default` pointing at the default locale) and `og:locale:alternate`.
+   */
+  alternates?: Partial<Record<Locale, string>> | undefined;
   /** Page title without the site name suffix. Omit on the home page. */
   title?: string;
+  /** Tagline for a home page without `title`; defaults to `siteConfig.tagline`. */
+  tagline?: string;
   description?: string;
   /** Site-relative canonical path. Defaults to the current path. */
   canonical?: string;
@@ -34,7 +44,10 @@ export interface Props {
 
 const site = Astro.site ?? new URL(siteConfig.url);
 const {
+  locale = defaultLocale,
+  alternates = {},
   title,
+  tagline,
   description = siteConfig.description,
   canonical,
   image = '/og/default.png',
@@ -45,11 +58,23 @@ const {
   jsonLd = [],
 } = Astro.props;
 
-const fullTitle = pageTitle(title);
+const fullTitle = pageTitle(title, tagline);
 const ogTitle = title ?? siteConfig.name;
 const canonicalUrl = new URL(canonical ?? stripTrailingSlash(Astro.url.pathname), site).toString();
 const imageUrl = new URL(image, site).toString();
-const structuredData: JsonLd[] = [websiteJsonLd(site), organizationJsonLd(site), ...jsonLd];
+const structuredData: JsonLd[] = [websiteJsonLd(site, locale), organizationJsonLd(site), ...jsonLd];
+const alternateLinks = (Object.entries(alternates) as Array<[Locale, string]>)
+  .filter(([other]) => other !== locale)
+  .map(([other, path]) => ({ locale: other, href: new URL(path, site).toString() }));
+// Search engines want every language version listed, the current one included, plus a default.
+const hreflangLinks =
+  alternateLinks.length > 0 ? [{ locale, href: canonicalUrl }, ...alternateLinks] : [];
+const defaultHref =
+  locale === defaultLocale
+    ? canonicalUrl
+    : alternates[defaultLocale]
+      ? new URL(alternates[defaultLocale], site).toString()
+      : undefined;
 ---
 
 <meta charset="utf-8" />
@@ -57,6 +82,12 @@ const structuredData: JsonLd[] = [websiteJsonLd(site), organizationJsonLd(site),
 <title>{fullTitle}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonicalUrl} />
+{hreflangLinks.map((link) => (
+  <link rel="alternate" hreflang={link.locale} href={link.href} />
+))}
+{hreflangLinks.length > 0 && defaultHref && (
+  <link rel="alternate" hreflang="x-default" href={defaultHref} />
+)}
 <meta
   name="robots"
   content={noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}
@@ -91,7 +122,10 @@ const structuredData: JsonLd[] = [websiteJsonLd(site), organizationJsonLd(site),
 
 <meta property="og:type" content={type} />
 <meta property="og:site_name" content={siteConfig.name} />
-<meta property="og:locale" content={siteConfig.ogLocale} />
+<meta property="og:locale" content={ogLocales[locale]} />
+{alternateLinks.map((link) => (
+  <meta property="og:locale:alternate" content={ogLocales[link.locale]} />
+))}
 <meta property="og:title" content={ogTitle} />
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonicalUrl} />
