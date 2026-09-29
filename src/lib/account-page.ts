@@ -7,6 +7,8 @@ export const ACCOUNT_NOTICES = {
   'session-revoked': 'That session was signed out.',
   'sessions-revoked': 'Every other session was signed out.',
   'profile-updated': 'Profile updated.',
+  'two-factor-enabled': 'Two-factor authentication is on. Keep your backup codes somewhere safe.',
+  'two-factor-disabled': 'Two-factor authentication is off.',
 } as const;
 
 export type AccountNotice = keyof typeof ACCOUNT_NOTICES;

@@ -49,6 +49,8 @@ export const ADMIN_NOTICES = {
   'sessions-revoked': 'The user was signed out everywhere.',
   'user-deleted': 'User deleted.',
   'subscriber-removed': 'Subscriber removed.',
+  'two-factor-reset':
+    'Two-factor authentication was reset. The user signs in with their password until they set it up again.',
 } as const;
 
 export type AdminNotice = keyof typeof ADMIN_NOTICES;

@@ -85,6 +85,7 @@ export const GET: APIRoute = async ({ request }) => {
       emailVerified: user.emailVerified,
       image: user.image ?? null,
       role: user.role ?? 'user',
+      twoFactorEnabled: user.twoFactorEnabled ?? false,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },

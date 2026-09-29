@@ -68,6 +68,13 @@ export default function AuthForm({
         }
         return;
       }
+      // Accounts with two-factor authentication get no session yet: the second step follows.
+      const pending = result.data as { twoFactorRedirect?: boolean } | null;
+      if (pending?.twoFactorRedirect) {
+        const next = redirectTo === '/dashboard' ? '' : `?next=${encodeURIComponent(redirectTo)}`;
+        window.location.assign(`/two-factor${next}`);
+        return;
+      }
       window.location.assign(redirectTo);
     } catch {
       setError(UNEXPECTED_ERROR);

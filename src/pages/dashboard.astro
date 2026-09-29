@@ -7,6 +7,7 @@ import ChangePasswordForm from '@/components/react/account/ChangePasswordForm';
 import DeleteAccountForm from '@/components/react/account/DeleteAccountForm';
 import ProfileForm from '@/components/react/account/ProfileForm';
 import SessionList, { type SessionItem } from '@/components/react/account/SessionList';
+import TwoFactorSetup from '@/components/react/account/TwoFactorSetup';
 import VerifyEmailButton from '@/components/react/account/VerifyEmailButton';
 import SignOutButton from '@/components/react/auth/SignOutButton';
 import Alert from '@/components/ui/Alert.astro';
@@ -153,6 +154,16 @@ const emailConfigured = isEmailConfigured();
           <dd class="font-medium">{signInMethods}</dd>
         </div>
         <div class="flex justify-between gap-4">
+          <dt class="text-muted-foreground">Two-factor authentication</dt>
+          <dd data-two-factor-state>
+            {user.twoFactorEnabled ? (
+              <Badge variant="success">On</Badge>
+            ) : (
+              <Badge variant="muted">Off</Badge>
+            )}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-4">
           <dt class="text-muted-foreground">Member since</dt>
           <dd>
             <time datetime={toISODate(user.createdAt)}>{formatDate(user.createdAt)}</time>
@@ -212,6 +223,22 @@ const emailConfigured = isEmailConfigured();
       <ChangePasswordForm client:visible />
     </Card>
   )}
+
+  <Card class="mt-6">
+    <h2 class="flex items-center gap-2 font-semibold">
+      <Icon name="lucide:shield-check" class="size-4 text-primary" aria-hidden="true" />
+      Two-factor authentication
+    </h2>
+    <p class="mt-2 mb-4 text-sm text-pretty text-muted-foreground">
+      A code from an authenticator app is required after your password when you sign in. Backup
+      codes cover a lost phone; each one works once.
+    </p>
+    <TwoFactorSetup
+      client:visible
+      enabled={Boolean(user.twoFactorEnabled)}
+      hasPassword={hasPassword}
+    />
+  </Card>
 
   <Card class="mt-6">
     <h2 class="flex items-center gap-2 font-semibold">

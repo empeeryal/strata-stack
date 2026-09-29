@@ -5,6 +5,7 @@ import { auditLog } from '../db/schema/app';
 import {
   account as accountTable,
   session as sessionTable,
+  twoFactor as twoFactorTable,
   user as userTable,
 } from '../db/schema/auth';
 
@@ -181,6 +182,35 @@ export async function deleteUserAccount(
   });
 }
 
+/**
+ * Removes a user's second factor (their authenticator entry and backup codes) so they can sign
+ * in with the password alone and set it up again. The recovery path for someone who lost both
+ * the authenticator and the codes; administrators use it after checking who they talk to.
+ */
+export async function resetUserTwoFactor(
+  db: Database,
+  actor: { id: string; email: string },
+  targetId: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [target] = await tx
+      .select({ id: userTable.id })
+      .from(userTable)
+      .where(eq(userTable.id, targetId))
+      .limit(1);
+    if (!target) throw new UserNotFoundError();
+    await tx.delete(twoFactorTable).where(eq(twoFactorTable.userId, targetId));
+    await tx.update(userTable).set({ twoFactorEnabled: false }).where(eq(userTable.id, targetId));
+    await writeAudit(tx, {
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'user.reset_two_factor',
+      targetType: 'user',
+      targetId,
+    });
+  });
+}
+
 /** Explains a guarded statement that changed nothing: the user is unknown or the last admin. */
 async function explainRefusal(tx: DbExecutor, targetId: string): Promise<never> {
   const [row] = await tx
@@ -207,6 +237,9 @@ export const AUDIT_ACTIONS = [
   'subscriber.delete',
   'subscriber.unsubscribe',
   'subscribers.export',
+  'two_factor.enable',
+  'two_factor.disable',
+  'user.reset_two_factor',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

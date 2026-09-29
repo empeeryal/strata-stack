@@ -32,6 +32,7 @@ const outcome = summarizeActionResults([
   Astro.getActionResult(actions.admin.banUser),
   Astro.getActionResult(actions.admin.unbanUser),
   Astro.getActionResult(actions.admin.revokeUserSessions),
+  Astro.getActionResult(actions.admin.resetTwoFactor),
   Astro.getActionResult(actions.admin.removeUser),
 ]);
 if (outcome.completed) {
@@ -154,6 +155,7 @@ const summary =
                         Banned
                       </Badge>
                     )}
+                    {account.twoFactorEnabled && <Badge variant="outline">2FA</Badge>}
                   </div>
                 </td>
                 <td class="px-4 py-3 align-top whitespace-nowrap">
@@ -197,6 +199,18 @@ const summary =
                           Sign out everywhere
                         </Button>
                       </form>
+                      {account.twoFactorEnabled && (
+                        <form
+                          method="POST"
+                          action={actions.admin.resetTwoFactor}
+                          data-confirm="Reset two-factor authentication for this user? They sign in with their password alone until they set it up again."
+                        >
+                          <input type="hidden" name="userId" value={account.id} />
+                          <Button type="submit" variant="ghost" size="sm">
+                            Reset 2FA
+                          </Button>
+                        </form>
+                      )}
                       <form
                         method="POST"
                         action={actions.admin.removeUser}

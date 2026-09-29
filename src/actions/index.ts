@@ -16,6 +16,7 @@ import {
   isAdmin,
   LastAdminError,
   recordAudit,
+  resetUserTwoFactor,
   UserNotFoundError,
   writeAudit,
 } from '@/lib/admin';
@@ -442,6 +443,21 @@ export const server = {
           targetId,
         });
         return { notice: 'user-unbanned' as AdminNotice };
+      },
+    }),
+
+    /** Recovery for a user who lost both the authenticator and the backup codes. */
+    resetTwoFactor: defineAction({
+      accept: 'form',
+      input: z.object({ userId }),
+      handler: async ({ userId: targetId }, context) => {
+        const actor = await requireAdmin(context);
+        try {
+          await resetUserTwoFactor(db, actor, targetId);
+        } catch (error) {
+          throw toAdminError(error, 'Could not reset two-factor authentication.');
+        }
+        return { notice: 'two-factor-reset' as AdminNotice };
       },
     }),
 

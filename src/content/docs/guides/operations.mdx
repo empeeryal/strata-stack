@@ -2,7 +2,7 @@
 title: Operating the site
 description: 'The runbook for a deployed site: creating the tables, the GitHub repository settings, scheduled jobs, monitoring, administrators, incidents, secrets rotation, releases and backups, collected in one place.'
 publishedDate: 2026-09-22
-updatedDate: 2026-09-28
+updatedDate: 2026-09-29
 sidebar:
   order: 12
 ---
@@ -130,7 +130,8 @@ days; a push or a manual run resumes them.
   nothing is lost. Failed notifications are listed on the overview; **Resend notification** on
   a message retries it, one attempt at a time.
 - **Rotating secrets**: a new `BETTER_AUTH_SECRET` invalidates every session cookie, so
-  everyone signs in again; a new database token goes in the platform variables **and** the
+  everyone signs in again, and makes stored two-factor secrets unreadable, so accounts with
+  2FA need it reset (see [the admin guide](/docs/guides/admin)) and turned on again; a new database token goes in the platform variables **and** the
   GitHub secrets; a new `RESEND_API_KEY` needs nothing else. Redeploy after changing platform
   variables so the running functions pick them up. A `RELEASE_TOKEN` expires on the date chosen
   when it was created; generate a new token and replace the secret, or the version pull request

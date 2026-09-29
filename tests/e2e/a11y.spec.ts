@@ -37,6 +37,7 @@ const PUBLIC_PAGES: Array<{ path: string; ready?: (page: Page) => Promise<void> 
   { path: '/login' },
   { path: '/signup' },
   { path: '/forgot-password' },
+  { path: '/two-factor' },
   { path: '/reset-password' },
   { path: '/this-page-does-not-exist' },
   {

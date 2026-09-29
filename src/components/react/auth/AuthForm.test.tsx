@@ -22,6 +22,18 @@ describe('<AuthForm>', () => {
     vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
   });
 
+  it('sends accounts with two-factor authentication to the second step', async () => {
+    signInEmail.mockResolvedValue({ data: { twoFactorRedirect: true }, error: null });
+    const user = userEvent.setup();
+    render(<AuthForm mode="login" redirectTo="/admin" />);
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com');
+    await user.type(screen.getByLabelText('Password'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith('/two-factor?next=%2Fadmin'),
+    );
+  });
+
   it('signs in with email and password and redirects', async () => {
     signInEmail.mockResolvedValue({ data: {}, error: null });
     const user = userEvent.setup();
