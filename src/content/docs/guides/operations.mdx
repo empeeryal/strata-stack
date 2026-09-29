@@ -19,9 +19,10 @@ is off, and where each knob lives. Every item links to the guide with the detail
    `SITE_URL` (both the public `https://` origin), the database pair (`DATABASE_URL` and
    `DATABASE_AUTH_TOKEN`, or the `TURSO_*` names the Vercel integration sets), and
    `ADMIN_EMAILS` for the first administrators. Email needs `RESEND_API_KEY`, `EMAIL_FROM` and
-   `CONTACT_TO_EMAIL`; the newsletter needs the same key and, to send from Resend, an audience
-   in `RESEND_AUDIENCE_ID`. The [environment variables guide](/docs/guides/environment-variables)
-   has the full table.
+   `CONTACT_TO_EMAIL`; the newsletter needs the same key and, to send from Resend, a segment in
+   `RESEND_AUDIENCE_ID` plus the contact webhook's secret in `RESEND_WEBHOOK_SECRET` (see the
+   [newsletter form](/docs/components/newsletter-form#sending-a-newsletter)). The
+   [environment variables guide](/docs/guides/environment-variables) has the full table.
 
 2. **Database secrets in GitHub.** Add the database URL and token as Actions secrets, under
    either pair of names, to the environment named exactly `production` (Settings → Environments;

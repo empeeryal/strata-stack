@@ -2,6 +2,7 @@
 title: Newsletter form
 description: A double opt-in newsletter sign-up, as a small React island over an Astro Action, with confirmation and unsubscribe pages, an admin list with CSV export and an optional Resend audience mirror.
 publishedDate: 2026-09-28
+updatedDate: 2026-09-29
 sidebar:
   order: 5
   badge: new
@@ -74,12 +75,23 @@ JavaScript at all.
 
 The template stores subscribers; it does not send newsletters. Two ways to do that:
 
-- **Resend audience.** Create an audience in Resend, set `RESEND_AUDIENCE_ID` next to
-  `RESEND_API_KEY`, and confirmed addresses are mirrored into it (unsubscribes are mirrored as
-  well). Write and send from Resend's broadcasts, whose footer includes its own unsubscribe
-  link. The admin page shows an **Audience** column with the addresses the provider has not
-  received yet, for example because the API was unavailable; the next change to that address
-  retries.
+- **Resend segment.** Create a segment in Resend (**Contacts → Segments**; older dashboards
+  call them audiences), copy its ID into `RESEND_AUDIENCE_ID` next to a full-access
+  `RESEND_API_KEY`, and confirmed addresses are created as contacts in it; unsubscribing here
+  marks the contact unsubscribed there. Write and send from Resend's broadcasts, whose footer
+  includes Resend's own unsubscribe link. The admin page shows an **Audience** column with the
+  addresses the provider has not received yet, for example because the API was unavailable;
+  the next change to that address retries.
+
+  To make Resend's unsubscribe link count here as well, add a webhook in Resend
+  (**Webhooks → Add**) with the URL `https://<your site>/api/newsletter/webhook` and the
+  `contact.updated` and `contact.deleted` events, and put its signing secret (it starts with
+  `whsec_`) in `RESEND_WEBHOOK_SECRET`. The endpoint verifies every delivery's signature and
+  timestamp (`src/lib/webhook-signature.ts`), marks the address unsubscribed and records it in
+  the audit log. It only ever opts people out: a contact re-subscribed at Resend still has to
+  confirm through the form. Without the secret the endpoint answers 404, and the admin
+  overview says so.
+
 - **CSV export.** The **Download confirmed (CSV)** button on `/admin/subscribers` produces
   `email,confirmed_at,unsubscribe_url`. Whatever tool sends the newsletter must put each
   address's `unsubscribe_url` in the footer. Each download is recorded in the audit log.
@@ -116,8 +128,10 @@ page names the address it is about and uses a real button for the change. The ax
 
 - `src/lib/newsletter.test.ts` runs the whole flow against an in-memory database: storage,
   token rotation, the already-subscribed email, throttling, a delivery failure, confirmation,
-  audience sync and its failure mode, and unsubscribing.
+  audience sync and its failure mode, unsubscribing, and the provider's webhook events.
+  `src/lib/webhook-signature.test.ts` covers the signature check, including rotation lists,
+  tampering and the time window.
 - `src/components/react/NewsletterForm.test.tsx` covers the island with the action mocked.
 - `tests/e2e/newsletter.spec.ts` subscribes from the footer, reads the token from the test
   database, confirms, unsubscribes and checks the 404 for unknown links, plus the no-JavaScript
-  path through `/newsletter`.
+  path through `/newsletter` and a signed webhook delivery that ends a subscription.

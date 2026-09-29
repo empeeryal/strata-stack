@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { newsletterSubscribers } from '@/db/schema';
+import { auditLog, newsletterSubscribers } from '@/db/schema';
 
 import { createTestDb } from '../../tests/unit/db';
 
 import type { EmailMessage } from './email';
 import {
+  applyProviderContactEvent,
   confirmSubscription,
   generateToken,
   isTokenShape,
@@ -254,5 +255,63 @@ describe('unsubscribeFromNewsletter', () => {
 
   it('reports unknown tokens', async () => {
     expect(await unsubscribeFromNewsletter(generateToken(), deps())).toBe('invalid');
+  });
+});
+
+describe('applyProviderContactEvent', () => {
+  const event = (type: string, unsubscribed?: boolean, email = 'Reader@example.com') => ({
+    type,
+    created_at: '2026-09-29T12:00:00.000Z',
+    data: { id: 'c_1', email, ...(unsubscribed === undefined ? {} : { unsubscribed }) },
+  });
+
+  it('marks a confirmed address unsubscribed when the provider says so, once', async () => {
+    await subscribeAndConfirm('reader@example.com');
+
+    expect(await applyProviderContactEvent(event('contact.updated', true), deps())).toBe(
+      'unsubscribed',
+    );
+    const [row] = await rows();
+    expect(row?.status).toBe('unsubscribed');
+    expect(row?.unsubscribedAt).toBeInstanceOf(Date);
+    expect(row?.audienceError).toBeNull();
+    // The provider made the change; nothing is pushed back to it.
+    expect(audience.remove).not.toHaveBeenCalled();
+    const entries = await testDb.db.select().from(auditLog);
+    expect(entries.map((entry) => entry.action)).toEqual(['subscriber.unsubscribe']);
+    expect(entries[0]?.targetId).toBe(row?.id);
+
+    expect(await applyProviderContactEvent(event('contact.updated', true), deps())).toBe('ignored');
+    expect(await testDb.db.select().from(auditLog)).toHaveLength(1);
+  });
+
+  it('treats a deleted contact as an opt-out', async () => {
+    await subscribeAndConfirm('reader@example.com');
+    expect(await applyProviderContactEvent(event('contact.deleted'), deps())).toBe('unsubscribed');
+    expect((await rows())[0]?.status).toBe('unsubscribed');
+  });
+
+  it('never re-subscribes from the provider side', async () => {
+    const token = await subscribeAndConfirm('reader@example.com');
+    await unsubscribeFromNewsletter(token, deps());
+
+    expect(await applyProviderContactEvent(event('contact.updated', false), deps())).toBe(
+      'ignored',
+    );
+    expect((await rows())[0]?.status).toBe('unsubscribed');
+  });
+
+  it('ignores other events, unknown addresses and malformed payloads', async () => {
+    await subscribeAndConfirm('reader@example.com');
+    expect(await applyProviderContactEvent(event('contact.created', false), deps())).toBe(
+      'ignored',
+    );
+    expect(await applyProviderContactEvent(event('email.sent'), deps())).toBe('ignored');
+    expect(
+      await applyProviderContactEvent(event('contact.updated', true, 'nobody@example.com'), deps()),
+    ).toBe('unknown-address');
+    expect(await applyProviderContactEvent(null, deps())).toBe('ignored');
+    expect(await applyProviderContactEvent({ type: 'contact.updated' }, deps())).toBe('ignored');
+    expect((await rows())[0]?.status).toBe('confirmed');
   });
 });

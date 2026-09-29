@@ -205,6 +205,7 @@ export const AUDIT_ACTIONS = [
   'user.delete',
   'session.revoke',
   'subscriber.delete',
+  'subscriber.unsubscribe',
   'subscribers.export',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

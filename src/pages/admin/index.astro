@@ -75,6 +75,7 @@ const stats = [
 
 const recipient = getEnv('CONTACT_TO_EMAIL');
 const audienceId = getEnv('RESEND_AUDIENCE_ID');
+const webhookSecret = getEnv('RESEND_WEBHOOK_SECRET');
 const configuration = [
   {
     label: 'Email delivery',
@@ -100,6 +101,17 @@ const configuration = [
               ? 'Confirmed subscribers are mirrored to the Resend audience for sending.'
               : 'RESEND_AUDIENCE_ID is not set. Subscribers are stored here only; download them as CSV from the subscribers page.',
         },
+        ...(audienceId && isEmailConfigured()
+          ? [
+              {
+                label: 'Newsletter webhook',
+                ok: Boolean(webhookSecret),
+                detail: webhookSecret
+                  ? 'Unsubscribes made through Resend are written back to the subscriber list.'
+                  : 'RESEND_WEBHOOK_SECRET is not set. Unsubscribes made through Resend broadcasts stay at the provider; add the contact webhook to keep the list in sync.',
+              },
+            ]
+          : []),
       ]
     : []),
 ];

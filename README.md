@@ -104,7 +104,8 @@ command can stay `astro build`. See the [deploy guides](https://stratastack.dev/
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`        | no         | Enables GitHub sign-in                                                                       |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`        | no         | Enables Google sign-in                                                                       |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `CONTACT_TO_EMAIL` | no         | Magic links, verification, password resets, contact notifications, newsletter confirmations  |
-| `RESEND_AUDIENCE_ID`                               | no         | Resend audience that confirmed newsletter subscribers are mirrored into                      |
+| `RESEND_AUDIENCE_ID`                               | no         | Resend segment (audience) that confirmed newsletter subscribers are mirrored into            |
+| `RESEND_WEBHOOK_SECRET`                            | no         | Signing secret of the Resend contact webhook that writes unsubscribes back                   |
 | `ADMIN_EMAILS`                                     | no         | Addresses that get the `admin` role on sign-up (or `pnpm admin:promote`)                     |
 | `HEALTH_TOKEN`                                     | no         | Bearer token that unlocks the detailed `/api/health` response for monitors                   |
 | `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                                 |

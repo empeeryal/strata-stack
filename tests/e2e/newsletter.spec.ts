@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { createClient } from '@libsql/client';
 import { expect, test } from '@playwright/test';
 
@@ -19,6 +21,19 @@ async function tokenFor(email: string): Promise<string> {
   } finally {
     client.close();
   }
+}
+
+/** Signs a delivery the way Resend (Svix) does, with the secret the test server knows. */
+function signedHeaders(body: string, id = `msg_${Date.now()}`) {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const key = Buffer.from(serverEnv.RESEND_WEBHOOK_SECRET.slice('whsec_'.length), 'base64');
+  const signature = createHmac('sha256', key).update(`${id}.${timestamp}.${body}`).digest('base64');
+  return {
+    'content-type': 'application/json',
+    'svix-id': id,
+    'svix-timestamp': timestamp,
+    'svix-signature': `v1,${signature}`,
+  };
 }
 
 test.describe('newsletter', () => {
@@ -86,6 +101,49 @@ test.describe('newsletter', () => {
     await expect(page).toHaveURL(/\/newsletter\?sent=1$/);
     await expect(page.locator('[data-newsletter-result]')).toContainText('Check your inbox');
     await context.close();
+  });
+
+  test('ends a subscription from a signed provider webhook and refuses unsigned ones', async ({
+    page,
+    request,
+  }) => {
+    test.skip(external, 'reading the token needs the local database');
+    const email = `webhook-${Date.now()}@example.com`;
+    await page.goto('/newsletter');
+    await waitForIslands(page);
+    const main = page.locator('#main');
+    await main.getByLabel('Email address').fill(email);
+    await main.getByRole('button', { name: 'Subscribe' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Check your inbox' })).toBeVisible();
+    const token = await tokenFor(email);
+    await page.goto(`/newsletter/confirm?token=${token}`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('You are subscribed');
+
+    const body = JSON.stringify({
+      type: 'contact.updated',
+      created_at: new Date().toISOString(),
+      data: { id: 'c_e2e', email, unsubscribed: true },
+    });
+    const unsigned = await request.post('/api/newsletter/webhook', {
+      data: body,
+      headers: { 'content-type': 'application/json' },
+    });
+    expect(unsigned.status()).toBe(401);
+    const tampered = await request.post('/api/newsletter/webhook', {
+      data: `${body} `,
+      headers: signedHeaders(body),
+    });
+    expect(tampered.status()).toBe(401);
+
+    const signed = await request.post('/api/newsletter/webhook', {
+      data: body,
+      headers: signedHeaders(body),
+    });
+    expect(signed.status()).toBe(200);
+    expect(await signed.json()).toEqual({ received: true, outcome: 'unsubscribed' });
+
+    await page.goto(`/newsletter/unsubscribe?token=${token}`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('You are unsubscribed');
   });
 
   test('renders validation errors from a plain form post', async ({ request, baseURL }) => {
