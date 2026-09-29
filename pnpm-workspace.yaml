@@ -20,6 +20,8 @@ overrides:
   fflate@0.7: ^0.7.5
   path-to-regexp@6: ^6.3.0
   sharp: ^0.35.4
+  # miniflare (Cloudflare's local emulator) pins 7.29.0; GHSA-3wwx-pv8p-q78v is fixed in 7.29.1.
+  undici@7.29.0: ^7.29.1
 
 # Advisories with no upstream fix in build-time tooling; reviewed on dependency upgrades
 # (see the CI guide, "Audit exceptions").
