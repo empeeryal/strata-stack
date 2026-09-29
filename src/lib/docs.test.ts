@@ -60,15 +60,12 @@ describe('docs tree', () => {
 });
 
 describe('docs locales', () => {
-  it('keeps translated folders out of the default tree and builds their own', () => {
-    const entries = [entry('guides/styling', 1), entry('de/guides/styling', 1)];
+  it('treats every entry as the default locale while the site has one', () => {
+    const entries = [entry('guides/styling', 1)];
     expect(
       buildDocsTree(entries).flatMap((section) => section.items.map((item) => item.href)),
     ).toEqual(['/docs/guides/styling']);
-    expect(
-      buildDocsTree(entries, 'de').flatMap((section) => section.items.map((item) => item.href)),
-    ).toEqual(['/de/docs/guides/styling']);
-    expect(docsLocaleOf({ id: 'de/guides/styling' })).toBe('de');
-    expect(docsSectionOf({ id: 'de/guides/styling' })).toBe('guides');
+    expect(docsLocaleOf({ id: 'guides/styling' })).toBe('en');
+    expect(docsSectionOf({ id: 'guides/styling' })).toBe('guides');
   });
 });

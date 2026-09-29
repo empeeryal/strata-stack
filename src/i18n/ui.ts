@@ -27,7 +27,6 @@ const en = {
   'menu.open': 'Open menu',
   'menu.close': 'Close menu',
   'menu.label': 'Site navigation',
-  'language.label': 'Language',
   'footer.tagline': siteConfig.tagline,
   'footer.rss': 'RSS feed',
   'footer.copyright': '© {year} {author}. Released under the MIT License.',
@@ -66,101 +65,24 @@ const en = {
 
 export type UiKey = keyof typeof en;
 
-const de: Record<UiKey, string> = {
-  skip: 'Zum Inhalt springen',
-  'header.home': `${siteConfig.name} Startseite`,
-  'nav.main': 'Hauptnavigation',
-  'nav.search': 'Suche',
-  'search.label': 'Website durchsuchen',
-  'search.placeholder': 'Suchen…',
-  'github.label': 'GitHub-Repository',
-  'github.stars': 'GitHub-Repository, {count} Sterne',
-  'theme.switch': 'Design wechseln',
-  'theme.toDark': 'Zum dunklen Design wechseln',
-  'theme.toLight': 'Zum hellen Design wechseln',
-  'account.signIn': 'Anmelden',
-  'account.admin': 'Admin',
-  'menu.open': 'Menü öffnen',
-  'menu.close': 'Menü schließen',
-  'menu.label': 'Seitennavigation',
-  'language.label': 'Sprache',
-  'footer.tagline':
-    'Der geschichtete Astro-Stack: Auth, Inhalte, Suche und Sicherheit, schon an Ort und Stelle.',
-  'footer.rss': 'RSS-Feed',
-  'footer.copyright': '© {year} {author}. Veröffentlicht unter der MIT-Lizenz.',
-  'footer.builtWith': 'Erstellt mit',
-  'footer.deployedOn': 'und bereitgestellt auf {target}.',
-  'newsletter.title': 'Newsletter',
-  'newsletter.description':
-    'Release-Notes und neue Beiträge per E-Mail, höchstens ein paar Mal im Monat. Jederzeit abbestellbar.',
-  'newsletter.email': 'E-Mail-Adresse',
-  'newsletter.placeholder': 'du@example.com',
-  'newsletter.submit': 'Abonnieren',
-  'newsletter.formLabel': 'Newsletter abonnieren',
-  'newsletter.sent':
-    'Sieh in dein Postfach: Wir haben dir einen Link zur Bestätigung geschickt. Bis du ihn öffnest, wird nichts versendet.',
-  'newsletter.invalidEmail': 'Bitte gib eine gültige E-Mail-Adresse ein.',
-  'blog.eyebrow': 'Blog',
-  'blog.title': 'Blog',
-  'blog.description': 'Technische Notizen, Release-Berichte und Anleitungen rund um das Template.',
-  'blog.feedTitle': `${siteConfig.name}-Blog`,
-  'blog.rss': 'RSS-Feed',
-  'blog.tags': 'Schlagwörter',
-  'blog.empty': 'Noch keine Beiträge.',
-  'blog.newer': 'Neuere',
-  'blog.older': 'Ältere',
-  'blog.pageTitle': '{title} · Seite {page}',
-  'blog.inEnglish': 'Weitere Beiträge auf Englisch',
-  'blog.readingTime': '{minutes} Min. Lesezeit',
-  'blog.updated': 'Aktualisiert',
-  'blog.all': 'Alle Beiträge',
-  'blog.newPosts': 'Neue Beiträge per E-Mail',
-  'pagination.label': 'Seitenzahlen',
-  'palette.pages': 'Seiten',
-  'palette.docs': 'Doku',
-  breadcrumb: 'Sie sind hier',
-  toc: 'Auf dieser Seite',
-};
-
-export const ui: Record<Locale, Record<UiKey, string>> = { en, de };
+export const ui: Record<Locale, Record<UiKey, string>> = { en };
 
 /**
  * Translations for the navigation and footer entries in `site.config.ts`, keyed by href for
  * links and by the English title for footer groups. Entries without a translation keep their
- * English label, so nothing breaks while a locale is being filled in.
+ * English label, so nothing breaks while a locale is being filled in. A locale's entry looks like
+ * `de: { '/docs': 'Dokumentation', Product: 'Produkt' }`. Empty while the site has one locale.
  */
 export const labels: Record<Locale, Record<string, string>> = {
   en: {},
-  de: {
-    '/docs': 'Dokumentation',
-    '/blog': 'Blog',
-    '/changelog': 'Änderungen',
-    '/about': 'Über',
-    '/search': 'Suche',
-    '/contact': 'Kontakt',
-    '/newsletter': 'Newsletter',
-    '/legal/privacy': 'Datenschutz',
-    '/legal/terms': 'Nutzungsbedingungen',
-    '/docs/deploy/vercel': 'Vercel',
-    '/docs/deploy/cloudflare': 'Cloudflare',
-    '/docs/deploy/netlify': 'Netlify',
-    '/docs/deploy/node': 'Node & Docker',
-    Product: 'Produkt',
-    Deploy: 'Bereitstellung',
-    Company: 'Unternehmen',
-  },
 };
 
 /**
- * English paths that have a translated page, per locale. Links from the chrome go to the
- * translation when there is one and to the English page otherwise; add a row here whenever you
- * translate a page. Blog posts are matched by slug instead (src/lib/content.ts).
+ * English paths that have a translated page, per locale, e.g.
+ * `de: { '/': '/de', '/about': '/de/about', '/blog': '/de/blog', '/rss.xml': '/de/rss.xml' }`.
+ * Links from the chrome go to the translation when there is one and to the English page
+ * otherwise, and the same map feeds the `hreflang` alternates; add a row whenever you translate
+ * a page. Blog posts are matched by slug instead (src/lib/content.ts). Empty while the site has
+ * one locale.
  */
-export const localizedRoutes: Record<Exclude<Locale, 'en'>, Record<string, string>> = {
-  de: {
-    '/': '/de',
-    '/about': '/de/about',
-    '/blog': '/de/blog',
-    '/rss.xml': '/de/rss.xml',
-  },
-};
+export const localizedRoutes: Partial<Record<Locale, Record<string, string>>> = {};
