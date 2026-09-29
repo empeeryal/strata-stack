@@ -1,0 +1,133 @@
+---
+title: 'The second audit: redirects, proxies and which way a cache promise points'
+description: 'Ten releases after the first review we audited Strata again: an open redirect that passed a correct-looking check, a proxy that made every visitor one visitor, and a cache promise stated backwards.'
+pubDate: 2026-09-29
+author: empeeryal
+tags: [security, testing, release]
+---
+
+The [first audit](/blog/what-an-outside-audit-found) covered the template as it stood at 0.8.
+Since then it has grown a command palette, charts, a pricing table, a newsletter with a
+provider webhook, profile and session management, two-factor authentication and route caching.
+Each of those arrived with its own tests and a guide, and each added surface. So we did it
+again: four reviews in parallel, one per area, every finding checked against the code before it
+was believed, and the ones that survived fixed in release 0.20.1. This post is about the
+findings that taught us something, starting with the one that had a test saying it was fine.
+
+## A redirect check that was true and still wrong
+
+After sign-in the template sends people back to where they were, through a `next` parameter.
+The helper that validates it did what most such helpers do: accept a value that starts with `/`
+and reject one that starts with `//`, because `//evil.example` is a protocol-relative URL and a
+browser will happily leave the site for it. There was a unit test for exactly that pair.
+
+The value `/..//evil.example` passes the check. Starts with one slash, second character is a
+dot. Then the browser resolves it: `/..` goes up one level from the root, which is the root,
+leaving `//evil.example`, and the visitor is on another site. The check was applied to the
+string; the browser applied it to the path after normalisation. The fix resolves the value
+against the site's origin first and then looks at the result, refusing anything whose pathname
+does not start with exactly one slash. `/docs/../dashboard` still becomes `/dashboard`. The new
+test lists the variants we could think of, including a backslash one, because the next person
+to touch this function will think the old check looks sufficient too.
+
+## One visitor, behind a proxy
+
+The Node target is meant to run behind Caddy or nginx. Rate limiting for the contact and
+newsletter forms keys on the visitor's address, which behind a proxy arrives in
+`X-Forwarded-For`. The deployment guide said to forward that header. What it did not say, and
+what we had not checked, is that Astro only trusts it when the request's `Host` matches
+`security.allowedDomains`, and that list was empty. So the server read the socket address
+instead, which is the proxy, for everyone. Five contact-form submissions from anyone in fifteen
+minutes and the form was closed to the whole site.
+
+We confirmed it the direct way: a probe against the built server with and without a matching
+`Host`, watching which address the throttle recorded. The fix is small and deliberately
+narrow. `config/trusted-hosts.ts` puts the site's own hostname into `allowedDomains` for the
+Node target, never `localhost`, so a local run keeps trusting the socket. The guide now names
+all three headers a proxy has to forward, including `Host`, and explains why. It is a good
+example of a setting that only fails in production, because in development there is no proxy
+and in the platform targets the visitor's address comes from the platform.
+
+## Which way the promise points
+
+Release 0.19 added route caching. The guide said that a signed-in visitor's response is never
+cached, and the middleware makes that true: after every route runs, it turns the cache off for
+any request that carried a Better Auth cookie. The end-to-end test checked it.
+
+The reviewer's question was about the other direction. The cache answers a request before the
+middleware runs, that is the whole point of a cache. So a copy stored for an anonymous visitor
+is served to whoever asks next, signed in or not. For the one route that opts in today, the
+repository's star count, that is harmless. For a page that rendered the visitor's name from the
+server, it would show the first visitor's name to everyone for five minutes. Nothing was wrong
+in the code; the sentence in the guide made a promise that pointed the wrong way.
+
+The guide now states both halves, the test was extended to demonstrate the second (an
+anonymous miss followed by a signed-in hit on the same URL), and two small holes closed while we
+were there: the health endpoint is never cached, and neither is any request carrying an
+`Authorization` header. The stats endpoint also memoises its upstream call for two minutes, so a
+cold cache under load results in one request to GitHub rather than one per visitor.
+
+## Trusted devices outlive the thing they trust
+
+Two-factor authentication, from 0.18, lets a person trust a device for thirty days so the code is
+not asked for on every sign-in. Better Auth stores that trust as a row in its verification table.
+The admin action that resets someone's second factor, meant for the person who lost both their
+phone and their backup codes, deleted the secret and the backup codes and left those rows in
+place. Turning the factor off from the dashboard did the same. A trusted browser would therefore
+skip a second factor that no longer existed, which is not a security hole in itself, but it is
+not what "reset" means either, and the row would have resurrected the trust the moment the
+person set the factor up again.
+
+Both paths now delete the trusted-device rows in the same transaction, the unit test seeds
+another user's device to prove it stays, and the audit log gained the entry that was missing:
+regenerating backup codes. On the sign-in side, the form used to say "that code did not match"
+for every failure, including the one where Better Auth had ended the attempt after five wrong
+codes or ten minutes. It now says so and sends the person back to the password step, and names
+the temporary lock after ten failures separately.
+
+## Two requests, one row
+
+The newsletter's subscribe action looked up the address, then inserted a pending row if there
+was none. Two first-time requests for the same address, arriving together, both find nothing and
+both insert; the second one fails on the unique index with a 500. The pattern is the same one
+the first audit found in the last-administrator guard: a check followed by an action is two
+statements, and the world can change between them.
+
+The insert is now `ON CONFLICT DO UPDATE`, taking over the pending row with a fresh token unless
+the address confirmed in the meantime. The other transitions got the same treatment: confirming
+only matches a pending row, unsubscribing only a row that is not already unsubscribed, and each
+statement returns what it changed so the outcome comes from the database rather than from what
+the code read a moment earlier. Confirmation links expire after seven days, which the retention
+job had implied and nothing enforced. And removing a subscriber from the admin list used to
+swallow a failed call to the email provider, leaving an address in the provider's segment with
+no row to say so; the action now reports it, and the audit entry records which side succeeded.
+
+## The small ones
+
+- **Search Console** reported the docs breadcrumbs as invalid: the section crumb had no link, so
+  its `ListItem` had no `item`, which Google requires on every entry except the last. It links to
+  the section anchor now, and the SEO test parses the JSON-LD instead of checking that it exists.
+- **Throttle keys** were a plain SHA-256 of the address. Hashing all four billion IPv4 addresses
+  takes minutes, so a copy of the table was a list of visitors. The key is an HMAC with
+  `BETTER_AUTH_SECRET` now.
+- **CSV export** of subscribers neutralises cells that begin with `=`, `+`, `-`, `@` or a tab, so
+  an address crafted as a formula stays text when the file is opened in a spreadsheet.
+- **Production checks** refuse a `BETTER_AUTH_SECRET` that still says `change-me` and a
+  deployment with no public URL, and warn about a URL that is not `https`.
+- **Deleting your own account** as the last active administrator is refused in the same atomic
+  way the admin actions already were; the check-then-act version had slipped in through a
+  different door.
+- **Accessibility:** the ban reason and delivery error behind two badges in the admin tables are
+  read out with the badge, and the copy button in the two-factor setup announces its state.
+
+## What we took from it this time
+
+The first audit taught us to distrust a check that is separate from the action it guards. This
+one added two lessons. A guarantee has a direction, and the sentence that states it should say
+which way. And a validation applied to a string is not applied to what the browser, the proxy or
+the database will make of that string; test the thing after the transformation, not before.
+
+Everything above is in 0.20.1 with a test for each fix. The
+[admin](/docs/guides/admin), [authentication](/docs/guides/authentication),
+[caching](/docs/guides/caching) and [Node deployment](/docs/deploy/node) guides describe the
+current behaviour, including the parts that changed only in wording.
