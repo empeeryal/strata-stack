@@ -1,7 +1,7 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { APIError } from 'better-auth/api';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
-import { admin, magicLink } from 'better-auth/plugins';
+import { admin, magicLink, twoFactor } from 'better-auth/plugins';
 import { eq } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -127,6 +127,30 @@ export const auth = betterAuth({
     },
   },
 
+  hooks: {
+    // Two-factor changes are privacy-relevant: record who turned it on (the first code
+    // verified while signed in completes the setup) or off. Best-effort, like the other
+    // Better Auth operations.
+    after: createAuthMiddleware(async (ctx) => {
+      const action =
+        ctx.path === '/two-factor/verify-totp'
+          ? 'two_factor.enable'
+          : ctx.path === '/two-factor/disable'
+            ? 'two_factor.disable'
+            : null;
+      if (!action || ctx.context.returned instanceof APIError) return;
+      const user = ctx.context.session?.user;
+      if (!user) return;
+      await recordAudit(db, {
+        actorId: user.id,
+        actorEmail: user.email,
+        action,
+        targetType: 'user',
+        targetId: user.id,
+      });
+    }),
+  },
+
   databaseHooks: {
     user: {
       create: {
@@ -167,6 +191,13 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    // Time-based one-time passwords with backup codes. Only password sign-ins are challenged:
+    // a magic link or a social provider already proves possession of the mailbox or account.
+    // The TOTP secret and the backup codes are stored encrypted with BETTER_AUTH_SECRET.
+    twoFactor({
+      issuer: siteConfig.name,
+      backupCodeOptions: { amount: 10, length: 10, storeBackupCodes: 'encrypted' },
+    }),
     magicLink({
       // Awaited on purpose: the endpoint behaves the same for new and existing addresses,
       // and a delivery failure must surface to the user instead of a silent "check your inbox".
@@ -195,13 +226,15 @@ export const auth = betterAuth({
     storage: 'database',
     window: 60,
     max: 100,
-    // The end-to-end suite creates several accounts from one address in parallel, which the
-    // built-in sign-up/sign-in rule (3 per 10 s) would reject. Test runs only.
+    // The end-to-end suite creates several accounts from one address in parallel and walks
+    // through the two-factor flow in seconds, which the built-in sign-up/sign-in and
+    // two-factor rules (3 per 10 s) would reject. Test runs only.
     ...(getEnv('NODE_ENV') === 'test'
       ? {
           customRules: {
             '/sign-up/email': { window: 10, max: 50 },
             '/sign-in/email': { window: 10, max: 50 },
+            '/two-factor/*': { window: 10, max: 50 },
           },
         }
       : {}),

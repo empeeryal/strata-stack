@@ -2,7 +2,7 @@
 title: Admin area
 description: The built-in administration pages for contact messages, newsletter subscribers, users and the audit log, and how authorization works.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-28
+updatedDate: 2026-09-29
 sidebar:
   order: 6
   badge: new
@@ -40,14 +40,14 @@ The day-to-day side (monitoring, incidents, rotating secrets, backups) is collec
 
 ## Pages
 
-| Route                  | What it does                                                                                                                                                                            |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity                                                                    |
-| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk                                                                 |
-| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                                                                            |
-| `/admin/subscribers`   | Newsletter subscribers by status (confirmed, pending, unsubscribed), searchable by address, with the audience sync state and a CSV export of confirmed addresses with unsubscribe links |
-| `/admin/users`         | Every account with role and status, searchable by name or email; make or remove admin, ban (with an optional reason), unban, sign out everywhere, delete                                |
-| `/admin/audit`         | Audit entries, 25 per page, filtered by action, actor or target and date range                                                                                                          |
+| Route                  | What it does                                                                                                                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity                                                                      |
+| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk                                                                   |
+| `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                                                                              |
+| `/admin/subscribers`   | Newsletter subscribers by status (confirmed, pending, unsubscribed), searchable by address, with the audience sync state and a CSV export of confirmed addresses with unsubscribe links   |
+| `/admin/users`         | Every account with role and status, searchable by name or email; make or remove admin, ban (with an optional reason), unban, sign out everywhere, reset two-factor authentication, delete |
+| `/admin/audit`         | Audit entries, 25 per page, filtered by action, actor or target and date range                                                                                                            |
 
 Destructive buttons ask for confirmation through a small processed script (inline handlers
 are blocked by the CSP). After a successful action the page redirects with `?notice=<key>` and
@@ -77,6 +77,7 @@ refresh never repeats it.
 | `setUserRole`           | `changeUserRole()` in `src/lib/admin.ts`: guarded update and audit entry in one transaction                                      |
 | `banUser` / `unbanUser` | `banUserAccount()` (guarded, revokes every session) / `auth.api.unbanUser`                                                       |
 | `revokeUserSessions`    | `auth.api.revokeUserSessions`                                                                                                    |
+| `resetTwoFactor`        | `resetUserTwoFactor()`: removes the authenticator secret and backup codes and writes the audit entry in one transaction          |
 | `removeUser`            | `deleteUserAccount()`: guarded delete of the user, sessions and linked accounts                                                  |
 
 User operations go through Better Auth's admin plugin, which checks the caller's role again

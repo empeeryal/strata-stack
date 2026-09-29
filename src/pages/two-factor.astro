@@ -1,0 +1,42 @@
+---
+import TwoFactorForm from '@/components/react/auth/TwoFactorForm';
+import AuthLayout from '@/layouts/AuthLayout.astro';
+import { safeRedirectPath } from '@/lib/redirect';
+import { getAuthoritativeSession } from '@/lib/session';
+
+export const prerender = false;
+
+const redirectTo = safeRedirectPath(Astro.url.searchParams.get('next'), '/dashboard');
+
+// A signed-in visitor has nothing to verify; a pending sign-in has no session yet.
+const signedIn = Astro.locals.user
+  ? (await getAuthoritativeSession(Astro.request.headers, Astro.cookies)).user
+  : null;
+if (signedIn) {
+  return Astro.redirect(redirectTo);
+}
+Astro.locals.user = null;
+Astro.locals.session = null;
+const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redirectTo)}` : '';
+---
+
+<AuthLayout
+  title="Two-factor authentication"
+  description="Finish signing in with your second factor."
+  heading="One more step"
+  subheading="Enter the six-digit code from your authenticator app, or one of your backup codes."
+>
+  <TwoFactorForm client:load redirectTo={redirectTo} />
+  <Fragment slot="footer">
+    <a href={`/login${nextQuery}`} class="font-medium text-foreground underline underline-offset-4">
+      Back to sign in
+    </a>
+    <p class="mt-2 text-pretty">
+      Lost the authenticator and the backup codes?{' '}
+      <a href="/contact" class="font-medium text-foreground underline underline-offset-4">
+        Contact us
+      </a>{' '}
+      and an administrator can reset two-factor authentication after checking who you are.
+    </p>
+  </Fragment>
+</AuthLayout>

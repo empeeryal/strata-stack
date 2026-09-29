@@ -37,7 +37,7 @@ which is built from this exact code.
 | **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, Vite 8, Rust compiler                                                                                               |
 | **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts                                   |
 | **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                 |
-| **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, verification, password reset, protected routes, rate limiting                                 |
+| **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, two-factor authentication, verification, password reset, protected routes, rate limiting      |
 | **Accounts**  | Profile editing, data export, account deletion, change password; admin area with a contact inbox, newsletter subscribers, user management (roles, bans, sessions) and an audit log |
 | **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                                                        |
 | **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, command palette with Pagefind search                                          |

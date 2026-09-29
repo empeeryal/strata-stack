@@ -2,7 +2,7 @@
 title: Privacy and data
 description: What personal data the template stores, the self-service export and deletion flows, retention, and the checklist for adapting the legal pages.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-28
+updatedDate: 2026-09-29
 sidebar:
   order: 7
   badge: new
@@ -19,6 +19,7 @@ must adapt before launch.
 | Profile, verification, role         | `user`                  | Until the account is deleted                                                                                  |
 | Password hash / OAuth links         | `account`               | With the user                                                                                                 |
 | Sessions (IP, user agent)           | `session`               | With the user; expired rows are removed by Better Auth                                                        |
+| Two-factor secret and backup codes  | `two_factor`            | Encrypted with `BETTER_AUTH_SECRET`; with the user, or when 2FA is turned off or reset by an administrator    |
 | Contact messages                    | `contact_message`       | Archived ones are pruned; open ones too if a maximum age is set (see below)                                   |
 | Newsletter subscribers              | `newsletter_subscriber` | Confirmed ones until they unsubscribe; pending and unsubscribed rows pruned after `NEWSLETTER_RETENTION_DAYS` |
 | Throttle counters (hashed IP/email) | `throttle`              | Expire after 15 minutes / 1 hour, pruned by `db:prune`                                                        |
