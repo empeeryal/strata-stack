@@ -15,7 +15,7 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
-import TwoFactorForm from './TwoFactorForm';
+import TwoFactorForm, { CHALLENGE_OVER_MESSAGE } from './TwoFactorForm';
 
 describe('<TwoFactorForm>', () => {
   beforeEach(() => {
@@ -52,6 +52,25 @@ describe('<TwoFactorForm>', () => {
       expect(verifyBackupCode).toHaveBeenCalledWith({ code: 'aaaa-1111', trustDevice: false }),
     );
     expect(screen.getByRole('alert')).toHaveTextContent('did not match or was already used');
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('sends the visitor back to the password step once the attempt is used up', async () => {
+    verifyTotp.mockResolvedValue({
+      data: null,
+      error: {
+        status: 401,
+        code: 'INVALID_TWO_FACTOR_COOKIE',
+        message: 'Invalid two factor cookie',
+      },
+    });
+    const user = userEvent.setup();
+    render(<TwoFactorForm redirectTo="/dashboard" />);
+    await user.type(screen.getByLabelText('Authenticator code'), '000000');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(CHALLENGE_OVER_MESSAGE),
+    );
     expect(window.location.assign).not.toHaveBeenCalled();
   });
 });

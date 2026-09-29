@@ -19,8 +19,8 @@ shows how far a plain Astro component gets before an island is needed.
 | Island                 | Used on                           | Hydration                        | Page                                                                    |
 | ---------------------- | --------------------------------- | -------------------------------- | ----------------------------------------------------------------------- |
 | `CommandPalette`       | Every page, from the header       | `client:idle`                    | [Command palette](/docs/components/command-palette)                     |
-| `ContactForm`          | `/contact`                        | `client:load`                    | [Actions and forms](/docs/guides/actions-and-forms)                     |
-| `NewsletterForm`       | Footer, blog posts, `/newsletter` | `client:idle` / `client:visible` | [Newsletter form](/docs/components/newsletter-form)                     |
+| `ContactForm`          | `/contact`                        | `client:visible`                 | [Actions and forms](/docs/guides/actions-and-forms)                     |
+| `NewsletterForm`       | Footer, blog posts, `/newsletter` | `client:visible` / `client:load` | [Newsletter form](/docs/components/newsletter-form)                     |
 | `BarChart` (Astro)     | Admin overview                    | none, server SVG                 | [Bar chart](/docs/components/bar-chart)                                 |
 | `PricingTable` (Astro) | Docs example                      | none, a processed script         | [Pricing table](/docs/components/pricing-table)                         |
 | `DeployTargets`        | Home page                         | `client:visible`                 | [Styling and dark mode](/docs/guides/styling#motion)                    |

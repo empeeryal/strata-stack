@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { fetchRepoStats, parseGitHubRepo } from './repo-stats';
+import { createRepoStatsSource, fetchRepoStats, parseGitHubRepo } from './repo-stats';
 
 describe('parseGitHubRepo', () => {
   it('reads owner and name from repository URLs', () => {
@@ -49,5 +49,38 @@ describe('fetchRepoStats', () => {
       .fn<typeof fetch>()
       .mockResolvedValue(Response.json({ stargazers_count: 'many' }));
     await expect(fetchRepoStats(repo, odd)).resolves.toBeNull();
+  });
+});
+
+describe('createRepoStatsSource', () => {
+  const repo = { owner: 'empeeryal', name: 'strata-stack' };
+
+  it('asks GitHub once per interval and shares one request between concurrent callers', async () => {
+    let clock = 0;
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ stargazers_count: 7, forks_count: 1 }));
+    const read = createRepoStatsSource(repo, { intervalMs: 1000, fetchImpl, now: () => clock });
+
+    const [a, b] = await Promise.all([read(), read()]);
+    expect(a).toEqual({ stars: 7, forks: 1 });
+    expect(b).toEqual(a);
+    clock = 500;
+    await read();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    clock = 1500;
+    await read();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a failed answer for the interval too, so a broken upstream is not hammered', async () => {
+    let clock = 0;
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('offline'));
+    const read = createRepoStatsSource(repo, { intervalMs: 1000, fetchImpl, now: () => clock });
+    expect(await read()).toBeNull();
+    clock = 999;
+    expect(await read()).toBeNull();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

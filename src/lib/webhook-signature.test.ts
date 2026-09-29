@@ -32,7 +32,7 @@ describe('verifyWebhookSignature', () => {
     );
   });
 
-  it('rejects a different secret, a tampered body and a reused id', async () => {
+  it('rejects a different secret, a tampered body and a signature for another delivery id', async () => {
     const other = `whsec_${btoa('a-different-secret-of-similar-length')}`;
     expect(await verifyWebhookSignature(other, await headers(), body, now)).toBe('invalid');
     expect(await verifyWebhookSignature(secret, await headers(), `${body} `, now)).toBe('invalid');

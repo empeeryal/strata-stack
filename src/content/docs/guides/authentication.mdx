@@ -13,19 +13,21 @@ TypeScript auth library. Sessions are stored in your database and exposed to Ast
 
 ## Anatomy
 
-| File                                                      | Role                                                                    |
-| --------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `src/lib/auth.ts`                                         | Server instance: providers, plugins, verification, rate limiting        |
-| `src/lib/auth-client.ts`                                  | Browser client for React islands (magic link + admin plugins)           |
-| `src/lib/email.ts`                                        | Email delivery and its production safety rule                           |
-| `src/pages/api/auth/[...all].ts`                          | Catch-all route that mounts the Better Auth handler                     |
-| `src/middleware.ts`                                       | Verifies production config, resolves the session for on-demand requests |
-| `src/db/schema/auth.ts`                                   | Generated Drizzle schema (`pnpm auth:generate`)                         |
-| `src/pages/login.astro`, `signup.astro`                   | Sign-in and sign-up pages (server rendered)                             |
-| `src/pages/forgot-password.astro`, `reset-password.astro` | Password reset flow                                                     |
-| `src/pages/dashboard.astro`                               | Protected page with account self-service                                |
-| `src/pages/api/account/export.ts`                         | JSON export of the signed-in user's data                                |
-| `src/components/react/auth/*`, `react/account/*`          | Forms: sign-in, sign-up, magic link, social, reset, verify, delete      |
+| File                                                      | Role                                                                                              |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/lib/auth.ts`                                         | Server instance: providers, plugins, verification, rate limiting                                  |
+| `src/lib/auth-client.ts`                                  | Browser client for React islands (magic link, admin, two-factor)                                  |
+| `src/lib/session.ts`, `profile.ts`, `account.ts`          | Authoritative session lookup, profile validation, own-session revocation                          |
+| `src/lib/email.ts`                                        | Email delivery and its production safety rule                                                     |
+| `src/pages/api/auth/[...all].ts`                          | Catch-all route that mounts the Better Auth handler                                               |
+| `src/middleware.ts`                                       | Verifies production config, resolves the session for on-demand requests                           |
+| `src/db/schema/auth.ts`                                   | Generated Drizzle schema (`pnpm auth:generate`)                                                   |
+| `src/pages/login.astro`, `signup.astro`                   | Sign-in and sign-up pages (server rendered)                                                       |
+| `src/pages/forgot-password.astro`, `reset-password.astro` | Password reset flow                                                                               |
+| `src/pages/dashboard.astro`                               | Protected page with account self-service                                                          |
+| `src/pages/two-factor.astro`                              | Second step of a password sign-in for accounts with a second factor                               |
+| `src/pages/api/account/export.ts`                         | JSON export of the signed-in user's data                                                          |
+| `src/components/react/auth/*`, `react/account/*`          | Forms: sign-in, sign-up, magic link, social, two-factor, reset, verify, profile, sessions, delete |
 
 ## Sign-in methods
 
@@ -84,7 +86,9 @@ card the backup codes can be regenerated and the factor turned off, both with th
 At sign-in, Better Auth answers a correct password with `twoFactorRedirect` instead of a
 session. The sign-in form sends the visitor to `/two-factor` (`TwoFactorForm`), where the code
 from the app or one backup code completes the sign-in; "Trust this device for 30 days" skips
-the step on that browser. Ten failed attempts in a row lock the second step for fifteen minutes.
+the step on that browser. Each pending sign-in allows five wrong codes and lasts ten minutes; after
+that the form sends the visitor back to the password step. Ten failed attempts in a row lock the
+second step for fifteen minutes.
 
 What it covers, and what it does not:
 
@@ -93,11 +97,12 @@ What it covers, and what it does not:
   Accounts without a password see an explanation instead of the setup.
 - The TOTP secret and the backup codes are stored encrypted with `BETTER_AUTH_SECRET` in the
   `two_factor` table. Rotating that secret makes every authenticator entry unusable, not only
-  the sessions; see [operating the site](/docs/guides/operations#day-to-day).
+  the sessions; see [operating the site](/docs/guides/operations#incidents).
 - Someone who loses both the authenticator and the backup codes cannot sign in. The users page
   in the admin area shows a **2FA** badge and a **Reset 2FA** action that removes the factor so
-  the person signs in with the password and sets it up again; use it after checking who you are
-  talking to. Turning the factor on, off or resetting it is recorded in the audit log.
+  the person signs in with the password and sets it up again, and it forgets the trusted
+  devices; use it after checking who you are talking to. Turning the factor on or off,
+  regenerating backup codes and resetting it are recorded in the audit log.
 
 `tests/e2e/two-factor.spec.ts` runs the whole flow with real codes computed from the key the
 setup shows.
@@ -129,8 +134,9 @@ job.
 
 ## JavaScript is required for the auth forms
 
-Sign-up, sign-in, magic links, password reset and change, email verification and account
-deletion are React islands that talk to Better Auth's client, so they need JavaScript. The
+Sign-up, sign-in, magic links, the two-factor step and its setup, password reset and change,
+email verification, profile editing and account deletion are React islands that talk to Better
+Auth's client, so they need JavaScript. The
 pages themselves render on the server (title, copy, the links between them), but a visitor
 with scripts disabled cannot submit them. The dashboard's session controls and the admin area
 are forms posting to actions and work without JavaScript; the session list adds an island on
@@ -227,8 +233,9 @@ Better Auth additionally checks `trustedOrigins`, which are derived from `BETTER
 
 ## Adding plugins
 
-Better Auth ships plugins for two-factor authentication, organisations, passkeys and more. Add
-the plugin to `src/lib/auth.ts`, its client counterpart to `src/lib/auth-client.ts`, then
+Better Auth ships plugins for organisations, passkeys, API keys and more (two-factor
+authentication, magic links and the admin plugin are already in). Add the plugin to
+`src/lib/auth.ts`, its client counterpart to `src/lib/auth-client.ts`, then
 regenerate and migrate the schema:
 
 ```bash

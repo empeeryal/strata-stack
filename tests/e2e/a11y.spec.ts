@@ -38,6 +38,7 @@ const PUBLIC_PAGES: Array<{ path: string; ready?: (page: Page) => Promise<void> 
   { path: '/contact' },
   { path: '/newsletter' },
   { path: '/newsletter/confirm?token=not-a-real-token' },
+  { path: '/newsletter/unsubscribe?token=not-a-real-token' },
   { path: '/login' },
   { path: '/signup' },
   { path: '/forgot-password' },
@@ -145,7 +146,14 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
     await context.close();
   });
 
-  for (const path of ['/dashboard', '/admin', '/admin/messages', '/admin/users', '/admin/audit']) {
+  for (const path of [
+    '/dashboard',
+    '/admin',
+    '/admin/messages',
+    '/admin/users',
+    '/admin/subscribers',
+    '/admin/audit',
+  ]) {
     test(`no accessibility violations on ${path}`, async ({ browser }) => {
       await asAdmin(browser, async (page) => {
         await page.goto(path);

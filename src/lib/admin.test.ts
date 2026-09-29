@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { account, auditLog, session, user } from '@/db/schema';
+import { account, auditLog, session, twoFactor, user, verification } from '@/db/schema';
 
 import { createTestDb } from '../../tests/unit/db';
 
@@ -15,6 +15,7 @@ import {
   LastAdminError,
   notLastActiveAdmin,
   recordAudit,
+  resetUserTwoFactor,
   UserNotFoundError,
   writeAudit,
 } from './admin';
@@ -248,11 +249,40 @@ describe('guarded user operations', () => {
     expect(entry).toMatchObject({ action: 'user.delete', targetId: 'bob' });
   });
 
+  it('resets two-factor authentication together with the trusted devices, and logs it', async () => {
+    const later = new Date(Date.now() + 3_600_000);
+    await testDb.db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, 'bob'));
+    await testDb.db
+      .insert(twoFactor)
+      .values({ id: 'tf-bob', secret: 's', backupCodes: 'b', userId: 'bob' });
+    await testDb.db.insert(verification).values([
+      // Better Auth stores a trusted device as a verification row whose value is the user id.
+      { id: 'v1', identifier: 'trust-device-aaa', value: 'bob', expiresAt: later },
+      { id: 'v2', identifier: 'trust-device-bbb', value: 'alice', expiresAt: later },
+      { id: 'v3', identifier: 'bob@example.com', value: 'bob', expiresAt: later },
+    ]);
+
+    await resetUserTwoFactor(testDb.db, alice, 'bob');
+
+    expect(await testDb.db.select().from(twoFactor)).toHaveLength(0);
+    const [row] = await testDb.db.select().from(user).where(eq(user.id, 'bob'));
+    expect(row?.twoFactorEnabled).toBe(false);
+    const left = (await testDb.db.select({ id: verification.id }).from(verification)).map(
+      (v) => v.id,
+    );
+    expect(left.sort()).toEqual(['v2', 'v3']); // Alice's device and Bob's other row stay
+    const [entry] = await testDb.db.select().from(auditLog);
+    expect(entry).toMatchObject({ action: 'user.reset_two_factor', targetId: 'bob' });
+  });
+
   it('reports unknown accounts', async () => {
     await expect(changeUserRole(testDb.db, alice, 'nobody', 'user')).rejects.toBeInstanceOf(
       UserNotFoundError,
     );
     await expect(deleteUserAccount(testDb.db, alice, 'nobody')).rejects.toBeInstanceOf(
+      UserNotFoundError,
+    );
+    await expect(resetUserTwoFactor(testDb.db, alice, 'nobody')).rejects.toBeInstanceOf(
       UserNotFoundError,
     );
   });

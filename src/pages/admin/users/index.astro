@@ -151,8 +151,9 @@ const summary =
                       <Badge variant="muted">Unverified</Badge>
                     )}
                     {account.banned && (
-                      <Badge variant="danger" title={account.banReason ?? undefined}>
+                      <Badge variant="danger">
                         Banned
+                        {account.banReason && <span class="sr-only">: {account.banReason}</span>}
                       </Badge>
                     )}
                     {account.twoFactorEnabled && <Badge variant="outline">2FA</Badge>}

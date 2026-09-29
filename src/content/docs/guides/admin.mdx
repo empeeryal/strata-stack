@@ -5,7 +5,7 @@ publishedDate: 2026-09-18
 updatedDate: 2026-09-29
 sidebar:
   order: 6
-  badge: new
+  badge: updated
 ---
 
 Signed-in users with the `admin` role get an **Admin** link in the header that opens `/admin`.
@@ -43,7 +43,7 @@ The day-to-day side (monitoring, incidents, rotating secrets, backups) is collec
 | Route                  | What it does                                                                                                                                                                              |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/admin`               | Counts, configuration health (email delivery, contact recipient), failed notifications, latest messages and activity                                                                      |
-| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive and delete in bulk                                                                   |
+| `/admin/messages`      | Inbox with New / Read / Archived / All views, search by sender name or address, 25 per page; archive, delete, retry delivery                                                              |
 | `/admin/messages/[id]` | Full message with read, archive and delivery timestamps; mark read or unread, reply by email, resend, delete                                                                              |
 | `/admin/subscribers`   | Newsletter subscribers by status (confirmed, pending, unsubscribed), searchable by address, with the audience sync state and a CSV export of confirmed addresses with unsubscribe links   |
 | `/admin/users`         | Every account with role and status, searchable by name or email; make or remove admin, ban (with an optional reason), unban, sign out everywhere, reset two-factor authentication, delete |
@@ -68,21 +68,22 @@ and are called from plain `<form method="POST">` elements, so they are covered b
 origin check. The pages redirect after a successful action (POST → redirect → GET) so a
 refresh never repeats it.
 
-| Action                  | Backed by                                                                                                                        |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `setMessageStatus`      | `contact_message.status` (+ `read_at` / `archived_at`)                                                                           |
-| `deleteMessage`         | Hard delete                                                                                                                      |
-| `retryMessageDelivery`  | `deliverContactMessage()` in `src/lib/contact.ts`                                                                                |
-| `removeSubscriber`      | Marks the address unsubscribed at the provider (best-effort), then deletes the row and writes the audit entry in one transaction |
-| `setUserRole`           | `changeUserRole()` in `src/lib/admin.ts`: guarded update and audit entry in one transaction                                      |
-| `banUser` / `unbanUser` | `banUserAccount()` (guarded, revokes every session) / `auth.api.unbanUser`                                                       |
-| `revokeUserSessions`    | `auth.api.revokeUserSessions`                                                                                                    |
-| `resetTwoFactor`        | `resetUserTwoFactor()`: removes the authenticator secret and backup codes and writes the audit entry in one transaction          |
-| `removeUser`            | `deleteUserAccount()`: guarded delete of the user, sessions and linked accounts                                                  |
+| Action                  | Backed by                                                                                                                                                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setMessageStatus`      | `contact_message.status` (+ `read_at` / `archived_at`)                                                                                                                                                                                        |
+| `deleteMessage`         | Hard delete                                                                                                                                                                                                                                   |
+| `retryMessageDelivery`  | `deliverContactMessage()` in `src/lib/contact.ts`                                                                                                                                                                                             |
+| `removeSubscriber`      | `removeSubscriber()` in `src/lib/newsletter.ts`: removes a confirmed address from the Resend segment (best-effort), then deletes the row and writes the audit entry in one transaction; the notice says when the segment could not be updated |
+| `setUserRole`           | `changeUserRole()` in `src/lib/admin.ts`: guarded update and audit entry in one transaction                                                                                                                                                   |
+| `banUser` / `unbanUser` | `banUserAccount()` (guarded, revokes every session) / `auth.api.unbanUser`                                                                                                                                                                    |
+| `revokeUserSessions`    | `auth.api.revokeUserSessions`                                                                                                                                                                                                                 |
+| `resetTwoFactor`        | `resetUserTwoFactor()`: removes the authenticator secret, the backup codes and the trusted devices, and writes the audit entry in one transaction                                                                                             |
+| `removeUser`            | `deleteUserAccount()`: guarded delete of the user, sessions and linked accounts                                                                                                                                                               |
 
-User operations go through Better Auth's admin plugin, which checks the caller's role again
-against the database. Every action writes an audit entry and returns a `notice` key for the
-confirmation.
+`unbanUser` and `revokeUserSessions` go through Better Auth's admin plugin, which checks the
+caller's role again against the database; the other user operations are guarded SQL in
+`src/lib/admin.ts`, run after `requireAdmin()` has read the caller's role from the database.
+Every action writes an audit entry and returns a `notice` key for the confirmation.
 
 ## Audit log
 

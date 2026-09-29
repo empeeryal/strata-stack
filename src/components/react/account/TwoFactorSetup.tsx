@@ -286,7 +286,7 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
           </ol>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={copyCodes}>
-              {copied ? 'Copied' : 'Copy codes'}
+              <span aria-live="polite">{copied ? 'Copied' : 'Copy codes'}</span>
             </Button>
             <Button type="button" onClick={finish}>
               Done

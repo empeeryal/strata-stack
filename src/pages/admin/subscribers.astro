@@ -208,8 +208,9 @@ const SOURCE_LABELS: Record<string, string> = {
               {audienceConfigured && (
                 <td class="px-4 py-3 align-top">
                   {subscriber.audienceError ? (
-                    <Badge variant="danger" title={subscriber.audienceError}>
+                    <Badge variant="danger">
                       Failed
+                      <span class="sr-only">: {subscriber.audienceError}</span>
                     </Badge>
                   ) : subscriber.audienceSyncedAt ? (
                     <Badge variant="success">Synced</Badge>

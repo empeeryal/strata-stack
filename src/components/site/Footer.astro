@@ -3,6 +3,7 @@ import { Icon } from 'astro-icon/components';
 
 import NewsletterForm from '@/components/react/NewsletterForm';
 import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
+import { newsletterLabels } from '@/i18n/newsletter-labels';
 import { deployTargetLabel } from '@/lib/deploy-target';
 import { siteConfig } from '@/site.config';
 
@@ -18,14 +19,6 @@ const groups = siteConfig.footer.map((group) => ({
     label: labelFor(locale, link.href, link.label),
   })),
 }));
-const newsletterLabels = {
-  email: t('newsletter.email'),
-  placeholder: t('newsletter.placeholder'),
-  submit: t('newsletter.submit'),
-  formLabel: t('newsletter.formLabel'),
-  sent: t('newsletter.sent'),
-  invalidEmail: t('newsletter.invalidEmail'),
-};
 ---
 
 <footer class="border-t bg-muted/40">
@@ -35,7 +28,7 @@ const newsletterLabels = {
         <Logo id="footer" class="size-7" />
         <span>{siteConfig.name}</span>
       </a>
-      <p class="max-w-xs text-sm text-muted-foreground">{siteConfig.tagline}</p>
+      <p class="max-w-xs text-sm text-muted-foreground">{t('footer.tagline')}</p>
       <div class="flex items-center gap-2">
         <a
           href={siteConfig.social.github}
@@ -87,7 +80,7 @@ const newsletterLabels = {
           source="footer"
           compact
           className="w-full md:max-w-sm"
-          labels={newsletterLabels}
+          labels={newsletterLabels(t)}
         />
       </div>
     </div>

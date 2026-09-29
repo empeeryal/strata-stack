@@ -9,6 +9,7 @@ import { defineConfig, envField, fontProviders } from 'astro/config';
 import { resolveAdapter, resolveDeployTarget } from './config/adapter';
 import { resolveCacheProvider } from './config/cache';
 import { resolveSiteUrl } from './config/site-url';
+import { trustedHosts } from './config/trusted-hosts';
 import { securityHeaders } from './integrations/security-headers';
 import { themeScript } from './integrations/theme-script';
 import { defaultLocale, locales } from './src/i18n/config';
@@ -23,6 +24,11 @@ const deployTarget = resolveDeployTarget();
 const { url: site, source: siteSource } = resolveSiteUrl(process.env, siteConfig.url);
 console.info(`[site] ${site} (from ${siteSource})`);
 
+// On Node behind a reverse proxy, forwarded headers are only trusted for the site's own host
+// (config/trusted-hosts.ts); rate limiting would otherwise key on the proxy address.
+const hosts = trustedHosts(deployTarget, site);
+const allowedDomains = hosts ? { allowedDomains: hosts } : {};
+
 // Kept out of the sitemap. Anchored to the start of the pathname so e.g. /docs/guides/admin
 // stays indexable; the trailing group accepts the trailing slash the sitemap integration emits.
 const SITEMAP_EXCLUDE = [
@@ -35,6 +41,9 @@ const SITEMAP_EXCLUDE = [
   /^\/reset-password(\/|$)/,
   /^\/account-deleted(\/|$)/,
   /^\/500(\/|$)/,
+  // noindex pages that only work with a token or a pending sign-in.
+  /^\/two-factor(\/|$)/,
+  /^\/newsletter\/(confirm|unsubscribe)(\/|$)/,
 ];
 
 // https://docs.astro.build/en/reference/configuration-reference/
@@ -163,6 +172,7 @@ export default defineConfig({
 
   security: {
     checkOrigin: true,
+    ...allowedDomains,
     // Astro emits a Content-Security-Policy with per-page hashes for the scripts and
     // styles it processes. Scripts stay hash-only; only `style-src-attr` is relaxed so
     // that Shiki's inline token colours (style attributes) keep working.

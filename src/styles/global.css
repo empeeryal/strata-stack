@@ -21,9 +21,6 @@
   --card: oklch(100% 0 0);
   --card-foreground: var(--foreground);
 
-  --popover: oklch(100% 0 0);
-  --popover-foreground: var(--foreground);
-
   --border: oklch(91% 0.01 262);
   --input: oklch(88% 0.012 262);
   --ring: oklch(52% 0.23 275);
@@ -68,9 +65,6 @@
   --card: oklch(18.5% 0.02 262);
   --card-foreground: var(--foreground);
 
-  --popover: oklch(18.5% 0.02 262);
-  --popover-foreground: var(--foreground);
-
   --border: oklch(28% 0.02 262);
   --input: oklch(31% 0.02 262);
   --ring: oklch(72% 0.17 275);
@@ -104,8 +98,6 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -345,13 +337,6 @@
 /* ------------------------------------------------------------------------- */
 /* Pagefind component UI – follow the site theme                              */
 /* ------------------------------------------------------------------------- */
-/* Pagefind renders its own trigger button; Search.astro keeps it for its click
-   handler but shows custom buttons instead. Unlayered so it beats Pagefind's CSS. */
-pagefind-modal-trigger.pf-trigger-hidden {
-  display: none !important;
-}
-
-pagefind-modal,
 pagefind-searchbox,
 pagefind-input,
 pagefind-results,

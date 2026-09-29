@@ -30,10 +30,55 @@ describe('checkProductionConfig', () => {
     ).toContainEqual(expect.objectContaining({ level: 'error' }));
   });
 
+  it('rejects the placeholder secret from .env.example', () => {
+    expect(
+      checkProductionConfig({
+        NODE_ENV: 'production',
+        BETTER_AUTH_SECRET: 'change-me-to-a-random-32-byte-secret',
+        BETTER_AUTH_URL: 'https://example.com',
+      }),
+    ).toContainEqual(
+      expect.objectContaining({ level: 'error', message: expect.stringContaining('placeholder') }),
+    );
+  });
+
+  it('requires a public URL and prefers https', () => {
+    const missing = checkProductionConfig({
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: STRONG_SECRET,
+    });
+    expect(missing).toContainEqual(
+      expect.objectContaining({ level: 'error', message: expect.stringContaining('public URL') }),
+    );
+    const plain = checkProductionConfig({
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: STRONG_SECRET,
+      BETTER_AUTH_URL: 'http://example.com',
+      DATABASE_URL: 'libsql://db.turso.io',
+      RESEND_API_KEY: 're_123',
+      CONTACT_TO_EMAIL: 'owner@example.com',
+    });
+    expect(plain).toEqual([
+      expect.objectContaining({ level: 'warn', message: expect.stringContaining('not https') }),
+    ]);
+    // Platform variables count as configuration.
+    expect(
+      checkProductionConfig({
+        NODE_ENV: 'production',
+        BETTER_AUTH_SECRET: STRONG_SECRET,
+        VERCEL_PROJECT_PRODUCTION_URL: 'example.vercel.app',
+        DATABASE_URL: 'libsql://db.turso.io',
+        RESEND_API_KEY: 're_123',
+        CONTACT_TO_EMAIL: 'owner@example.com',
+      }),
+    ).toEqual([]);
+  });
+
   it('warns about a file database and missing email settings', () => {
     const issues = checkProductionConfig({
       NODE_ENV: 'production',
       BETTER_AUTH_SECRET: STRONG_SECRET,
+      BETTER_AUTH_URL: 'https://example.com',
       DATABASE_URL: 'file:./.data/local.db',
     });
     expect(issues.every((issue) => issue.level === 'warn')).toBe(true);
@@ -49,6 +94,7 @@ describe('checkProductionConfig', () => {
       checkProductionConfig({
         NODE_ENV: 'production',
         BETTER_AUTH_SECRET: STRONG_SECRET,
+        BETTER_AUTH_URL: 'https://example.com',
         DATABASE_URL: 'libsql://db.turso.io',
         RESEND_API_KEY: 're_123',
         CONTACT_TO_EMAIL: 'owner@example.com',
@@ -84,7 +130,11 @@ describe('assertProductionConfig', () => {
   it('throws on errors and passes on warnings', () => {
     expect(() => assertProductionConfig({ NODE_ENV: 'production' })).toThrow(/BETTER_AUTH_SECRET/);
     expect(() =>
-      assertProductionConfig({ NODE_ENV: 'production', BETTER_AUTH_SECRET: STRONG_SECRET }),
+      assertProductionConfig({
+        NODE_ENV: 'production',
+        BETTER_AUTH_SECRET: STRONG_SECRET,
+        BETTER_AUTH_URL: 'https://example.com',
+      }),
     ).not.toThrow();
   });
 });

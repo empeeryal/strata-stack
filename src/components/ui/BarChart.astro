@@ -12,6 +12,7 @@ import {
   labelledIndexes,
   summarise,
 } from '@/lib/chart';
+import { fnv1a } from '@/lib/hash';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -23,10 +24,19 @@ interface Props {
   unit?: string;
   /** Height of the drawing in SVG units (the width follows the container). */
   height?: number;
+  /** Header of the first column in the data table, what each bar stands for. */
+  categoryLabel?: string;
   class?: string;
 }
 
-const { data, title, unit = 'items', height = 160, class: className } = Astro.props;
+const {
+  data,
+  title,
+  unit = 'items',
+  height = 160,
+  categoryLabel = 'Day',
+  class: className,
+} = Astro.props;
 
 const width = 640;
 const layout = barLayout(
@@ -36,10 +46,11 @@ const layout = barLayout(
 const { total, peak } = summarise(data);
 const labelled = new Set(labelledIndexes(data.length));
 const summary =
-  total === 0
+  total === 0 || peak === null
     ? `No ${unit} in this period.`
-    : `${formatCount(total)} ${unit} in total; the peak is ${formatCount(peak!.value)} on ${peak!.detail ?? peak!.label}.`;
-const id = `chart-${Math.random().toString(36).slice(2, 8)}`;
+    : `${formatCount(total)} ${unit} in total; the peak is ${formatCount(peak.value)} on ${peak.detail ?? peak.label}.`;
+// Stable across builds: derived from the data, so prerendered pages do not change per deploy.
+const id = `chart-${fnv1a(title + JSON.stringify(data))}`;
 const unitHeading = unit.charAt(0).toUpperCase() + unit.slice(1);
 ---
 
@@ -138,7 +149,7 @@ const unitHeading = unit.charAt(0).toUpperCase() + unit.slice(1);
       <thead>
         <tr class="text-muted-foreground">
           <th scope="col" class="py-1 font-medium">
-            Day
+            {categoryLabel}
           </th>
           <th scope="col" class="py-1 text-right font-medium">
             {unitHeading}

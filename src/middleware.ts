@@ -50,6 +50,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       method: context.request.method,
       pathname: context.url.pathname,
       cookieHeader: context.request.headers.get('cookie'),
+      authorization: context.request.headers.get('authorization'),
       hasSession: context.locals.session !== null,
     })
   ) {

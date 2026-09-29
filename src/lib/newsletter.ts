@@ -1,10 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 
 import type { Database } from '../db/client';
 import { newsletterSubscribers } from '../db/schema/app';
 
-import { recordAudit } from './admin';
+import { recordAudit, writeAudit } from './admin';
 import type { EmailMessage } from './email';
+import { describeError } from './errors';
 import { consumeThrottle, hashThrottleKey, type ThrottleRule } from './throttle';
 
 /**
@@ -59,6 +60,9 @@ export interface SubscribeContext {
 export type SubscribeOutcome = 'confirmation-sent' | 'already-subscribed' | 'ignored';
 
 export type ConfirmOutcome = 'confirmed' | 'already-confirmed' | 'invalid';
+
+/** How long a confirmation link stays valid; the prune job removes stale pending rows later. */
+export const CONFIRMATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export type UnsubscribeOutcome = 'unsubscribed' | 'already-unsubscribed' | 'invalid';
 
 /**
@@ -93,13 +97,6 @@ export const NEWSLETTER_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule } 
   perIp: { limit: 5, windowMs: 15 * 60 * 1000 },
   perEmail: { limit: 3, windowMs: 60 * 60 * 1000 },
 };
-
-const MAX_ERROR_LENGTH = 500;
-
-function describeError(error: unknown): string {
-  const text = error instanceof Error ? error.message : String(error);
-  return text.slice(0, MAX_ERROR_LENGTH);
-}
 
 /** 256 random bits as base64url: URL-safe and free of characters that mail clients break on. */
 export function generateToken(): string {
@@ -190,28 +187,48 @@ export async function subscribeToNewsletter(
 
   const token = generateToken();
   const at = now();
+  const pending = {
+    status: 'pending' as const,
+    token,
+    confirmationSentAt: at,
+    unsubscribedAt: null,
+    updatedAt: at,
+  };
   if (existing) {
     await deps.db
       .update(newsletterSubscribers)
-      .set({
-        status: 'pending',
-        token,
-        confirmationSentAt: at,
-        unsubscribedAt: null,
-        updatedAt: at,
-      })
+      .set(pending)
       .where(eq(newsletterSubscribers.id, existing.id));
   } else {
-    await deps.db.insert(newsletterSubscribers).values({
-      id: crypto.randomUUID(),
-      email,
-      status: 'pending',
-      token,
-      source: input.source ?? null,
-      confirmationSentAt: at,
-      createdAt: at,
-      updatedAt: at,
-    });
+    // Two first-time requests for one address can race past the select above; the second
+    // then lands on the unique index and takes the pending row over instead of failing.
+    const [stored] = await deps.db
+      .insert(newsletterSubscribers)
+      .values({
+        id: crypto.randomUUID(),
+        email,
+        ...pending,
+        source: input.source ?? null,
+        createdAt: at,
+      })
+      .onConflictDoUpdate({
+        target: newsletterSubscribers.email,
+        set: pending,
+        setWhere: ne(newsletterSubscribers.status, 'confirmed'),
+      })
+      .returning({ status: newsletterSubscribers.status });
+    if (!stored) {
+      // The address was confirmed in between: behave like the confirmed branch above.
+      const [confirmed] = await deps.db
+        .select({ token: newsletterSubscribers.token })
+        .from(newsletterSubscribers)
+        .where(eq(newsletterSubscribers.email, email))
+        .limit(1);
+      if (confirmed) {
+        await send(alreadySubscribedEmail(email, confirmed.token, deps));
+        return 'already-subscribed';
+      }
+    }
   }
 
   await send(confirmationEmail(email, token, deps));
@@ -253,10 +270,21 @@ export async function confirmSubscription(
 
   const now = deps.now ?? (() => new Date());
   const at = now();
-  await deps.db
+  // A link from long ago no longer proves the address wants mail now.
+  if (
+    row.confirmationSentAt &&
+    at.valueOf() - row.confirmationSentAt.valueOf() > CONFIRMATION_TTL_MS
+  ) {
+    return 'invalid';
+  }
+  // The status predicate makes the change atomic: an unsubscribe or provider opt-out that
+  // landed between the read above and this write wins, and the stale link stays invalid.
+  const [confirmed] = await deps.db
     .update(newsletterSubscribers)
     .set({ status: 'confirmed', confirmedAt: at, updatedAt: at })
-    .where(eq(newsletterSubscribers.id, row.id));
+    .where(and(eq(newsletterSubscribers.id, row.id), eq(newsletterSubscribers.status, 'pending')))
+    .returning({ id: newsletterSubscribers.id });
+  if (!confirmed) return 'invalid';
   await syncAudience(row.id, row.email, 'add', deps);
   return 'confirmed';
 }
@@ -272,10 +300,14 @@ export async function unsubscribeFromNewsletter(
 
   const now = deps.now ?? (() => new Date());
   const at = now();
-  await deps.db
+  const [ended] = await deps.db
     .update(newsletterSubscribers)
     .set({ status: 'unsubscribed', unsubscribedAt: at, updatedAt: at })
-    .where(eq(newsletterSubscribers.id, row.id));
+    .where(
+      and(eq(newsletterSubscribers.id, row.id), ne(newsletterSubscribers.status, 'unsubscribed')),
+    )
+    .returning({ status: newsletterSubscribers.status });
+  if (!ended) return 'already-unsubscribed';
   if (row.status === 'confirmed') await syncAudience(row.id, row.email, 'remove', deps);
   return 'unsubscribed';
 }
@@ -343,7 +375,7 @@ export async function applyProviderContactEvent(
 
   const now = deps.now ?? (() => new Date());
   const at = now();
-  await deps.db
+  const [ended] = await deps.db
     .update(newsletterSubscribers)
     .set({
       status: 'unsubscribed',
@@ -353,7 +385,11 @@ export async function applyProviderContactEvent(
       audienceSyncedAt: at,
       audienceError: null,
     })
-    .where(eq(newsletterSubscribers.id, row.id));
+    .where(
+      and(eq(newsletterSubscribers.id, row.id), ne(newsletterSubscribers.status, 'unsubscribed')),
+    )
+    .returning({ id: newsletterSubscribers.id });
+  if (!ended) return 'ignored';
   await recordAudit(deps.db, {
     action: 'subscriber.unsubscribe',
     targetType: 'subscriber',
@@ -361,4 +397,65 @@ export async function applyProviderContactEvent(
     details: { via: 'provider', event: type },
   });
   return 'unsubscribed';
+}
+
+/** Thrown when the subscriber an admin operation targets does not exist (or was just removed). */
+export class SubscriberNotFoundError extends Error {
+  constructor() {
+    super('Subscriber not found.');
+    this.name = 'SubscriberNotFoundError';
+  }
+}
+
+/**
+ * What an admin removal did at the provider: `removed-unsynced` means the row is gone here
+ * but the contact could not be updated at the provider and still needs attention there.
+ */
+export type RemoveSubscriberOutcome = 'removed' | 'removed-unsynced';
+
+/**
+ * Deletes a subscriber for an administrator. A confirmed address is marked unsubscribed at
+ * the provider first (best effort; a failure is reported, not hidden), then the row and its
+ * audit entry are written in one transaction. Two admins removing the same row see one
+ * success and one "not found".
+ */
+export async function removeSubscriber(
+  id: string,
+  actor: { id: string; email: string },
+  deps: NewsletterDeps,
+): Promise<RemoveSubscriberOutcome> {
+  const [row] = await deps.db
+    .select()
+    .from(newsletterSubscribers)
+    .where(eq(newsletterSubscribers.id, id))
+    .limit(1);
+  if (!row) throw new SubscriberNotFoundError();
+
+  let provider: 'removed' | 'failed' | 'skipped' = 'skipped';
+  if (row.status === 'confirmed' && deps.audience) {
+    try {
+      await deps.audience.remove(row.email);
+      provider = 'removed';
+    } catch (error) {
+      console.error('[newsletter] audience remove failed', error);
+      provider = 'failed';
+    }
+  }
+
+  await deps.db.transaction(async (tx) => {
+    const deleted = await tx
+      .delete(newsletterSubscribers)
+      .where(eq(newsletterSubscribers.id, id))
+      .returning({ id: newsletterSubscribers.id });
+    if (deleted.length === 0) throw new SubscriberNotFoundError();
+    await writeAudit(tx, {
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: 'subscriber.delete',
+      targetType: 'subscriber',
+      targetId: id,
+      details: { status: row.status, provider },
+    });
+  });
+  return provider === 'failed' ? 'removed-unsynced' : 'removed';
 }

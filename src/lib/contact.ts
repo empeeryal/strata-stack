@@ -4,6 +4,7 @@ import type { Database } from '../db/client';
 import { contactMessages, type DeliveryStatus } from '../db/schema/app';
 
 import { formatAddress, type EmailMessage } from './email';
+import { describeError } from './errors';
 import { consumeThrottle, hashThrottleKey, type ThrottleRule } from './throttle';
 
 export interface ContactSubmission {
@@ -68,13 +69,6 @@ export const CONTACT_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule } = {
   perIp: { limit: 5, windowMs: 15 * 60 * 1000 },
   perEmail: { limit: 3, windowMs: 60 * 60 * 1000 },
 };
-
-const MAX_ERROR_LENGTH = 500;
-
-function describeError(error: unknown): string {
-  const text = error instanceof Error ? error.message : String(error);
-  return text.slice(0, MAX_ERROR_LENGTH);
-}
 
 /**
  * Handles a contact form submission end to end:
@@ -175,7 +169,8 @@ export async function deliverContactMessage(
       to: deps.recipient,
       // Replying from a mail client answers the visitor, not the sending address.
       replyTo: formatAddress(row.name, row.email),
-      subject: `[${deps.siteName}] Contact form: ${row.name}`,
+      // The name is free text; keep control characters (CRLF included) out of the header.
+      subject: `[${deps.siteName}] Contact form: ${row.name.replace(/[\p{Cc}]/gu, '')}`,
       text: `From: ${row.name} <${row.email}>\n\n${row.message}`,
     });
     await deps.db

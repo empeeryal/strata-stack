@@ -51,8 +51,11 @@ to a Turso database; see [CI and releases](/docs/guides/ci-cd#database-migration
 
 Put the server behind a TLS-terminating proxy (Caddy, nginx, a platform load balancer). The
 middleware adds security headers to server-rendered responses; for static files add them at the
-proxy, using `public/_headers` as the reference list. Make sure the proxy forwards
-`X-Forwarded-For` so rate limiting sees real client addresses.
+proxy, using `public/_headers` as the reference list. Make sure the proxy forwards the original
+`Host`, plus `X-Forwarded-For` and `X-Forwarded-Proto`: Astro only trusts those headers when
+`Host` is the site's own hostname (`security.allowedDomains`, filled in from the site URL by
+`config/trusted-hosts.ts`), and without them every visitor would share the proxy's address for
+rate limiting.
 
 Cached server-rendered responses (see [Caching](/docs/guides/caching)) live in the server's
 memory on this target, one copy per process. Behind a load balancer every instance fills its own;

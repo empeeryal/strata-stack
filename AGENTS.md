@@ -22,8 +22,13 @@ Environment: copy `.env.example` to `.env`. The local database is `.data/local.d
 ## Architecture in one minute
 
 - `output: 'static'`; only the auth pages (`/login`, `/signup`, `/forgot-password`,
-  `/reset-password`), `/dashboard`, `/admin/*`, `/api/*` (auth, account export, health) and
-  actions are server rendered (`export const prerender = false`).
+  `/reset-password`, `/two-factor`), `/dashboard`, `/admin/*` (including `subscribers.csv`),
+  `/newsletter/confirm|unsubscribe`, `/api/*` (auth, account export, health, newsletter webhook,
+  repo-stats) and actions are server rendered (`export const prerender = false`).
+- Route caching: `config/cache.ts` picks the provider per target; `src/lib/caching.ts`
+  (`shouldBypassCache()`) is applied by the middleware **after** `next()` so no route can cache a
+  response for a signed-in visitor or a private path. Cache only output that is identical for
+  everyone: a stored anonymous copy is served to whoever asks next.
 - `config/adapter.ts` picks the adapter from `DEPLOY_TARGET` (`node | vercel | cloudflare |
 netlify`). Application code must not branch on the platform.
 - `src/site.config.ts` holds all branding and navigation.
@@ -44,8 +49,10 @@ netlify`). Application code must not branch on the platform.
   via `getAuthoritativeSession()` (`src/lib/session.ts`), never from the cookie cache. Audit
   entries: `writeAudit()` inside a transaction for DB-only changes (message actions; role, ban
   and delete via `changeUserRole()`, `banUserAccount()`, `deleteUserAccount()` in
-  `src/lib/admin.ts`, whose SQL also enforces the last-admin rule), `recordAudit()`
-  (best-effort) for Better Auth operations. Admin pages never change data on GET; use an action.
+  `src/lib/admin.ts`, whose SQL also enforces the last-admin rule; `resetUserTwoFactor()`;
+  `revokeOwnSession()` in `src/lib/account.ts`; `removeSubscriber()` in `src/lib/newsletter.ts`),
+  `recordAudit()` (best-effort) for Better Auth operations. Admin pages never change data on GET;
+  use an action.
 - Email: `src/lib/email.ts` prints messages only outside production; never log links in production.
 - Security: `security.csp` in `astro.config.ts` (hash-based), `config/security-headers.ts`
   (mirrored in `public/_headers`, verified by a unit test).

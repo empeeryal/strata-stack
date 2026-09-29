@@ -52,6 +52,7 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
 
 <script>
   import { initials } from '@/lib/initials';
+  import { hasAdminRole } from '@/lib/roles';
 
   interface SessionUser {
     name: string;
@@ -98,7 +99,7 @@ const link = (variant: 'outline' | 'ghost' | 'primary') =>
       }
       this.querySelector('[data-sign-in]')?.setAttribute('hidden', '');
       this.querySelector('[data-account]')?.removeAttribute('hidden');
-      const admin = (user.role ?? '').split(',').some((role) => role.trim() === 'admin');
+      const admin = hasAdminRole(user.role);
       if (admin) this.querySelector('[data-admin]')?.removeAttribute('hidden');
     }
   }

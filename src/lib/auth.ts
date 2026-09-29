@@ -2,16 +2,16 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, magicLink, twoFactor } from 'better-auth/plugins';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { db } from '../db/client';
 import * as schema from '../db/schema/index';
 import { siteConfig } from '../site.config';
 
-import { isLastActiveAdmin, LAST_ADMIN_MESSAGE, recordAudit } from './admin';
+import { forgetTrustedDevices, LAST_ADMIN_MESSAGE, notLastActiveAdmin, recordAudit } from './admin';
 import { isEmailConfigured, sendEmail } from './email';
 import { getAdminEmails, getEnv, getSiteUrl, getTrustedOrigins } from './env';
-import { ProfileValidationError, validateProfileUpdate } from './profile';
+import { normaliseName, ProfileValidationError, validateProfileUpdate } from './profile';
 
 const githubId = getEnv('GITHUB_CLIENT_ID');
 const githubSecret = getEnv('GITHUB_CLIENT_SECRET');
@@ -100,9 +100,16 @@ export const auth = betterAuth({
     deleteUser: {
       enabled: true,
       // The last administrator cannot delete their own account: the site would be left
-      // without anyone who can reach /admin (recovery would need `pnpm admin:promote`).
+      // without anyone who can reach /admin (recovery would need `pnpm admin:promote`). The
+      // guard is a conditional write, not a read: two administrators deleting themselves at
+      // the same moment would otherwise both pass a check and leave nobody.
       beforeDelete: async (user) => {
-        if (await isLastActiveAdmin(db, user.id)) {
+        const [demoted] = await db
+          .update(schema.user)
+          .set({ role: 'user' })
+          .where(and(eq(schema.user.id, user.id), notLastActiveAdmin(user.id)))
+          .returning({ id: schema.user.id });
+        if (!demoted) {
           throw new APIError('BAD_REQUEST', { message: LAST_ADMIN_MESSAGE });
         }
       },
@@ -129,37 +136,54 @@ export const auth = betterAuth({
 
   hooks: {
     // Two-factor changes are privacy-relevant: record who turned it on (the first code
-    // verified while signed in completes the setup) or off. Best-effort, like the other
-    // Better Auth operations.
+    // verified while signed in completes the setup), regenerated the backup codes or turned
+    // it off. Best-effort, like the other Better Auth operations.
     after: createAuthMiddleware(async (ctx) => {
-      const action =
-        ctx.path === '/two-factor/verify-totp'
-          ? 'two_factor.enable'
-          : ctx.path === '/two-factor/disable'
-            ? 'two_factor.disable'
-            : null;
-      if (!action || ctx.context.returned instanceof APIError) return;
-      const user = ctx.context.session?.user;
+      if (ctx.context.returned instanceof APIError) return;
+      const user = ctx.context.session?.user as
+        { id: string; email: string; twoFactorEnabled?: boolean | null } | undefined;
       if (!user) return;
-      await recordAudit(db, {
-        actorId: user.id,
-        actorEmail: user.email,
-        action,
-        targetType: 'user',
-        targetId: user.id,
-      });
+      const record = (
+        action: 'two_factor.enable' | 'two_factor.disable' | 'two_factor.backup_codes',
+      ) =>
+        recordAudit(db, {
+          actorId: user.id,
+          actorEmail: user.email,
+          action,
+          targetType: 'user',
+          targetId: user.id,
+        });
+      switch (ctx.path) {
+        case '/two-factor/verify-totp':
+          // The session was read before the request, so this is the state the user started
+          // from: only the code that completes the setup is an "enable".
+          if (!user.twoFactorEnabled) await record('two_factor.enable');
+          return;
+        case '/two-factor/generate-backup-codes':
+          await record('two_factor.backup_codes');
+          return;
+        case '/two-factor/disable':
+          // Trusted browsers would otherwise skip the second step if it is turned on again.
+          await forgetTrustedDevices(db, user.id);
+          await record('two_factor.disable');
+          return;
+        default:
+          return;
+      }
     }),
   },
 
   databaseHooks: {
     user: {
       create: {
-        // Bootstrap administrators from ADMIN_EMAILS; everyone else gets the default role.
+        // Bootstrap administrators from ADMIN_EMAILS; everyone else gets the default role. The
+        // name is normalised and capped here because the sign-up schema accepts any string,
+        // and social providers supply names of their own.
         before: async (user) => {
-          if (adminEmails.includes(user.email.toLowerCase())) {
-            return { data: { ...user, role: 'admin' } };
-          }
-          return undefined;
+          const data = { ...user };
+          if (typeof user.name === 'string') data.name = normaliseName(user.name);
+          if (adminEmails.includes(user.email.toLowerCase())) data.role = 'admin';
+          return { data };
         },
       },
       update: {
