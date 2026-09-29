@@ -1,10 +1,20 @@
 import { actions, isInputError } from 'astro:actions';
 import { type SubmitEvent, useId, useState } from 'react';
 
+import { ui } from '@/i18n/ui';
 import type { NewsletterSource } from '@/lib/newsletter';
 import { cn } from '@/lib/utils';
 
 import { Alert, Button, Input, Label, UNEXPECTED_ERROR } from './primitives';
+
+export interface NewsletterFormLabels {
+  email: string;
+  placeholder: string;
+  submit: string;
+  formLabel: string;
+  sent: string;
+  invalidEmail: string;
+}
 
 export interface NewsletterFormProps {
   /** Where the form is placed; stored with the subscription for the owner's information. */
@@ -13,11 +23,21 @@ export interface NewsletterFormProps {
   compact?: boolean;
   /** Extra classes for the form element. */
   className?: string | undefined;
+  /** Strings for another locale; English by default (src/i18n/ui.ts). */
+  labels?: Partial<NewsletterFormLabels> | undefined;
 }
 
 /** Shown after a successful request whatever the outcome, so the form reveals nothing. */
-export const SUBSCRIBED_MESSAGE =
-  'Check your inbox: we sent you a link to confirm the subscription. Nothing is sent until you open it.';
+export const SUBSCRIBED_MESSAGE = ui.en['newsletter.sent'];
+
+const DEFAULT_LABELS: NewsletterFormLabels = {
+  email: ui.en['newsletter.email'],
+  placeholder: ui.en['newsletter.placeholder'],
+  submit: ui.en['newsletter.submit'],
+  formLabel: ui.en['newsletter.formLabel'],
+  sent: SUBSCRIBED_MESSAGE,
+  invalidEmail: ui.en['newsletter.invalidEmail'],
+};
 
 /**
  * Newsletter sign-up submitted through the `newsletter.subscribe` action. Works from static
@@ -28,7 +48,9 @@ export default function NewsletterForm({
   source = 'page',
   compact = false,
   className,
+  labels,
 }: NewsletterFormProps) {
+  const text = { ...DEFAULT_LABELS, ...labels };
   const id = useId();
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +66,7 @@ export default function NewsletterForm({
       if (actionError) {
         setError(
           isInputError(actionError)
-            ? (actionError.fields.email?.[0] ?? 'Please enter a valid email address.')
+            ? (actionError.fields.email?.[0] ?? text.invalidEmail)
             : actionError.message,
         );
         setStatus('idle');
@@ -60,7 +82,7 @@ export default function NewsletterForm({
   if (status === 'sent') {
     return (
       <Alert variant="success" className={cn(className)}>
-        {SUBSCRIBED_MESSAGE}
+        {text.sent}
       </Alert>
     );
   }
@@ -70,28 +92,28 @@ export default function NewsletterForm({
       method="POST"
       action={`/newsletter${actions.newsletter.subscribe.queryString}`}
       onSubmit={onSubmit}
-      aria-label="Subscribe to the newsletter"
+      aria-label={text.formLabel}
       className={cn('space-y-2', className)}
     >
       <input type="hidden" name="source" value={source} />
       <div className={cn('flex gap-2', compact ? 'flex-row' : 'flex-col sm:flex-row')}>
         <div className="min-w-0 flex-1">
           <Label htmlFor={`${id}-email`} className="sr-only">
-            Email address
+            {text.email}
           </Label>
           <Input
             id={`${id}-email`}
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={text.placeholder}
             required
             aria-invalid={Boolean(error) || undefined}
             aria-describedby={error ? `${id}-error` : undefined}
           />
         </div>
         <Button type="submit" loading={status === 'sending'} className="shrink-0">
-          Subscribe
+          {text.submit}
         </Button>
       </div>
       {/* Honeypot: moved off-screen rather than display:none, which simple bots skip. */}

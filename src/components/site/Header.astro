@@ -1,30 +1,45 @@
 ---
+import type { Locale } from '@/i18n';
+import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
 import { siteConfig } from '@/site.config';
 
 import AccountMenu from './AccountMenu.astro';
 import GitHubLink from './GitHubLink.astro';
+import LanguageSwitcher from './LanguageSwitcher.astro';
 import Logo from './Logo.astro';
 import MobileNav from './MobileNav.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
 
+interface Props {
+  /** Paths of the current page in other locales, for the language switcher. */
+  alternates?: Partial<Record<Locale, string>> | undefined;
+}
+
+const { alternates } = Astro.props;
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
 const pathname = Astro.url.pathname;
 const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+const nav = siteConfig.nav.map((item) => ({
+  href: localizeHref(item.href, locale),
+  label: labelFor(locale, item.href, item.label),
+}));
 ---
 
 <header class="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
   <div class="container flex h-16 items-center gap-4">
     <a
-      href="/"
+      href={localizeHref('/', locale)}
       class="mr-2 flex items-center gap-2 font-semibold"
-      aria-label={`${siteConfig.name} home`}
+      aria-label={t('header.home')}
     >
       <Logo id="header" class="size-7" />
       <span class="hidden sm:inline">{siteConfig.name}</span>
     </a>
 
-    <nav aria-label="Main" class="hidden items-center gap-1 md:flex">
-      {siteConfig.nav.map((item) => (
+    <nav aria-label={t('nav.main')} class="hidden items-center gap-1 md:flex">
+      {nav.map((item) => (
         <a
           href={item.href}
           aria-current={isActive(item.href) ? 'page' : undefined}
@@ -37,10 +52,11 @@ const isActive = (href: string) => pathname === href || pathname.startsWith(`${h
 
     <div class="ml-auto flex items-center gap-1">
       <Search />
+      <LanguageSwitcher alternates={alternates} class="hidden md:block" />
       <GitHubLink />
       <ThemeToggle />
       <AccountMenu placement="header" />
-      <MobileNav />
+      <MobileNav alternates={alternates} />
     </div>
   </div>
 </header>

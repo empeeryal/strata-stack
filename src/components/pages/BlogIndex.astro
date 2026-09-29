@@ -1,0 +1,104 @@
+---
+import type { Page } from 'astro';
+import { Icon } from 'astro-icon/components';
+
+import PostCard from '@/components/site/PostCard.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Pagination from '@/components/ui/Pagination.astro';
+import { type Locale, alternatesFor, defaultLocale, localizePath, useTranslations } from '@/i18n';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { type BlogPost, collectTags, tagHref } from '@/lib/content';
+
+/**
+ * The blog index for one locale, shared by `src/pages/blog/[...page].astro` and its translations
+ * under `src/pages/<locale>/blog/`. Tag pages exist for the default locale only, so other
+ * locales get no tag list; they list the English posts that are not translated yet instead.
+ */
+interface Props {
+  locale: Locale;
+  page: Page<BlogPost>;
+  /** Every published post of this locale, for the tag list. */
+  posts: BlogPost[];
+  /** Default-locale posts without a translation, shown after the local ones. */
+  untranslated?: BlogPost[];
+}
+
+const { locale, page, posts, untranslated = [] } = Astro.props;
+const t = useTranslations(locale);
+const isFirstPage = page.currentPage === 1;
+const base = localizePath('/blog', locale);
+const tags = locale === defaultLocale ? collectTags(posts) : [];
+---
+
+<BaseLayout
+  title={
+    isFirstPage
+      ? t('blog.title')
+      : t('blog.pageTitle', { title: t('blog.title'), page: page.currentPage })
+  }
+  description={t('blog.description')}
+  canonical={isFirstPage ? base : `${base}/${page.currentPage}`}
+  image="/og/blog.png"
+  alternates={isFirstPage ? alternatesFor('/blog') : undefined}
+>
+  <div class="container py-16">
+    <header class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <div class="max-w-2xl">
+        <p class="text-sm font-semibold text-primary">{t('blog.eyebrow')}</p>
+        <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">{t('blog.title')}</h1>
+        <p class="mt-4 text-lg text-pretty text-muted-foreground">{t('blog.description')}</p>
+      </div>
+      <a
+        href={localizePath('/rss.xml', locale)}
+        class="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Icon name="lucide:rss" class="size-4" aria-hidden="true" />
+        {t('blog.rss')}
+      </a>
+    </header>
+
+    {tags.length > 0 && (
+      <nav aria-label={t('blog.tags')} class="mt-8 flex flex-wrap gap-2">
+        {tags.map(({ tag, count }) => (
+          <Badge variant="outline" href={tagHref(tag)}>
+            {tag}
+            <span class="text-muted-foreground">{count}</span>
+          </Badge>
+        ))}
+      </nav>
+    )}
+
+    {page.data.length === 0 ? (
+      <p class="mt-10 text-muted-foreground">{t('blog.empty')}</p>
+    ) : (
+      <ul class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {page.data.map((post, index) => (
+          <PostCard post={post} locale={locale} eager={index < 3} />
+        ))}
+      </ul>
+    )}
+
+    <Pagination
+      current={page.currentPage}
+      total={page.lastPage}
+      prev={page.url.prev}
+      next={page.url.next}
+      labels={[t('blog.newer'), t('blog.older')]}
+      label={t('pagination.label')}
+      class="mt-12"
+    />
+
+    {untranslated.length > 0 && (
+      <section class="mt-16 border-t pt-12" aria-labelledby="untranslated-heading">
+        <h2 id="untranslated-heading" class="text-2xl font-semibold tracking-tight">
+          {t('blog.inEnglish')}
+        </h2>
+        <ul class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {untranslated.map((post) => (
+            <PostCard post={post} locale={locale} />
+          ))}
+        </ul>
+      </section>
+    )}
+  </div>
+</BaseLayout>

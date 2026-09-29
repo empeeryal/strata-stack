@@ -5,6 +5,8 @@ import { collectCspViolations } from './helpers';
 
 const PAGES = [
   '/',
+  '/de',
+  '/de/blog/why-astro-7',
   '/docs/getting-started/introduction',
   '/blog/deploy-anywhere',
   '/login',

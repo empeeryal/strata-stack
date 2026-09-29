@@ -1,5 +1,6 @@
 ---
 import Prose from '@/components/ui/Prose.astro';
+import { alternatesFor } from '@/i18n';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { siteConfig } from '@/site.config';
 ---
@@ -7,6 +8,7 @@ import { siteConfig } from '@/site.config';
 <BaseLayout
   title="About"
   description={`Why ${siteConfig.name} exists, the principles behind it and how this very site is built from the template.`}
+  alternates={alternatesFor('/about')}
 >
   <article class="container max-w-3xl py-16">
     <header class="mb-10">

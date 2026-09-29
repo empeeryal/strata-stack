@@ -1,0 +1,78 @@
+---
+import Prose from '@/components/ui/Prose.astro';
+import { alternatesFor } from '@/i18n';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { siteConfig } from '@/site.config';
+---
+
+<BaseLayout
+  title="Über"
+  description={`Warum es ${siteConfig.name} gibt, die Prinzipien dahinter und wie genau diese Website aus dem Template gebaut ist.`}
+  alternates={alternatesFor('/about')}
+>
+  <article class="container max-w-3xl py-16">
+    <header class="mb-10">
+      <p class="text-sm font-semibold text-primary">Über</p>
+      <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance">
+        Ein Template, das sich selbst dokumentiert
+      </h1>
+      <p class="mt-4 text-lg text-pretty text-muted-foreground">
+        {siteConfig.name} ist ein Ausgangspunkt für neue Websites. Der Name buchstabiert den Stack:
+        SQLite, Tailwind, React, Astro, Turso und Auth. Jedes Projekt, das wir beginnen, braucht
+        dieselbe Grundlage, zusammen mit Inhalten, Suche, SEO, Sicherheit und Tests. Statt sie jedes
+        Mal neu zu bauen, lebt sie hier, wird aktuell gehalten, und diese Website ist der Beweis,
+        dass sie funktioniert.
+      </p>
+    </header>
+
+    <Prose as="div">
+      <h2 id="prinzipien">Prinzipien</h2>
+      <ul>
+        <li>
+          <strong>Statisch zuerst.</strong> Seiten werden vorgerendert, sofern sie nicht wirklich
+          einen Server brauchen. Die Auth-Routen und das Dashboard melden sich mit
+          <code>prerender = false</code> an; alles andere ist einfaches HTML von einem CDN.
+        </li>
+        <li>
+          <strong>Eine Codebasis, jeder Host.</strong> Dasselbe Repository baut für Vercel,
+          Cloudflare, Netlify und Node. Plattformunterschiede stecken in einem einzigen
+          Adapter-Resolver und sind pro Ziel dokumentiert.
+        </li>
+        <li>
+          <strong>Sicher ab Werk.</strong> Eine hash-basierte Content Security Policy, strikte
+          Response-Header und CSRF-Origin-Prüfungen sind eingeschaltet. Gelockert wird bewusst, nie
+          aus Versehen.
+        </li>
+        <li>
+          <strong>Aktuelle Abhängigkeiten.</strong> Versionen sind festgepinnt, geprüft und werden
+          über automatische Pull Requests aktualisiert, die die gesamte Testmatrix bestehen müssen.
+        </li>
+        <li>
+          <strong>Langweilig, wo es sein soll.</strong> Konventionelle Ordnerstruktur, Prettier- und
+          ESLint-Standards, Changesets für Release-Notes und Dokumentation für jede Entscheidung.
+        </li>
+      </ul>
+
+      <h2 id="wie-diese-website-gebaut-ist">Wie diese Website gebaut ist</h2>
+      <p>
+        Die Seiten, die du liest, sind die Docs- und Blog-Collections des Templates, gerendert mit
+        MDX. Header, Footer und Metadaten kommen aus <code>src/site.config.ts</code>. Die
+        Stack-Tabelle auf der Startseite liest die installierten Versionen beim Build aus
+        <code>pnpm-lock.yaml</code>. Die Suche ist ein statischer Pagefind-Index, der beim Build
+        entsteht, und die Open-Graph-Bilder werden beim Build mit Satori gerendert.
+      </p>
+      <p>
+        Wenn sich im Template etwas ändert, ändert sich diese Website mit. Das hält die
+        Dokumentation ehrlich und gibt neuen Projekten eine funktionierende Referenz für jede
+        Funktion. Die Dokumentation selbst ist derzeit auf Englisch verfügbar.
+      </p>
+
+      <h2 id="lizenz">Lizenz</h2>
+      <p>
+        Das Template steht unter der MIT-Lizenz. Nutze es für private oder kommerzielle Projekte,
+        behalte den Lizenzhinweis und erwäge, Verbesserungen über das
+        <a href={siteConfig.repo.url}>GitHub-Repository</a> zurückzugeben.
+      </p>
+    </Prose>
+  </article>
+</BaseLayout>

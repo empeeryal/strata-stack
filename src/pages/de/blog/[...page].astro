@@ -1,0 +1,20 @@
+---
+import type { GetStaticPaths } from 'astro';
+
+import BlogIndex from '@/components/pages/BlogIndex.astro';
+import { getAllPublishedPosts, postLocale, untranslatedPosts } from '@/lib/content';
+import { siteConfig } from '@/site.config';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const all = await getAllPublishedPosts();
+  const posts = all.filter((post) => postLocale(post) === 'de');
+  return paginate(posts, {
+    pageSize: siteConfig.blog.postsPerPage,
+    props: { posts, untranslated: untranslatedPosts('de', all) },
+  });
+}) satisfies GetStaticPaths;
+
+const { page, posts, untranslated } = Astro.props;
+---
+
+<BlogIndex locale="de" page={page} posts={posts} untranslated={untranslated} />

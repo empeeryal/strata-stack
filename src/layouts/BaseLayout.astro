@@ -7,8 +7,8 @@ import Head, { type Props as HeadProps } from '@/components/seo/Head.astro';
 import Footer from '@/components/site/Footer.astro';
 import Header from '@/components/site/Header.astro';
 import SkipLink from '@/components/ui/SkipLink.astro';
+import { resolveLocale } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { siteConfig } from '@/site.config';
 
 import '@/styles/global.css';
 
@@ -22,17 +22,20 @@ interface Props extends HeadProps {
 }
 
 const { class: className, hideFooter = false, searchable = true, ...head } = Astro.props;
+// Pages under src/pages/<locale>/ render in that locale (Astro reads it from the path); the
+// language switcher and the hreflang links come from the `alternates` a translated page passes.
+const locale = resolveLocale(Astro.currentLocale);
 ---
 
 <!doctype html>
-<html lang={siteConfig.locale}>
+<html lang={locale}>
   <head>
-    <Head {...head} />
+    <Head {...head} locale={locale} />
     <slot name="head" />
   </head>
   <body class="flex min-h-dvh flex-col">
     <SkipLink />
-    <Header />
+    <Header alternates={head.alternates} />
     <main
       id="main"
       class={cn('flex-1', className)}

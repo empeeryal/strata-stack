@@ -4,7 +4,7 @@ import satori from 'satori';
 
 import interBold from '@/assets/fonts/inter-latin-700-normal.woff?inline';
 import interRegular from '@/assets/fonts/inter-latin-400-normal.woff?inline';
-import { getPublishedPosts } from '@/lib/content';
+import { getAllPublishedPosts } from '@/lib/content';
 import { DOCS_SECTIONS, docsSectionOf } from '@/lib/docs';
 import { type OgTemplateProps, OgTemplate } from '@/lib/og-template';
 import { formatDate } from '@/lib/utils';
@@ -23,7 +23,8 @@ export const prerender = true;
 type Props = Omit<OgTemplateProps, 'siteName' | 'host'>;
 
 export const getStaticPaths = (async () => {
-  const posts = await getPublishedPosts();
+  // Posts of every locale get an image; the German ones live under /og/blog/de/.
+  const posts = await getAllPublishedPosts();
   const docs = await getCollection('docs', ({ data }) => !data.draft);
 
   const statics: Array<{ slug: string; props: Props }> = [

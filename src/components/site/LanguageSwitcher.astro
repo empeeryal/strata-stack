@@ -1,0 +1,44 @@
+---
+import type { Locale } from '@/i18n';
+import { localeNames, localizeHref, otherLocales, resolveLocale, useTranslations } from '@/i18n';
+
+interface Props {
+  /** Paths of this page in other locales; a locale without one links to its home page. */
+  alternates?: Partial<Record<Locale, string>> | undefined;
+  /** Compact codes for the header row, full names for the mobile drawer. */
+  variant?: 'header' | 'drawer';
+  class?: string;
+}
+
+const { alternates = {}, variant = 'header', class: className } = Astro.props;
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+const targets = otherLocales(locale).map((other) => ({
+  locale: other,
+  name: localeNames[other],
+  href: alternates[other] ?? localizeHref('/', other),
+}));
+---
+
+<nav aria-label={t('language.label')} class={className}>
+  <ul class={variant === 'header' ? 'flex items-center gap-1' : 'flex flex-col gap-1'}>
+    {targets.map((target) => (
+      <li>
+        <a
+          href={target.href}
+          hreflang={target.locale}
+          lang={target.locale}
+          aria-label={target.name}
+          class={
+            variant === 'header'
+              ? 'inline-flex h-10 items-center rounded-md px-2.5 text-sm font-medium text-muted-foreground uppercase hover:bg-muted hover:text-foreground'
+              : 'block rounded-md px-3 py-3 text-base font-medium hover:bg-muted'
+          }
+          data-language-switch
+        >
+          {variant === 'header' ? target.locale : target.name}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>

@@ -2,8 +2,11 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
-import { siteConfig } from '@/site.config';
+import { resolveLocale, useTranslations } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { siteConfig } from '@/site.config';
+
+const t = useTranslations(resolveLocale(Astro.currentLocale));
 
 /**
  * Header link to the repository. The star count comes from `/api/repo-stats`, the template's
@@ -17,8 +20,9 @@ import { cn } from '@/lib/utils';
   target="_blank"
   rel="noopener noreferrer"
   class={cn(buttonVariants({ variant: 'ghost' }), 'h-10 min-w-10 gap-1.5 px-2.5')}
-  aria-label="GitHub repository"
+  aria-label={t('github.label')}
   data-repo-link
+  data-stars-label={t('github.stars')}
 >
   <Icon name="simple-icons:github" class="size-5" aria-hidden="true" />
   <span data-repo-stars class="hidden text-xs font-medium tabular-nums sm:not-empty:inline"></span>
@@ -40,9 +44,10 @@ import { cn } from '@/lib/utils';
         notation: 'compact',
         maximumFractionDigits: 1,
       }).format(data.stars);
+      const template = link.dataset.starsLabel ?? 'GitHub repository, {count} stars';
       link.setAttribute(
         'aria-label',
-        `GitHub repository, ${data.stars.toLocaleString(locale)} stars`,
+        template.replace('{count}', data.stars.toLocaleString(locale)),
       );
     } catch {
       // Offline or blocked: the link works without the count.

@@ -50,7 +50,7 @@ Every docs page receives a table of contents (from `h2` and `h3`), previous/next
 title: 'A title of at most 90 characters'
 description: 'A summary of at most 200 characters used in cards, RSS and social previews.'
 pubDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-29
 author: empeeryal # id of a file in src/content/authors
 tags: [astro, guide]
 heroImage: ./images/my-post.png # optional
@@ -64,6 +64,14 @@ image generation. Posts whose `pubDate` is in the future are held back the same 
 on the first build on or after that date; a static site needs a rebuild (a deploy hook or a
 scheduled workflow) for that to happen on its own. Post URLs come from the file name, so keep
 it stable once published.
+
+### Translations
+
+A post is translated by adding a file with the same slug under a locale folder, for example
+`src/content/blog/de/why-astro-7.mdx` next to `src/content/blog/why-astro-7.mdx`. The German
+post is served at `/de/blog/why-astro-7`, the two pages link to each other through the language
+switcher and `hreflang`, and the German blog index lists English posts that have no translation
+yet. See [Internationalisation](/docs/guides/internationalisation).
 
 ## MDX components
 

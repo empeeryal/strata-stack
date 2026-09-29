@@ -23,6 +23,10 @@ async function expectNoViolations(page: Page) {
 const PUBLIC_PAGES: Array<{ path: string; ready?: (page: Page) => Promise<void> }> = [
   { path: '/' },
   { path: '/about' },
+  { path: '/de' },
+  { path: '/de/about' },
+  { path: '/de/blog' },
+  { path: '/de/blog/why-astro-7' },
   { path: '/docs' },
   { path: '/docs/getting-started/installation' },
   { path: '/docs/components/pricing-table' },

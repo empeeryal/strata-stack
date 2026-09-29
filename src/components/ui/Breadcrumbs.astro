@@ -10,13 +10,15 @@ export interface Crumb {
 
 interface Props {
   items: Crumb[];
+  /** Accessible name of the navigation landmark. */
+  label?: string;
   class?: string;
 }
 
-const { items, class: className } = Astro.props;
+const { items, label = 'Breadcrumb', class: className } = Astro.props;
 ---
 
-<nav aria-label="Breadcrumb" class={cn('text-sm text-muted-foreground', className)}>
+<nav aria-label={label} class={cn('text-sm text-muted-foreground', className)}>
   <ol class="flex flex-wrap items-center gap-1.5">
     {items.map((item, index) => {
       const isLast = index === items.length - 1;

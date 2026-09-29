@@ -14,9 +14,9 @@ export type JsonLd = WithContext<
   WebSite | Organization | BreadcrumbList | BlogPosting | TechArticle
 >;
 
-/** `<title>` text: "Page · Site" or the site tagline for the home page. */
-export function pageTitle(title?: string): string {
-  return title ? `${title} · ${siteConfig.name}` : `${siteConfig.name} – ${siteConfig.tagline}`;
+/** `<title>` text: "Page · Site" or "Site – tagline" for a home page. */
+export function pageTitle(title?: string, tagline: string = siteConfig.tagline): string {
+  return title ? `${title} · ${siteConfig.name}` : `${siteConfig.name} – ${tagline}`;
 }
 
 /** Absolute URL for a site-relative path. */
@@ -29,14 +29,17 @@ export function serializeJsonLd(data: JsonLd): string {
   return JSON.stringify(data).replace(/</g, '\\u003c');
 }
 
-export function websiteJsonLd(site: URL | string): WithContext<WebSite> {
+export function websiteJsonLd(
+  site: URL | string,
+  locale: string = siteConfig.locale,
+): WithContext<WebSite> {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: siteConfig.name,
     description: siteConfig.description,
     url: absolute('/', site),
-    inLanguage: siteConfig.locale,
+    inLanguage: locale,
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -93,6 +96,8 @@ export interface ArticleJsonLdInput {
   author: { name: string; url?: string };
   tags?: readonly string[];
   site: URL | string;
+  /** BCP 47 language of the article; defaults to the site's locale. */
+  locale?: string;
 }
 
 export function blogPostingJsonLd(input: ArticleJsonLdInput): WithContext<BlogPosting> {
@@ -121,7 +126,7 @@ function articleFields(input: ArticleJsonLdInput) {
     mainEntityOfPage: absolute(input.url, input.site),
     ...(input.datePublished ? { datePublished: input.datePublished.toISOString() } : {}),
     ...(modified ? { dateModified: modified.toISOString() } : {}),
-    inLanguage: siteConfig.locale,
+    inLanguage: input.locale ?? siteConfig.locale,
     ...(input.tags && input.tags.length > 0 ? { keywords: input.tags.join(', ') } : {}),
     author: {
       '@type': 'Person' as const,

@@ -9,7 +9,7 @@ import { getAllPublishedPosts, postAlternates, postLocale, postSlug } from '@/li
 export async function getStaticPaths() {
   const all = await getAllPublishedPosts();
   return all
-    .filter((post) => postLocale(post) === 'en')
+    .filter((post) => postLocale(post) === 'de')
     .map((post) => ({
       params: { slug: postSlug(post) },
       props: { post, alternates: postAlternates(post, all) },

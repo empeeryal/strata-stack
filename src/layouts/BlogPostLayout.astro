@@ -10,7 +10,8 @@ import BackLink from '@/components/ui/BackLink.astro';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import Prose from '@/components/ui/Prose.astro';
 import Toc from '@/components/ui/Toc.astro';
-import { getReadingTime, postHref, postOgImage, tagHref } from '@/lib/content';
+import { type Locale, defaultLocale, intlLocales, localizePath, useTranslations } from '@/i18n';
+import { getReadingMinutes, postHref, postLocale, postOgImage, tagHref } from '@/lib/content';
 import { blogPostingJsonLd, breadcrumbsJsonLd } from '@/lib/seo';
 import { formatDate, toISODate } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
@@ -20,17 +21,32 @@ import BaseLayout from './BaseLayout.astro';
 interface Props {
   post: CollectionEntry<'blog'>;
   headings: MarkdownHeading[];
+  /** Paths of this post's translations, for the language switcher and hreflang links. */
+  alternates?: Partial<Record<Locale, string>> | undefined;
 }
 
-const { post, headings } = Astro.props;
+const { post, headings, alternates } = Astro.props;
+// The post's folder decides the language; the page under src/pages/<locale>/ matches it.
+const locale = postLocale(post);
+const t = useTranslations(locale);
 const site = Astro.site ?? new URL(siteConfig.url);
 const author = await getEntry(post.data.author);
 const href = postHref(post);
 const ogImage = postOgImage(post);
-const readingTime = getReadingTime(post.body);
+const readingTime = t('blog.readingTime', { minutes: getReadingMinutes(post.body) });
+const blogHref = localizePath('/blog', locale);
+const date = (value: Date) => formatDate(value, undefined, intlLocales[locale]);
+const newsletterLabels = {
+  email: t('newsletter.email'),
+  placeholder: t('newsletter.placeholder'),
+  submit: t('newsletter.submit'),
+  formLabel: t('newsletter.formLabel'),
+  sent: t('newsletter.sent'),
+  invalidEmail: t('newsletter.invalidEmail'),
+};
 
 const crumbs = [
-  { label: 'Blog', href: '/blog' },
+  { label: t('blog.eyebrow'), href: blogHref },
   { label: post.data.title, href },
 ];
 ---
@@ -47,6 +63,7 @@ const crumbs = [
     authors: author?.data.url ? [author.data.url] : [],
     tags: post.data.tags,
   }}
+  alternates={alternates}
   jsonLd={[
     breadcrumbsJsonLd(
       crumbs.map((crumb) => ({ name: crumb.label, url: crumb.href })),
@@ -65,18 +82,23 @@ const crumbs = [
       },
       tags: post.data.tags,
       site,
+      locale,
     }),
   ]}
 >
   <article class="container max-w-3xl py-12" data-pagefind-filter="section:Blog">
-    <Breadcrumbs items={crumbs} class="mb-6" />
+    <Breadcrumbs items={crumbs} label={t('breadcrumb')} class="mb-6" />
     <header>
       <div class="flex flex-wrap gap-2" data-pagefind-ignore>
-        {post.data.tags.map((tag) => (
-          <Badge variant="secondary" href={tagHref(tag)}>
-            {tag}
-          </Badge>
-        ))}
+        {post.data.tags.map((tag) =>
+          locale === defaultLocale ? (
+            <Badge variant="secondary" href={tagHref(tag)}>
+              {tag}
+            </Badge>
+          ) : (
+            <Badge variant="secondary">{tag}</Badge>
+          ),
+        )}
       </div>
       <h1 class="mt-4 text-4xl font-bold tracking-tight text-balance sm:text-5xl">
         {post.data.title}
@@ -109,13 +131,11 @@ const crumbs = [
             )}
           </span>
         )}
-        <time datetime={toISODate(post.data.pubDate)}>{formatDate(post.data.pubDate)}</time>
+        <time datetime={toISODate(post.data.pubDate)}>{date(post.data.pubDate)}</time>
         {post.data.updatedDate && (
           <span>
-            Updated{' '}
-            <time datetime={toISODate(post.data.updatedDate)}>
-              {formatDate(post.data.updatedDate)}
-            </time>
+            {t('blog.updated')}{' '}
+            <time datetime={toISODate(post.data.updatedDate)}>{date(post.data.updatedDate)}</time>
           </span>
         )}
         <span class="flex items-center gap-1">
@@ -137,7 +157,7 @@ const crumbs = [
     )}
 
     <div class="mt-10" data-pagefind-ignore>
-      <Toc headings={headings} class="rounded-lg border p-4" />
+      <Toc headings={headings} label={t('toc')} class="rounded-lg border p-4" />
     </div>
 
     <Prose as="div" class="mt-10">
@@ -167,15 +187,15 @@ const crumbs = [
       )}
       {siteConfig.newsletter.enabled && (
         <div class="mt-6 rounded-xl border bg-card p-5">
-          <p class="font-semibold">Get new posts by email</p>
+          <p class="font-semibold">{t('blog.newPosts')}</p>
           <p class="mt-1 text-sm text-pretty text-muted-foreground">
-            {siteConfig.newsletter.description}
+            {t('newsletter.description')}
           </p>
-          <NewsletterForm client:visible source="blog" className="mt-4" />
+          <NewsletterForm client:visible source="blog" className="mt-4" labels={newsletterLabels} />
         </div>
       )}
-      <BackLink href="/blog" class="mt-6">
-        All posts
+      <BackLink href={blogHref} class="mt-6">
+        {t('blog.all')}
       </BackLink>
     </footer>
   </article>

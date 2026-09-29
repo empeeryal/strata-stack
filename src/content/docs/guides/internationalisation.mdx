@@ -1,0 +1,144 @@
+---
+title: Internationalisation
+description: How the site renders in more than one language. Astro's i18n routing with English at the root and German under /de, the UI dictionaries, the language switcher, translated blog posts and hreflang alternates, and what deliberately stays English.
+publishedDate: 2026-09-29
+updatedDate: 2026-09-29
+sidebar:
+  order: 15
+  badge: new
+---
+
+The template ships in two languages: English at the root of the site and German under `/de`.
+The layout (header, navigation, footer, search trigger, theme toggle, account menu), the home
+page, the about page and the blog are translated; a language switcher in the header links to
+the translation of the current page, or to the other language's home page when there is none.
+Everything else, in particular the documentation and the signed-in areas, stays English (see
+[what stays English](#what-stays-english)).
+
+## Routing
+
+`astro.config.ts` enables [Astro's i18n routing](https://docs.astro.build/en/guides/internationalization/):
+
+```ts
+i18n: {
+  defaultLocale,
+  locales: [...locales],
+  routing: { prefixDefaultLocale: false },
+},
+```
+
+The values come from `src/i18n/config.ts`, which is the one place to change when you add a
+locale: the `locales` list, the native names for the switcher, the BCP 47 tags for date
+formatting and the Open Graph locale values. The default locale has no prefix, every other locale
+lives under its code, and there is **no fallback**: a page exists in a locale only when it has
+been translated. `/de/docs` is a 404, not an English page with a German header.
+
+Pages for a locale live under `src/pages/<locale>/`. Astro sets `Astro.currentLocale` from the
+path, and every component reads it through `resolveLocale()`:
+
+```astro
+---
+import { resolveLocale, useTranslations } from '@/i18n';
+
+const locale = resolveLocale(Astro.currentLocale);
+const t = useTranslations(locale);
+---
+
+<a href="#main">{t('skip')}</a>
+```
+
+## Strings
+
+`src/i18n/ui.ts` holds the strings of the chrome and the shared page furniture. English is the
+reference: its keys define the set, and the type of the other dictionaries makes every key
+mandatory, so a missing translation is a type error and a unit test checks that no value is
+empty. Placeholders in braces are filled by `t()`:
+
+```ts
+t('footer.copyright', { year: 2026, author: 'Ada' });
+// © 2026 Ada. Released under the MIT License.
+```
+
+Two more maps in the same file deal with `site.config.ts`, which stays English:
+
+- `labels` translates navigation and footer entries, keyed by `href` for links and by the
+  English title for footer groups. Entries without a translation keep their English label.
+- `localizedRoutes` lists the English paths that have a translated page. Links from the header
+  and footer go to the translation when there is one and to the English page otherwise, and the
+  same map feeds the `hreflang` alternates of those pages. Add a row whenever you translate a
+  page.
+
+Page copy does not belong in `ui.ts`. The home page keeps its texts in `src/i18n/pages/home.ts`,
+one object per locale, and renders them through `src/components/pages/HomePage.astro`; the about
+page is prose and simply exists twice (`src/pages/about.astro`, `src/pages/de/about.astro`).
+
+## The language switcher and alternates
+
+`LanguageSwitcher.astro` renders one link per other locale, in the header on wide screens and in
+the mobile drawer with the full language name. Its targets come from the `alternates` a page
+passes to `BaseLayout`:
+
+```astro
+<BaseLayout title="About" alternates={alternatesFor('/about')}>
+```
+
+`alternatesFor()` reads `localizedRoutes`; blog posts compute theirs from the collection (below).
+The same prop makes `Head.astro` emit `<link rel="alternate" hreflang="…">` for every language
+version, an `x-default` pointing at the English page, and `og:locale:alternate`. A page without
+alternates gets none of these, and its switcher links to the other language's home page.
+
+## Translated content
+
+Blog posts are translated by putting a file with the **same slug** in a locale folder:
+
+```text
+src/content/blog/why-astro-7.mdx       # English, /blog/why-astro-7
+src/content/blog/de/why-astro-7.mdx    # German,  /de/blog/why-astro-7
+```
+
+`src/lib/content.ts` reads the locale from the folder (`postLocale`, `postSlug`) and offers
+`getPublishedPosts(locale)`, `postAlternates()` for the switcher and `untranslatedPosts()`. The
+German blog index lists German posts first and the English posts without a translation after
+them, marked with their language; German posts render with German dates and reading times, and
+tags are shown but not linked because tag pages exist for English only. `/de/rss.xml` carries the
+German posts.
+
+The docs collection is prepared the same way (`src/content/docs/<locale>/…`, `buildDocsTree(entries,
+locale)`), but no page renders it yet: translating forty pages is a project of its own, and a
+partially translated manual is worse than an English one. When you do, add
+`src/pages/<locale>/docs/` routes that mirror the English ones.
+
+## Formatting
+
+Dates use `formatDate(date, options, intlLocales[locale])`; numbers in client scripts use the
+page's `lang` attribute (`document.documentElement.lang`). Pagefind indexes each language
+separately from the same attribute, so the command palette on a German page searches German pages
+only.
+
+## What stays English
+
+- **Documentation.** Linked from the German navigation as "Dokumentation", but English.
+- **Account, admin and auth pages, actions and emails.** They are rendered on demand for one
+  person and were not part of this layout work. Their strings live in the components and in
+  `src/lib`; translate them the same way when your product needs it.
+- **The command palette's own strings** (placeholder, empty state, actions). Page and docs labels
+  in it are translated.
+- **`site.config.ts`.** Names, URLs and the English labels; translations layer on top.
+
+## Adding a locale
+
+1. Add the code to `locales` in `src/i18n/config.ts`, with its name, `Intl` tag and Open Graph
+   value.
+2. Add a dictionary to `ui.ts` (TypeScript lists every missing key) plus `labels` and
+   `localizedRoutes` entries.
+3. Create `src/pages/<locale>/index.astro` and the other translated pages, passing `alternates`.
+4. Translate posts into `src/content/blog/<locale>/`.
+5. Extend `tests/e2e/i18n.spec.ts` and the page lists in `a11y.spec.ts` and `security.spec.ts`.
+
+## Testing
+
+`src/i18n/index.test.ts` covers the path helpers, the dictionaries and the label maps;
+`src/lib/content.test.ts` the post locale helpers. `tests/e2e/i18n.spec.ts` checks `lang`,
+the German navigation, the switcher in both directions, the `hreflang` links, the German blog,
+the feed and that untranslated routes are 404s. The German pages are also part of the
+accessibility and CSP scans.

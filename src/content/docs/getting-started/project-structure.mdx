@@ -2,7 +2,7 @@
 title: Project structure
 description: A tour of the repository layout and what belongs where.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-29
 sidebar:
   order: 3
 ---
@@ -33,7 +33,8 @@ sidebar:
 │   ├── layouts/             # Base, docs, blog, auth and admin layouts
 │   ├── lib/                 # Framework-agnostic helpers (auth, email, seo, utils)
 │   ├── middleware.ts        # Session lookup and security headers
-│   ├── pages/               # File-based routes and endpoints
+│   ├── i18n/                # Locales, UI strings and the helpers behind the language switcher
+│   ├── pages/               # File-based routes and endpoints; src/pages/de/ holds the German pages
 │   ├── site.config.ts       # Site-wide metadata and navigation
 │   └── styles/global.css    # Tailwind entry and design tokens
 ├── tests/

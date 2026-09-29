@@ -2,14 +2,21 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
+import { resolveLocale, useTranslations } from '@/i18n';
+
+const t = useTranslations(resolveLocale(Astro.currentLocale));
 ---
 
-<theme-toggle class="contents">
+<theme-toggle
+  class="contents"
+  data-label-dark={t('theme.toDark')}
+  data-label-light={t('theme.toLight')}
+>
   <button
     type="button"
     class={buttonVariants({ variant: 'ghost', size: 'icon' })}
-    aria-label="Switch theme"
-    title="Switch theme"
+    aria-label={t('theme.switch')}
+    title={t('theme.switch')}
   >
     <Icon name="lucide:sun" class="theme-icon-light size-5" aria-hidden="true" />
     <Icon name="lucide:moon" class="theme-icon-dark size-5" aria-hidden="true" />
@@ -44,9 +51,12 @@ import { buttonVariants } from '@/components/ui/button-variants';
     }
   });
 
-  /** Names the action the button will perform, not the current state. */
-  function label(button: HTMLButtonElement) {
-    const text = root.dataset.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+  /** Names the action the button will perform, not the current state; the text comes from the locale. */
+  function label(toggle: HTMLElement, button: HTMLButtonElement) {
+    const text =
+      root.dataset.theme === 'dark'
+        ? (toggle.dataset.labelLight ?? 'Switch to light theme')
+        : (toggle.dataset.labelDark ?? 'Switch to dark theme');
     button.setAttribute('aria-label', text);
     button.title = text;
   }
@@ -55,12 +65,12 @@ import { buttonVariants } from '@/components/ui/button-variants';
     connectedCallback() {
       const button = this.querySelector('button');
       if (!button) return;
-      label(button);
-      media.addEventListener('change', () => label(button));
+      label(this, button);
+      media.addEventListener('change', () => label(this, button));
       button.addEventListener('click', () => {
         const next: Theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
         apply(next, next);
-        label(button);
+        label(this, button);
         try {
           localStorage.setItem(THEME_STORAGE_KEY, next);
         } catch {
