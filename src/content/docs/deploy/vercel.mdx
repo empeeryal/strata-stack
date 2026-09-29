@@ -2,7 +2,7 @@
 title: Deploy to Vercel
 description: Zero-configuration deployment to Vercel with Node 24 functions, static headers and image optimisation.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-22
+updatedDate: 2026-09-29
 sidebar:
   order: 2
 ---
@@ -49,6 +49,9 @@ vercel({ imageService: true, staticHeaders: true });
   `.vercel/output/config.json` that applies the headers from `config/security-headers.ts` to
   every path.
 - **Images.** `<Image>` and `<Picture>` use Vercel Image Optimization at runtime.
+- **Route cache.** `config/cache.ts` selects `cacheVercel()`, so `routeRules` and `Astro.cache`
+  write `Vercel-CDN-Cache-Control` and `Vercel-Cache-Tag` and the CDN keeps the response. See
+  [Caching](/docs/guides/caching).
 
 ## Optional extras
 

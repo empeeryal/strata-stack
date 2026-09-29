@@ -1,0 +1,153 @@
+---
+title: Caching
+description: What is cached where. Prerendered pages and hashed assets at the CDN, and route caching for server-rendered responses through Astro.cache and routeRules on Vercel, Netlify, Cloudflare and Node.
+publishedDate: 2026-09-29
+updatedDate: 2026-09-29
+sidebar:
+  order: 9
+  badge: new
+---
+
+The template is static first: almost every page is rendered once at build time and served as a
+file. This guide covers the two layers on top of that, the caching of those files and their
+assets, and route caching for the responses a server renders on demand.
+
+## Files and assets
+
+Prerendered pages are served by the platform's CDN (or by the Node server from `dist/client`)
+and revalidated on every request, so a deploy shows up immediately. Everything Astro emits under
+`/_astro/` has a content hash in its file name and is served with
+`Cache-Control: public, max-age=31536000, immutable` on all four targets: the Vercel adapter
+writes the rule into the build output, the Netlify adapter into its headers, the Cloudflare
+adapter appends it to `_headers`, and the Node server sets it while serving the directory. You
+do not have to configure any of this.
+
+## Route caching
+
+Server-rendered routes (`prerender = false`) run for every request. Astro's route cache lets a
+response be kept for a while so the next visitor gets the same copy without the route running
+again. The copy lives where it makes sense for the target, chosen in `config/cache.ts`:
+
+| Target     | Provider            | Where the copy lives                                | How to see it                           |
+| ---------- | ------------------- | --------------------------------------------------- | --------------------------------------- |
+| Vercel     | `cacheVercel()`     | Vercel's CDN (`Vercel-CDN-Cache-Control`)           | `x-vercel-cache` response header        |
+| Netlify    | `cacheNetlify()`    | Netlify's durable cache                             | `cache-status` response header          |
+| Cloudflare | `cacheCloudflare()` | Cloudflare's cache (`Cloudflare-CDN-Cache-Control`) | `cf-cache-status` response header       |
+| Node       | `memoryCache()`     | The server process, least recently used first       | `X-Astro-Cache: MISS`, `HIT` or `STALE` |
+
+On the CDN targets the provider only writes headers; the edge does the caching and the function
+is not invoked again until the entry expires. On Node there is no CDN, so cached GET responses
+stay in memory. Each instance has its own copy, and a restart empties it; put a CDN in front if
+you run several instances and want them to share.
+
+Nothing is cached in `astro dev`.
+
+### Declaring what to cache
+
+Rules live in `astro.config.ts`. Patterns use the same syntax as file-based routing, so
+`[param]` and `[...rest]` match groups of routes, and the most specific rule wins:
+
+```ts
+// astro.config.ts
+routeRules: {
+  '/api/repo-stats': { maxAge: 3600, swr: 86400, tags: ['github'] },
+},
+```
+
+- `maxAge`: seconds the copy counts as fresh.
+- `swr`: seconds after that during which the stale copy is still served while a fresh one is
+  rendered in the background.
+- `tags`: labels for invalidation (below).
+
+A route can also decide per request, which is the right place when the answer depends on data:
+
+```astro
+---
+export const prerender = false;
+
+const product = await loadProduct(Astro.params.slug);
+if (!product) return new Response(null, { status: 404 });
+
+// Five minutes at the edge; purge with the `products` tag when a product changes.
+Astro.cache.set({ maxAge: 300, swr: 3600, tags: ['products'] });
+---
+```
+
+In endpoints and middleware the same object is `context.cache`. `cache.set(false)` turns caching
+off for the current response even when a rule matches.
+
+### What is never cached
+
+A cached copy is served to everyone who asks for the same URL, so only responses that look the
+same for everyone qualify. The middleware calls `shouldBypassCache()` from `src/lib/caching.ts`
+after every server-rendered route has run (so a route's own `cache.set()` cannot override it) and
+turns the cache off when any of these hold:
+
+- the method is not `GET` or `HEAD`;
+- the request carries a Better Auth cookie (a session, the session cookie cache, the remember-me
+  flag or a pending two-factor sign-in), or a session was resolved;
+- the path belongs to the account, admin, auth, actions or newsletter-token routes listed in
+  `PRIVATE_ROUTE_PREFIXES`.
+
+The providers add their own guard: on Node a response that sets a cookie is never stored, and
+the CDNs skip `Set-Cookie` responses as well. Even so, cache only routes whose output is
+identical for every visitor. The header's account menu is filled in by the browser from
+`/api/auth/get-session`, so a cached page still shows the right account, but anything you
+render on the server from `Astro.locals.user` would be frozen at the first visitor's view.
+
+### Invalidation
+
+Time is usually enough. When content changes on a schedule you control, purge instead of
+waiting:
+
+```ts
+await context.cache.invalidate({ tags: ['products'] });
+// or a single URL
+await context.cache.invalidate({ path: '/products/red-chair' });
+```
+
+Each provider purges through the platform: `invalidateByTag` from `@vercel/functions` on Vercel,
+`purgeCache` from `@netlify/functions` on Netlify, `cache.purge()` from `cloudflare:workers` on
+Cloudflare, and a removal from memory on Node (this instance only). Whether a deploy clears the
+platform cache differs by platform, and so do plan limits on tag purging, so check the
+platform's documentation before relying on it. On Cloudflare the provider also tags every entry
+with `astro-version:<deployment id>`, which lets you purge everything one deployment produced.
+
+## The example route
+
+`/api/repo-stats` (`src/pages/api/repo-stats.ts`) returns the star and fork counts of the
+repository in `siteConfig.repo.url` and feeds the badge next to the GitHub link in the header.
+It is the template's working example of a cached route:
+
+- GitHub allows 60 anonymous API requests an hour per address. The rule above keeps the answer
+  for an hour and serves it stale for a day while it is refreshed, so GitHub sees one request
+  an hour per region however busy the site is.
+- When GitHub does not answer (offline builds, rate limits, a repository that moved), the
+  endpoint returns `stars: null`, keeps that for a minute only (`cache.set({ maxAge: 60 })`)
+  and the header shows the plain icon. The link never depends on the count.
+- Browsers keep any answer for five minutes (`Cache-Control: public, max-age=300`).
+
+To remove it, delete the endpoint, the rule and the count span in
+`src/components/site/GitHubLink.astro`.
+
+## Checking it works
+
+On Node, request a cached route twice; the first answer is rendered and stored, the second comes
+from memory:
+
+```bash
+curl -sI http://127.0.0.1:4321/api/repo-stats | grep -i x-astro-cache   # MISS
+curl -sI http://127.0.0.1:4321/api/repo-stats | grep -i x-astro-cache   # HIT
+```
+
+On the CDN targets look at the platform's status header from the table above. The end-to-end
+suite (`tests/e2e/caching.spec.ts`) checks the Node behaviour, including that a signed-in
+visitor's response is never stored.
+
+## When not to reach for it
+
+Route caching is not a substitute for prerendering. A page whose content only changes when you
+deploy should stay prerendered: it is faster, needs no server and cannot go stale. Cache a
+server-rendered route when its data changes between deploys, is the same for everyone, and is
+expensive or rate limited to produce. Anything personal stays uncached, by the middleware's
+rules and by yours.
