@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { newsletterSubscribers } from '../db/schema/app';
 
+import { recordAudit } from './admin';
 import type { EmailMessage } from './email';
 import { consumeThrottle, hashThrottleKey, type ThrottleRule } from './throttle';
 
@@ -59,6 +60,17 @@ export type SubscribeOutcome = 'confirmation-sent' | 'already-subscribed' | 'ign
 
 export type ConfirmOutcome = 'confirmed' | 'already-confirmed' | 'invalid';
 export type UnsubscribeOutcome = 'unsubscribed' | 'already-unsubscribed' | 'invalid';
+
+/**
+ * What a provider webhook delivery did:
+ *
+ * - `unsubscribed`: the address opted out (or was deleted) at the provider and the row now
+ *   says so
+ * - `ignored`: nothing to do, because the event is not an opt-out, the row already agrees, or
+ *   the payload has no usable address
+ * - `unknown-address`: the provider knows an address this site never stored
+ */
+export type ProviderEventOutcome = 'unsubscribed' | 'ignored' | 'unknown-address';
 
 /** Thrown when a sender exceeds the subscription limits. */
 export class NewsletterThrottledError extends Error {
@@ -297,4 +309,56 @@ export async function syncAudience(
       .where(eq(newsletterSubscribers.id, id));
     return false;
   }
+}
+
+/**
+ * Applies a contact event from the email provider's webhook (Resend's `contact.updated` and
+ * `contact.deleted`). Only opt-outs flow back: an address unsubscribed or deleted at the
+ * provider is marked unsubscribed here, so the two lists agree about who receives email. The
+ * reverse is deliberately not mirrored: a contact re-subscribed at the provider still has to
+ * confirm through the site's own double opt-in. The change is recorded in the audit log.
+ */
+export async function applyProviderContactEvent(
+  event: unknown,
+  deps: NewsletterDeps,
+): Promise<ProviderEventOutcome> {
+  if (!event || typeof event !== 'object') return 'ignored';
+  const { type, data } = event as { type?: unknown; data?: unknown };
+  if (typeof type !== 'string' || !data || typeof data !== 'object') return 'ignored';
+  const { email: rawEmail, unsubscribed } = data as { email?: unknown; unsubscribed?: unknown };
+  if (typeof rawEmail !== 'string' || !rawEmail.includes('@')) return 'ignored';
+
+  const optedOut =
+    type === 'contact.deleted' || (type === 'contact.updated' && unsubscribed === true);
+  if (!optedOut) return 'ignored';
+
+  const email = rawEmail.trim().toLowerCase();
+  const [row] = await deps.db
+    .select()
+    .from(newsletterSubscribers)
+    .where(eq(newsletterSubscribers.email, email))
+    .limit(1);
+  if (!row) return 'unknown-address';
+  if (row.status === 'unsubscribed') return 'ignored';
+
+  const now = deps.now ?? (() => new Date());
+  const at = now();
+  await deps.db
+    .update(newsletterSubscribers)
+    .set({
+      status: 'unsubscribed',
+      unsubscribedAt: at,
+      updatedAt: at,
+      // The provider is the source of this change, so it needs no sync back.
+      audienceSyncedAt: at,
+      audienceError: null,
+    })
+    .where(eq(newsletterSubscribers.id, row.id));
+  await recordAudit(deps.db, {
+    action: 'subscriber.unsubscribe',
+    targetType: 'subscriber',
+    targetId: row.id,
+    details: { via: 'provider', event: type },
+  });
+  return 'unsubscribed';
 }
