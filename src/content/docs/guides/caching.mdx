@@ -5,7 +5,7 @@ publishedDate: 2026-09-29
 updatedDate: 2026-09-29
 sidebar:
   order: 9
-  badge: new
+  badge: updated
 ---
 
 The template is static first: almost every page is rendered once at build time and served as a
@@ -85,13 +85,15 @@ turns the cache off when any of these hold:
 
 - the method is not `GET` or `HEAD`;
 - the request carries a Better Auth cookie (a session, the session cookie cache, the remember-me
-  flag or a pending two-factor sign-in), or a session was resolved;
-- the path belongs to the account, admin, auth, actions or newsletter-token routes listed in
-  `PRIVATE_ROUTE_PREFIXES`.
+  flag or a pending two-factor sign-in) or an `Authorization` header, or a session was resolved;
+- the path belongs to the account, admin, auth, actions, health or newsletter-token routes listed
+  in `PRIVATE_ROUTE_PREFIXES`.
 
 The providers add their own guard: on Node a response that sets a cookie is never stored, and
-the CDNs skip `Set-Cookie` responses as well. Even so, cache only routes whose output is
-identical for every visitor. The header's account menu is filled in by the browser from
+the CDNs skip `Set-Cookie` responses as well. Note the direction of the guarantee: a signed-in
+visitor's response is never _stored_, but a copy stored for an anonymous visitor _is served_ to
+everyone who asks next, signed in or not, because the cache answers before the middleware runs.
+So cache only routes whose output is identical for every visitor. The header's account menu is filled in by the browser from
 `/api/auth/get-session`, so a cached page still shows the right account, but anything you
 render on the server from `Astro.locals.user` would be frozen at the first visitor's view.
 
@@ -142,7 +144,7 @@ curl -sI http://127.0.0.1:4321/api/repo-stats | grep -i x-astro-cache   # HIT
 
 On the CDN targets look at the platform's status header from the table above. The end-to-end
 suite (`tests/e2e/caching.spec.ts`) checks the Node behaviour, including that a signed-in
-visitor's response is never stored.
+visitor's response is never stored and that a stored public copy is served to them afterwards.
 
 ## When not to reach for it
 

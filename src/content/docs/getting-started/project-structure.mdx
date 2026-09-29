@@ -12,8 +12,10 @@ sidebar:
 ├── astro.config.ts          # Adapter switch, CSP, fonts, integrations
 ├── config/                  # Build-time configuration shared by tooling
 │   ├── adapter.ts           # DEPLOY_TARGET resolution and adapter options
+│   ├── cache.ts             # Route cache provider per target
 │   ├── security-headers.ts  # Response headers used by middleware and adapters
-│   └── site-url.ts          # Canonical URL resolution
+│   ├── site-url.ts          # Canonical URL resolution
+│   └── trusted-hosts.ts     # Hosts whose forwarded headers the Node server trusts
 ├── integrations/            # Small local Astro integrations
 ├── drizzle/                 # Generated SQL migrations (commit these)
 ├── public/                  # Static files copied as-is (_headers, icons, security.txt)

@@ -36,9 +36,11 @@ const sectionLabel = DOCS_SECTIONS.find((section) => section.id === sectionId)?.
 const href = `/docs/${entry.id}`;
 const editUrl = `${siteConfig.repo.url}/${siteConfig.repo.editPath}/${siteConfig.repo.branch}/src/content/docs/${entry.filePath?.split('src/content/docs/')[1] ?? `${entry.id}.mdx`}`;
 
+// Every crumb has a URL: sections have no page of their own, so theirs points at the section
+// heading on the docs index. Google's BreadcrumbList requires `item` on all but the last entry.
 const crumbs = [
   { label: 'Docs', href: '/docs' },
-  { label: sectionLabel },
+  { label: sectionLabel, href: `/docs#section-${sectionId}` },
   { label: entry.data.title, href },
 ];
 ---

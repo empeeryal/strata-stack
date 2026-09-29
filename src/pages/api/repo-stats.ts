@@ -1,9 +1,14 @@
 import type { APIRoute } from 'astro';
 
-import { fetchRepoStats, parseGitHubRepo } from '@/lib/repo-stats';
+import { createRepoStatsSource, parseGitHubRepo } from '@/lib/repo-stats';
 import { siteConfig } from '@/site.config';
 
 export const prerender = false;
+
+// One reader per server instance: GitHub is asked at most every two minutes, however many
+// distinct URLs (query strings) the route cache misses on.
+const repo = parseGitHubRepo(siteConfig.repo.url);
+const readStats = repo ? createRepoStatsSource(repo) : null;
 
 /**
  * Star and fork counts of the site's repository, shown next to the GitHub link in the header.
@@ -16,13 +21,12 @@ export const prerender = false;
  * retries soon without hammering a failing upstream. Browsers keep any answer for five minutes.
  */
 export const GET: APIRoute = async ({ cache }) => {
-  const repo = parseGitHubRepo(siteConfig.repo.url);
-  if (!repo) {
+  if (!readStats) {
     cache.set(false);
     return Response.json({ error: 'The repository is not hosted on GitHub.' }, { status: 404 });
   }
 
-  const stats = await fetchRepoStats(repo);
+  const stats = await readStats();
   if (!stats) cache.set({ maxAge: 60 });
 
   return Response.json(

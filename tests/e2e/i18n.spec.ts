@@ -55,7 +55,10 @@ test.describe('internationalisation', () => {
     ).toHaveAttribute('href', '/de/blog/why-astro-7');
     const english = page.getByRole('region', { name: 'Weitere Beiträge auf Englisch' });
     await expect(english).toBeVisible();
-    await expect(english.getByText('Englisch').first()).toBeVisible();
+    // Each card carries the language of the post it links to.
+    await expect(
+      english.getByRole('listitem').first().getByText('English', { exact: true }),
+    ).toBeVisible();
     await expect(english.getByRole('link').first()).toHaveAttribute('href', /^\/blog\//);
   });
 

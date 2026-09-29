@@ -7,6 +7,7 @@
 import { Icon } from 'astro-icon/components';
 
 import { formatPrice, hasAnnualPricing, maxAnnualSavings, type PricingTier } from '@/lib/pricing';
+import { fnv1a } from '@/lib/hash';
 import { cn } from '@/lib/utils';
 
 import Badge from './Badge.astro';
@@ -28,7 +29,8 @@ const {
   class: className,
 } = Astro.props;
 
-const id = `pricing-${Math.random().toString(36).slice(2, 8)}`;
+// Stable across builds: derived from the tiers, so prerendered pages do not change per deploy.
+const id = `pricing-${fnv1a(JSON.stringify(tiers))}`;
 const savings = maxAnnualSavings(tiers);
 const columns =
   tiers.length >= 4

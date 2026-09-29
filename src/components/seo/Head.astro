@@ -8,7 +8,7 @@ import {
   serializeJsonLd,
   websiteJsonLd,
 } from '@/lib/seo';
-import { type Locale, defaultLocale, ogLocales } from '@/i18n';
+import { type Locale, defaultLocale, localizePath, ogLocales, useTranslations } from '@/i18n';
 import { stripTrailingSlash } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
@@ -59,6 +59,7 @@ const {
 } = Astro.props;
 
 const fullTitle = pageTitle(title, tagline);
+const t = useTranslations(locale);
 const ogTitle = title ?? siteConfig.name;
 const canonicalUrl = new URL(canonical ?? stripTrailingSlash(Astro.url.pathname), site).toString();
 const imageUrl = new URL(image, site).toString();
@@ -113,8 +114,8 @@ const defaultHref =
 <link
   rel="alternate"
   type="application/rss+xml"
-  title={`${siteConfig.name} blog`}
-  href={new URL('/rss.xml', site).toString()}
+  title={t('blog.feedTitle')}
+  href={new URL(localizePath('/rss.xml', locale), site).toString()}
 />
 
 <Font cssVariable="--font-inter" preload />

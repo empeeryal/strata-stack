@@ -2,11 +2,14 @@ import { and, eq, like, sql, type SQL } from 'drizzle-orm';
 
 import type { Database, DbExecutor } from '../db/client';
 import { auditLog } from '../db/schema/app';
+
+import { hasAdminRole } from './roles';
 import {
   account as accountTable,
   session as sessionTable,
   twoFactor as twoFactorTable,
   user as userTable,
+  verification as verificationTable,
 } from '../db/schema/auth';
 
 /**
@@ -14,7 +17,7 @@ import {
  * roles as a comma-separated string.
  */
 export function isAdmin(user: { role?: string | null | undefined } | null | undefined): boolean {
-  return (user?.role ?? '').split(',').some((role) => role.trim() === 'admin');
+  return hasAdminRole(user?.role);
 }
 
 /**
@@ -187,6 +190,23 @@ export async function deleteUserAccount(
  * in with the password alone and set it up again. The recovery path for someone who lost both
  * the authenticator and the codes; administrators use it after checking who they talk to.
  */
+/**
+ * Forgets every browser the user marked as trusted. Better Auth keeps one `verification` row
+ * per trusted device (identifier `trust-device-…`, value = user id) and only checks that a row
+ * exists at sign-in, so turning the factor off, resetting it or re-enabling it must clear them
+ * or those browsers keep skipping the second step for up to 30 days.
+ */
+export async function forgetTrustedDevices(db: DbExecutor, userId: string): Promise<void> {
+  await db
+    .delete(verificationTable)
+    .where(
+      and(
+        eq(verificationTable.value, userId),
+        like(verificationTable.identifier, 'trust-device-%'),
+      ),
+    );
+}
+
 export async function resetUserTwoFactor(
   db: Database,
   actor: { id: string; email: string },
@@ -200,6 +220,7 @@ export async function resetUserTwoFactor(
       .limit(1);
     if (!target) throw new UserNotFoundError();
     await tx.delete(twoFactorTable).where(eq(twoFactorTable.userId, targetId));
+    await forgetTrustedDevices(tx, targetId);
     await tx.update(userTable).set({ twoFactorEnabled: false }).where(eq(userTable.id, targetId));
     await writeAudit(tx, {
       actorId: actor.id,
@@ -239,6 +260,7 @@ export const AUDIT_ACTIONS = [
   'subscribers.export',
   'two_factor.enable',
   'two_factor.disable',
+  'two_factor.backup_codes',
   'user.reset_two_factor',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

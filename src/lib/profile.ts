@@ -40,6 +40,11 @@ export function isHttpsUrl(value: string): boolean {
   }
 }
 
+/** Trims, collapses inner whitespace and caps the length; what every stored name goes through. */
+export function normaliseName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').slice(0, NAME_MAX_LENGTH);
+}
+
 /**
  * Normalises and checks a profile update. Fields that are absent stay absent, so partial
  * updates from other code paths (roles, bans) pass through untouched. An empty avatar URL

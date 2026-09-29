@@ -20,6 +20,7 @@ import {
   useState,
 } from 'react';
 
+import { hasAdminRole } from '@/lib/roles';
 import { THEME_STORAGE_KEY } from '@/lib/theme-script';
 import { cn } from '@/lib/utils';
 
@@ -113,7 +114,7 @@ async function loadCurrentSession(): Promise<Session | null> {
     } | null;
     const user = data?.user;
     if (!user) return null;
-    const admin = (user.role ?? '').split(',').some((role) => role.trim() === 'admin');
+    const admin = hasAdminRole(user.role);
     return { name: user.name, admin };
   } catch {
     return null;

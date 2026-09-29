@@ -44,12 +44,26 @@ test.describe('SEO and discovery endpoints', () => {
       `${siteConfig.url}/og/docs/getting-started/introduction.png`,
     );
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /.+/);
-    const types = await page
-      .locator('script[type="application/ld+json"]')
-      .evaluateAll((scripts) =>
-        scripts.map((script) => JSON.parse(script.textContent ?? '{}')['@type'] as string),
-      );
-    expect(types).toEqual(expect.arrayContaining(['WebSite', 'BreadcrumbList', 'TechArticle']));
+    const graphs = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) =>
+      scripts.map(
+        (script) =>
+          JSON.parse(script.textContent ?? '{}') as {
+            '@type': string;
+            itemListElement?: Array<{ name: string; item?: string }>;
+          },
+      ),
+    );
+    expect(graphs.map((graph) => graph['@type'])).toEqual(
+      expect.arrayContaining(['WebSite', 'BreadcrumbList', 'TechArticle']),
+    );
+    // Search Console flags a BreadcrumbList entry without `item`; every crumb links somewhere,
+    // the section crumb to its heading on the docs index.
+    const breadcrumbs = graphs.find((graph) => graph['@type'] === 'BreadcrumbList');
+    expect(breadcrumbs?.itemListElement?.map((entry) => entry.item)).toEqual([
+      `${siteConfig.url}/docs`,
+      `${siteConfig.url}/docs#section-getting-started`,
+      `${siteConfig.url}/docs/getting-started/introduction`,
+    ]);
   });
 
   test('404 page is served with the right status', async ({ page }) => {

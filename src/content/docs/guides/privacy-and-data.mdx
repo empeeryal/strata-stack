@@ -5,7 +5,7 @@ publishedDate: 2026-09-18
 updatedDate: 2026-09-29
 sidebar:
   order: 7
-  badge: new
+  badge: updated
 ---
 
 The template is designed so the promises in the privacy policy are backed by real
@@ -14,16 +14,16 @@ must adapt before launch.
 
 ## What is stored where
 
-| Data                                | Table                   | Lifecycle                                                                                                     |
-| ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Profile, verification, role         | `user`                  | Until the account is deleted                                                                                  |
-| Password hash / OAuth links         | `account`               | With the user                                                                                                 |
-| Sessions (IP, user agent)           | `session`               | With the user; expired rows are removed by Better Auth                                                        |
-| Two-factor secret and backup codes  | `two_factor`            | Encrypted with `BETTER_AUTH_SECRET`; with the user, or when 2FA is turned off or reset by an administrator    |
-| Contact messages                    | `contact_message`       | Archived ones are pruned; open ones too if a maximum age is set (see below)                                   |
-| Newsletter subscribers              | `newsletter_subscriber` | Confirmed ones until they unsubscribe; pending and unsubscribed rows pruned after `NEWSLETTER_RETENTION_DAYS` |
-| Throttle counters (hashed IP/email) | `throttle`              | Expire after 15 minutes / 1 hour, pruned by `db:prune`                                                        |
-| Audit log                           | `audit_log`             | Kept indefinitely; contains no message bodies or secrets                                                      |
+| Data                                       | Table                   | Lifecycle                                                                                                     |
+| ------------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Profile, verification, role                | `user`                  | Until the account is deleted                                                                                  |
+| Password hash / OAuth links                | `account`               | With the user                                                                                                 |
+| Sessions (IP, user agent)                  | `session`               | With the user; expired rows are removed by Better Auth                                                        |
+| Two-factor secret and backup codes         | `two_factor`            | Encrypted with `BETTER_AUTH_SECRET`; with the user, or when 2FA is turned off or reset by an administrator    |
+| Contact messages                           | `contact_message`       | Archived ones are pruned; open ones too if a maximum age is set (see below)                                   |
+| Newsletter subscribers                     | `newsletter_subscriber` | Confirmed ones until they unsubscribe; pending and unsubscribed rows pruned after `NEWSLETTER_RETENTION_DAYS` |
+| Throttle counters (keyed hash of IP/email) | `throttle`              | Expire after 15 minutes / 1 hour, pruned by `db:prune`                                                        |
+| Audit log                                  | `audit_log`             | Kept indefinitely; contains no message bodies or secrets                                                      |
 
 ## Self-service
 

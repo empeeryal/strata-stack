@@ -8,12 +8,15 @@ import { createTestDb } from '../../tests/unit/db';
 import type { EmailMessage } from './email';
 import {
   applyProviderContactEvent,
+  CONFIRMATION_TTL_MS,
   confirmSubscription,
   generateToken,
   isTokenShape,
   NEWSLETTER_LIMITS,
   NewsletterEmailError,
   NewsletterThrottledError,
+  removeSubscriber,
+  SubscriberNotFoundError,
   subscribeToNewsletter,
   unsubscribeFromNewsletter,
   type NewsletterDeps,
@@ -172,6 +175,38 @@ describe('subscribeToNewsletter', () => {
     expect(sendEmail).toHaveBeenCalledTimes(NEWSLETTER_LIMITS.perEmail.limit);
   });
 
+  it('throttles one address that asks for many subscriptions', async () => {
+    for (let i = 0; i < NEWSLETTER_LIMITS.perIp.limit; i += 1) {
+      await subscribeToNewsletter({ email: `reader-${i}@example.com` }, ctx, deps());
+    }
+
+    await expect(
+      subscribeToNewsletter({ email: 'one-more@example.com' }, ctx, deps()),
+    ).rejects.toBeInstanceOf(NewsletterThrottledError);
+    // Another address is not affected.
+    await expect(
+      subscribeToNewsletter({ email: 'one-more@example.com' }, { ip: '203.0.113.8' }, deps()),
+    ).resolves.toBe('confirmation-sent');
+  });
+
+  it('keeps one row when two first-time requests for an address arrive together', async () => {
+    // Both requests pass the "does it exist?" lookup before either has inserted; the second
+    // insert lands on the unique index and takes the pending row over instead of failing.
+    const outcomes = await Promise.all([
+      subscribeToNewsletter({ email: 'reader@example.com' }, ctx, deps()),
+      subscribeToNewsletter({ email: 'reader@example.com' }, ctx, deps()),
+    ]);
+
+    expect(outcomes).toEqual(['confirmation-sent', 'confirmation-sent']);
+    const stored = await rows();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ email: 'reader@example.com', status: 'pending' });
+    // Exactly one of the two links works: the one carrying the token that was stored last.
+    const tokens = [linkInEmail(0), linkInEmail(1)].map((url) => url.searchParams.get('token'));
+    expect(tokens).toContain(stored[0]?.token);
+    expect(await confirmSubscription(stored[0]?.token ?? '', deps())).toBe('confirmed');
+  });
+
   it('keeps the request and reports when the confirmation cannot be sent', async () => {
     sendEmail.mockRejectedValueOnce(new Error('Resend is down'));
 
@@ -198,6 +233,26 @@ describe('confirmSubscription', () => {
 
     expect(await confirmSubscription(token, deps())).toBe('already-confirmed');
     expect(audience.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a confirmation link older than the confirmation window', async () => {
+    const requested = new Date('2026-01-01T10:00:00Z');
+    await subscribeToNewsletter(
+      { email: 'reader@example.com' },
+      ctx,
+      deps({ now: () => requested }),
+    );
+    const token = linkInEmail().searchParams.get('token') ?? '';
+    const late = new Date(requested.valueOf() + CONFIRMATION_TTL_MS + 1);
+
+    expect(await confirmSubscription(token, deps({ now: () => late }))).toBe('invalid');
+    expect((await rows())[0]?.status).toBe('pending');
+    expect(audience.add).not.toHaveBeenCalled();
+
+    // Asking again issues a fresh link that works.
+    await subscribeToNewsletter({ email: 'reader@example.com' }, ctx, deps({ now: () => late }));
+    const fresh = linkInEmail(1).searchParams.get('token') ?? '';
+    expect(await confirmSubscription(fresh, deps({ now: () => late }))).toBe('confirmed');
   });
 
   it('rejects malformed and unknown tokens', async () => {
@@ -313,5 +368,58 @@ describe('applyProviderContactEvent', () => {
     expect(await applyProviderContactEvent(null, deps())).toBe('ignored');
     expect(await applyProviderContactEvent({ type: 'contact.updated' }, deps())).toBe('ignored');
     expect((await rows())[0]?.status).toBe('confirmed');
+  });
+});
+
+describe('removeSubscriber', () => {
+  const actor = { id: 'admin-1', email: 'admin@example.com' };
+
+  async function auditEntries() {
+    return testDb.db.select().from(auditLog);
+  }
+
+  it('removes a confirmed address from the audience and the table, and logs it', async () => {
+    await subscribeAndConfirm('reader@example.com');
+    const [row] = await rows();
+
+    expect(await removeSubscriber(row?.id ?? '', actor, deps())).toBe('removed');
+    expect(await rows()).toHaveLength(0);
+    expect(audience.remove).toHaveBeenCalledWith('reader@example.com');
+    const [entry] = await auditEntries();
+    expect(entry).toMatchObject({
+      actorId: 'admin-1',
+      action: 'subscriber.delete',
+      targetType: 'subscriber',
+      targetId: row?.id,
+      details: '{"status":"confirmed","provider":"removed"}',
+    });
+  });
+
+  it('still removes the row when the audience refuses, and says so', async () => {
+    await subscribeAndConfirm('reader@example.com');
+    const [row] = await rows();
+    audience.remove.mockRejectedValueOnce(new Error('Resend is down'));
+
+    expect(await removeSubscriber(row?.id ?? '', actor, deps())).toBe('removed-unsynced');
+    expect(await rows()).toHaveLength(0);
+    const [entry] = await auditEntries();
+    expect(entry?.details).toBe('{"status":"confirmed","provider":"failed"}');
+  });
+
+  it('leaves the audience alone for an address that never confirmed', async () => {
+    await subscribeToNewsletter({ email: 'reader@example.com' }, ctx, deps());
+    const [row] = await rows();
+
+    expect(await removeSubscriber(row?.id ?? '', actor, deps())).toBe('removed');
+    expect(audience.remove).not.toHaveBeenCalled();
+    const [entry] = await auditEntries();
+    expect(entry?.details).toBe('{"status":"pending","provider":"skipped"}');
+  });
+
+  it('reports unknown ids without logging anything', async () => {
+    await expect(removeSubscriber('nope', actor, deps())).rejects.toBeInstanceOf(
+      SubscriberNotFoundError,
+    );
+    expect(await auditEntries()).toHaveLength(0);
   });
 });

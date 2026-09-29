@@ -36,8 +36,11 @@ privacy-friendly, cookie-less provider and never stores personal identifiers.
 
 ## Cookies
 
-We set only the cookies required to operate the site: an authentication session cookie when you
-sign in and a preference for light or dark mode stored in your browser's local storage.
+We set only the cookies required to operate the site: when you sign in, an authentication session
+cookie and a short-lived copy of the session; during a sign-in with two-factor authentication, a
+cookie for the pending step (ten minutes) and, if you ask for it, a cookie that remembers the
+device for thirty days. Your preference for light or dark mode and the tab you last opened in a
+tabbed code example are stored in your browser's local storage, not sent to us.
 
 ## Service providers
 

@@ -11,6 +11,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import Prose from '@/components/ui/Prose.astro';
 import Toc from '@/components/ui/Toc.astro';
 import { type Locale, defaultLocale, intlLocales, localizePath, useTranslations } from '@/i18n';
+import { newsletterLabels } from '@/i18n/newsletter-labels';
 import { getReadingMinutes, postHref, postLocale, postOgImage, tagHref } from '@/lib/content';
 import { blogPostingJsonLd, breadcrumbsJsonLd } from '@/lib/seo';
 import { formatDate, toISODate } from '@/lib/utils';
@@ -36,14 +37,6 @@ const ogImage = postOgImage(post);
 const readingTime = t('blog.readingTime', { minutes: getReadingMinutes(post.body) });
 const blogHref = localizePath('/blog', locale);
 const date = (value: Date) => formatDate(value, undefined, intlLocales[locale]);
-const newsletterLabels = {
-  email: t('newsletter.email'),
-  placeholder: t('newsletter.placeholder'),
-  submit: t('newsletter.submit'),
-  formLabel: t('newsletter.formLabel'),
-  sent: t('newsletter.sent'),
-  invalidEmail: t('newsletter.invalidEmail'),
-};
 
 const crumbs = [
   { label: t('blog.eyebrow'), href: blogHref },
@@ -191,7 +184,12 @@ const crumbs = [
           <p class="mt-1 text-sm text-pretty text-muted-foreground">
             {t('newsletter.description')}
           </p>
-          <NewsletterForm client:visible source="blog" className="mt-4" labels={newsletterLabels} />
+          <NewsletterForm
+            client:visible
+            source="blog"
+            className="mt-4"
+            labels={newsletterLabels(t)}
+          />
         </div>
       )}
       <BackLink href={blogHref} class="mt-6">

@@ -10,6 +10,30 @@ export interface RepoStats {
   forks: number;
 }
 
+/**
+ * A rate-limited reader of one repository's stats. Whatever the route cache does (it keys by
+ * URL, so `?anything` misses), GitHub is asked at most once per `intervalMs` per server
+ * instance; in between, callers get the last answer, including a `null` from a failed call.
+ */
+export function createRepoStatsSource(
+  repo: GitHubRepo,
+  options: { intervalMs?: number; fetchImpl?: typeof fetch; now?: () => number } = {},
+): () => Promise<RepoStats | null> {
+  const intervalMs = options.intervalMs ?? 120_000;
+  const now = options.now ?? Date.now;
+  let last: { at: number; stats: RepoStats | null } | undefined;
+  let inFlight: Promise<RepoStats | null> | undefined;
+  return async () => {
+    if (last && now() - last.at < intervalMs) return last.stats;
+    inFlight ??= fetchRepoStats(repo, options.fetchImpl).then((stats) => {
+      last = { at: now(), stats };
+      inFlight = undefined;
+      return stats;
+    });
+    return inFlight;
+  };
+}
+
 /** Owner and name from a github.com repository URL; `null` for anything else. */
 export function parseGitHubRepo(url: string): GitHubRepo | null {
   let parsed: URL;

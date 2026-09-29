@@ -3,12 +3,7 @@ import { z } from 'astro/zod';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db/client';
-import {
-  CONTACT_STATUSES,
-  contactMessages,
-  newsletterSubscribers,
-  type ContactStatus,
-} from '@/db/schema';
+import { CONTACT_STATUSES, contactMessages, type ContactStatus } from '@/db/schema';
 import {
   banUserAccount,
   changeUserRole,
@@ -38,6 +33,8 @@ import {
   NEWSLETTER_SOURCES,
   NewsletterEmailError,
   NewsletterThrottledError,
+  removeSubscriber,
+  SubscriberNotFoundError,
   subscribeToNewsletter,
   unsubscribeFromNewsletter,
 } from '@/lib/newsletter';
@@ -253,6 +250,14 @@ export const server = {
         } catch (error) {
           throw toActionError(error, 'Could not sign out the other sessions.');
         }
+        await recordAudit(db, {
+          actorId: user.id,
+          actorEmail: user.email,
+          action: 'user.revoke_sessions',
+          targetType: 'user',
+          targetId: user.id,
+          details: { scope: 'others' },
+        });
         return { notice: 'sessions-revoked' as AccountNotice };
       },
     }),
@@ -356,32 +361,19 @@ export const server = {
       input: z.object({ id: subscriberId }),
       handler: async ({ id }, context) => {
         const actor = await requireAdmin(context);
-        const [row] = await db
-          .select()
-          .from(newsletterSubscribers)
-          .where(eq(newsletterSubscribers.id, id))
-          .limit(1);
-        if (!row) {
-          throw new ActionError({ code: 'NOT_FOUND', message: 'Subscriber not found.' });
+        try {
+          const outcome = await removeSubscriber(id, actor, newsletterDeps());
+          return {
+            notice: (outcome === 'removed'
+              ? 'subscriber-removed'
+              : 'subscriber-removed-unsynced') as AdminNotice,
+          };
+        } catch (error) {
+          if (error instanceof SubscriberNotFoundError) {
+            throw new ActionError({ code: 'NOT_FOUND', message: error.message });
+          }
+          throw error;
         }
-        const deps = newsletterDeps();
-        if (row.status === 'confirmed' && deps.audience) {
-          await deps.audience.remove(row.email).catch((error: unknown) => {
-            console.error('[newsletter] audience remove failed', error);
-          });
-        }
-        await db.transaction(async (tx) => {
-          await tx.delete(newsletterSubscribers).where(eq(newsletterSubscribers.id, id));
-          await writeAudit(tx, {
-            actorId: actor.id,
-            actorEmail: actor.email,
-            action: 'subscriber.delete',
-            targetType: 'subscriber',
-            targetId: id,
-            details: { status: row.status },
-          });
-        });
-        return { notice: 'subscriber-removed' as AdminNotice };
       },
     }),
 

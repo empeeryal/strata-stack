@@ -132,16 +132,17 @@ The full list with platform notes lives in [`.env.example`](.env.example) and th
 
 ```text
 astro.config.ts         adapter switch, CSP, fonts, integrations
-config/                 adapter resolver, security headers
+config/                 adapter, cache provider, security headers, site URL, trusted hosts
 integrations/           theme script, security headers
 src/
   actions/              Astro Actions (contact form, admin operations)
   components/           ui primitives, site chrome, React islands, SEO head
   content/              docs, blog, authors, legal (MDX/JSON) + changelog loader
   db/                   Drizzle client and schema (auth schema generated)
+  i18n/                 locales, UI strings, language switcher helpers
   layouts/              Base, Docs, Blog, Auth, Admin
-  lib/                  auth, email, env, contact, throttle, admin, seo, utils
-  middleware.ts         session + security headers
+  lib/                  auth, session, email, env, contact, newsletter, caching, throttle, admin, seo
+  middleware.ts         session, security headers, cache bypass
   pages/                routes and endpoints (admin area, account export, og images, rss, api)
   site.config.ts        the one file to edit when rebranding
   styles/global.css     Tailwind 4 + design tokens

@@ -34,9 +34,13 @@ test.describe('route caching', () => {
     expect(signedIn.status()).toBe(200);
     expect(signedIn.headers()['x-astro-cache']).toBeUndefined();
 
-    // The anonymous request that follows finds nothing and renders it.
+    // Nothing was stored: the anonymous request that follows renders it...
     const anonymous = await request.get(path);
     expect(anonymous.headers()['x-astro-cache']).toBe('MISS');
+    // ...and once a public copy exists it is served to everyone, signed in or not. This is why
+    // only content that is the same for every visitor may opt into caching (see caching.ts).
+    const again = await page.request.get(path);
+    expect(['HIT', 'STALE']).toContain(again.headers()['x-astro-cache']);
   });
 
   test('the header shows the star count once it is known', async ({ page, isMobile }) => {

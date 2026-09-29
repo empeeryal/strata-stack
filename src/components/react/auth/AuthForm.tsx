@@ -119,7 +119,8 @@ export default function AuthForm({
               <button
                 type="button"
                 onClick={resendVerification}
-                className="font-medium underline underline-offset-4"
+                disabled={loading}
+                className="font-medium underline underline-offset-4 disabled:opacity-60"
               >
                 Resend the verification email
               </button>

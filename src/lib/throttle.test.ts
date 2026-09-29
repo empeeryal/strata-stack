@@ -49,9 +49,15 @@ describe('consumeThrottle', () => {
 
 describe('hashThrottleKey', () => {
   it('is deterministic and does not contain the input', async () => {
-    const hash = await hashThrottleKey('203.0.113.7');
+    const hash = await hashThrottleKey('203.0.113.7', 'a-secret');
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(hash).toBe(await hashThrottleKey('203.0.113.7'));
+    expect(hash).toBe(await hashThrottleKey('203.0.113.7', 'a-secret'));
     expect(hash).not.toContain('203.0.113.7');
+  });
+
+  it('is keyed, so the same address hashes differently per deployment', async () => {
+    const keyed = await hashThrottleKey('203.0.113.7', 'a-secret');
+    expect(keyed).not.toBe(await hashThrottleKey('203.0.113.7', 'another-secret'));
+    expect(keyed).not.toBe(await hashThrottleKey('203.0.113.7', undefined));
   });
 });

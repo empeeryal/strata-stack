@@ -5,7 +5,7 @@ publishedDate: 2026-09-28
 updatedDate: 2026-09-29
 sidebar:
   order: 5
-  badge: new
+  badge: updated
 ---
 
 import NewsletterForm from '@/components/react/NewsletterForm';
@@ -38,7 +38,8 @@ click on a confirmation page.
    with the unsubscribe link instead. The visitor sees the same message in every case, so the
    form cannot be used to find out who is subscribed.
 3. **Confirm.** Opening `/newsletter/confirm?token=…` marks the row `confirmed`, records the
-   time and, when `RESEND_AUDIENCE_ID` is set, adds the address to the Resend audience.
+   time and, when `RESEND_AUDIENCE_ID` is set, adds the address to the Resend segment. A link
+   works for seven days; after that the page asks the visitor to request a new one.
 4. **Unsubscribe.** `/newsletter/unsubscribe?token=…` shows the address and a button. The
    button posts the `newsletter.unsubscribe` action; opening the link alone changes nothing,
    because mail clients and security scanners fetch links from emails. The audience is updated
@@ -52,11 +53,12 @@ tokens, so the CSV export can include an unsubscribe link for each address.
 
 ## Props
 
-| Prop        | Type                                     | Default  |
-| ----------- | ---------------------------------------- | -------- |
-| `source`    | `'footer' \| 'blog' \| 'page' \| 'docs'` | `'page'` |
-| `compact`   | `boolean`, input and button on one row   | `false`  |
-| `className` | extra classes for the `<form>`           | –        |
+| Prop        | Type                                                        | Default  |
+| ----------- | ----------------------------------------------------------- | -------- |
+| `source`    | `'footer' \| 'blog' \| 'page' \| 'docs'`                    | `'page'` |
+| `compact`   | `boolean`, input and button on one row                      | `false`  |
+| `className` | extra classes for the `<form>`                              | –        |
+| `labels`    | `Partial<NewsletterFormLabels>`, strings for another locale | English  |
 
 `source` is stored with the subscription and shown on the admin page; it says where people
 subscribe, nothing more.
@@ -115,14 +117,20 @@ any row from `/admin/subscribers`, for requests that arrive by other means.
 
 Set `newsletter.enabled` to `false` in `src/site.config.ts`. The footer block, the blog card,
 the palette entry and `/newsletter` disappear; the confirm and unsubscribe pages keep working
-so existing links in inboxes still do what they say.
+so existing links in inboxes still do what they say. A form you place yourself should check the
+same flag:
+
+```astro
+{siteConfig.newsletter.enabled && <NewsletterForm client:visible source="page" />}
+```
 
 ## Accessibility
 
 The email field has a visually hidden label, the error is announced through `role="alert"` and
 referenced with `aria-describedby`, and the success message is a status region. The unsubscribe
 page names the address it is about and uses a real button for the change. The axe scan in
-`tests/e2e/a11y.spec.ts` covers `/newsletter` and the confirmation page.
+`tests/e2e/a11y.spec.ts` covers `/newsletter`, the confirmation and unsubscribe pages and the
+subscriber list in the admin area.
 
 ## Tests
 

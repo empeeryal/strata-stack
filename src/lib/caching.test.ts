@@ -14,6 +14,7 @@ describe('isPrivateRoute', () => {
       '/two-factor',
       '/newsletter/confirm',
       '/newsletter/unsubscribe',
+      '/api/health',
       '/_actions/newsletter.subscribe',
     ]) {
       expect(isPrivateRoute(path), path).toBe(true);
@@ -25,7 +26,6 @@ describe('isPrivateRoute', () => {
       '/',
       '/blog/hello',
       '/api/repo-stats',
-      '/api/health',
       '/newsletter',
       '/loginfo',
       '/administration',
@@ -70,5 +70,6 @@ describe('shouldBypassCache', () => {
       shouldBypassCache({ ...anonymousGet, cookieHeader: 'better-auth.session_token=expired' }),
     ).toBe(true);
     expect(shouldBypassCache({ ...anonymousGet, pathname: '/dashboard' })).toBe(true);
+    expect(shouldBypassCache({ ...anonymousGet, authorization: 'Bearer token' })).toBe(true);
   });
 });

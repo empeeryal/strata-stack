@@ -39,18 +39,31 @@ export function getDatabaseConfig(
 
 const stripSlash = (url: string) => url.replace(/\/+$/, '');
 
-/** Public origin visitors use, e.g. https://example.com. */
-export function getSiteUrl(): string {
-  const explicit = getEnv('BETTER_AUTH_URL') ?? getEnv('SITE_URL');
+/** Values a copied .env.example or a test setup leaves in BETTER_AUTH_SECRET. */
+const PLACEHOLDER_SECRET = /change-me|ci-only|e2e-only|example|placeholder/i;
+
+/**
+ * The public origin from explicit configuration or the platform's own variables, or null when
+ * nothing is set (the caller decides on a fallback).
+ */
+export function resolvePublicUrl(
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const explicit = env.BETTER_AUTH_URL ?? env.SITE_URL;
   if (explicit) return stripSlash(explicit);
 
   // Platform-provided hosts (no protocol).
-  const vercel = getEnv('VERCEL_PROJECT_PRODUCTION_URL') ?? getEnv('VERCEL_URL');
+  const vercel = env.VERCEL_PROJECT_PRODUCTION_URL ?? env.VERCEL_URL;
   if (vercel) return `https://${vercel}`;
-  const netlify = getEnv('URL') ?? getEnv('DEPLOY_PRIME_URL');
+  const netlify = env.URL ?? env.DEPLOY_PRIME_URL;
   if (netlify) return stripSlash(netlify);
 
-  return 'http://localhost:4321';
+  return null;
+}
+
+/** Public origin visitors use, e.g. https://example.com; localhost during development. */
+export function getSiteUrl(): string {
+  return resolvePublicUrl() ?? 'http://localhost:4321';
 }
 
 /**
@@ -152,6 +165,29 @@ export function checkProductionConfig(
       level: 'error',
       message: 'BETTER_AUTH_SECRET must be at least 32 characters long.',
     });
+  } else if (PLACEHOLDER_SECRET.test(secret)) {
+    // The value from .env.example or a test setup is long enough but publicly known.
+    issues.push({
+      level: 'error',
+      message:
+        'BETTER_AUTH_SECRET is a placeholder from .env.example or the test setup. Generate a real one with `openssl rand -base64 32`.',
+    });
+  }
+
+  // Without a public URL Better Auth falls back to http://localhost:4321: cookies lose their
+  // Secure flag, every origin-checked request fails and emails link to localhost.
+  const publicUrl = resolvePublicUrl(env);
+  if (!publicUrl) {
+    issues.push({
+      level: 'error',
+      message:
+        'No public URL is configured. Set BETTER_AUTH_URL (or SITE_URL) to the https address visitors use, e.g. https://example.com.',
+    });
+  } else if (!publicUrl.startsWith('https://')) {
+    issues.push({
+      level: 'warn',
+      message: `The public URL ${publicUrl} is not https; session cookies are sent without the Secure flag.`,
+    });
   }
 
   if (getDatabaseConfig(env).url.startsWith('file:')) {
@@ -165,7 +201,7 @@ export function checkProductionConfig(
     issues.push({
       level: 'warn',
       message:
-        'RESEND_API_KEY is not set: magic links, email verification and password resets are unavailable until email delivery is configured.',
+        'RESEND_API_KEY is not set: magic links, email verification, password resets and newsletter confirmations are unavailable until email delivery is configured.',
     });
   }
   if (!env.CONTACT_TO_EMAIL) {

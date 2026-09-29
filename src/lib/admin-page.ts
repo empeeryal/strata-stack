@@ -49,6 +49,8 @@ export const ADMIN_NOTICES = {
   'sessions-revoked': 'The user was signed out everywhere.',
   'user-deleted': 'User deleted.',
   'subscriber-removed': 'Subscriber removed.',
+  'subscriber-removed-unsynced':
+    'Subscriber removed here, but the provider could not be updated. Remove the contact in Resend as well.',
   'two-factor-reset':
     'Two-factor authentication was reset. The user signs in with their password until they set it up again.',
 } as const;

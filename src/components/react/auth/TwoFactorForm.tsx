@@ -14,6 +14,31 @@ interface TwoFactorFormProps {
  * the authenticator app, or one of the backup codes. Better Auth keeps the pending sign-in in
  * a short-lived cookie set by the first step; verifying creates the session.
  */
+/** Better Auth ends the pending sign-in after five wrong codes or ten minutes. */
+const CHALLENGE_OVER_CODES = new Set([
+  'INVALID_TWO_FACTOR_COOKIE',
+  'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE',
+]);
+
+export const CHALLENGE_OVER_MESSAGE =
+  'This sign-in attempt has expired or used up its tries. Sign in with your password again to get a new one.';
+
+function describeVerificationError(
+  error: { status?: number | undefined; code?: string | undefined; message?: string | undefined },
+  method: 'totp' | 'backup',
+): string {
+  if (error.code && CHALLENGE_OVER_CODES.has(error.code)) return CHALLENGE_OVER_MESSAGE;
+  if (error.code === 'ACCOUNT_TEMPORARILY_LOCKED') {
+    return 'Too many failed codes. The second step is locked for a while; try again later.';
+  }
+  if (error.status === 401 || error.status === 400) {
+    return method === 'totp'
+      ? 'That code did not match. Codes change every 30 seconds; try the current one.'
+      : 'That backup code did not match or was already used.';
+  }
+  return error.message ?? UNEXPECTED_ERROR;
+}
+
 export default function TwoFactorForm({ redirectTo }: TwoFactorFormProps) {
   const [method, setMethod] = useState<'totp' | 'backup'>('totp');
   const [error, setError] = useState<string | null>(null);
@@ -32,13 +57,7 @@ export default function TwoFactorForm({ redirectTo }: TwoFactorFormProps) {
           ? await authClient.twoFactor.verifyTotp({ code, trustDevice })
           : await authClient.twoFactor.verifyBackupCode({ code, trustDevice });
       if (result.error) {
-        setError(
-          result.error.status === 401 || result.error.status === 400
-            ? method === 'totp'
-              ? 'That code did not match. Codes change every 30 seconds; try the current one.'
-              : 'That backup code did not match or was already used.'
-            : (result.error.message ?? UNEXPECTED_ERROR),
-        );
+        setError(describeVerificationError(result.error, method));
         return;
       }
       window.location.assign(redirectTo);

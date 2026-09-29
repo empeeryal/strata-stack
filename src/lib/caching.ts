@@ -3,9 +3,11 @@
  *
  * `Astro.cache` and `routeRules` (see docs/guides/caching) mark a response as cacheable for
  * the platform's CDN, or for the server's memory on Node. A cached copy is served to everyone
- * who asks for the same URL, so only anonymous GET responses of public routes qualify. The
- * middleware calls `shouldBypassCache()` on every server-rendered request and turns the cache
- * off for the rest, whatever the rules say.
+ * who asks for the same URL, including signed-in visitors, so only anonymous GET responses of
+ * public routes may be stored. The middleware calls `shouldBypassCache()` on every
+ * server-rendered request and stops the rest from being stored, whatever the rules say. It
+ * cannot stop an already stored anonymous copy from being served: cache only routes whose
+ * output is the same for everyone.
  */
 
 /** Route prefixes whose responses are always about one person and must never be cached. */
@@ -21,6 +23,7 @@ export const PRIVATE_ROUTE_PREFIXES = [
   '/two-factor',
   '/newsletter/confirm',
   '/newsletter/unsubscribe',
+  '/api/health',
   '/_actions',
 ] as const;
 
@@ -44,6 +47,8 @@ export interface CacheBypassInput {
   method: string;
   pathname: string;
   cookieHeader: string | null | undefined;
+  /** The `Authorization` header, if any; a bearer token makes a response personal too. */
+  authorization?: string | null | undefined;
   /** Whether the middleware resolved a session for this request. */
   hasSession: boolean;
 }
@@ -55,5 +60,6 @@ export interface CacheBypassInput {
 export function shouldBypassCache(input: CacheBypassInput): boolean {
   if (input.method !== 'GET' && input.method !== 'HEAD') return true;
   if (input.hasSession || hasAuthCookie(input.cookieHeader)) return true;
+  if (input.authorization) return true;
   return isPrivateRoute(input.pathname);
 }

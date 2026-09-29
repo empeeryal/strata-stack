@@ -4,16 +4,12 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { newsletterSubscribers } from '@/db/schema';
 import { isAdmin, recordAudit } from '@/lib/admin';
+import { csvRow } from '@/lib/csv';
 import { getSiteUrl } from '@/lib/env';
 import { unsubscribeUrl } from '@/lib/newsletter';
 import { getAuthoritativeSession } from '@/lib/session';
 
 export const prerender = false;
-
-/** Quotes a CSV field when it contains a separator, a quote or a line break. */
-function csvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
-}
 
 /**
  * Confirmed subscribers as CSV, for sending a newsletter from outside the provider's audience.
@@ -48,11 +44,11 @@ export const GET: APIRoute = async ({ request, redirect }) => {
   const lines = [
     'email,confirmed_at,unsubscribe_url',
     ...rows.map((row) =>
-      [
-        csvField(row.email),
+      csvRow([
+        row.email,
         row.confirmedAt ? row.confirmedAt.toISOString() : '',
-        csvField(unsubscribeUrl(siteUrl, row.token)),
-      ].join(','),
+        unsubscribeUrl(siteUrl, row.token),
+      ]),
     ),
   ];
   const date = new Date().toISOString().slice(0, 10);

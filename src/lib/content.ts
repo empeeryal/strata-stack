@@ -70,11 +70,6 @@ export function getReadingMinutes(body: string | undefined): number {
   return Math.max(1, Math.round(readingTime(body ?? '').minutes));
 }
 
-/** Estimated reading time such as "4 min read" (English; pages use `blog.readingTime`). */
-export function getReadingTime(body: string | undefined): string {
-  return `${getReadingMinutes(body)} min read`;
-}
-
 /** Unique tags with post counts, most used first. */
 export function collectTags(posts: BlogPost[]): Array<{ tag: string; count: number }> {
   const counts = new Map<string, number>();

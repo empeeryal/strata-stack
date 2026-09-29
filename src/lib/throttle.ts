@@ -3,6 +3,8 @@ import { sql } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { throttle } from '../db/schema/app';
 
+import { getEnv } from './env';
+
 export interface ThrottleRule {
   /** Requests allowed per window. */
   limit: number;
@@ -53,8 +55,29 @@ export async function consumeThrottle(
   };
 }
 
-/** SHA-256 hex digest so throttle keys never store raw addresses or IPs. */
-export async function hashThrottleKey(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+/**
+ * Keyed hash (HMAC-SHA256 with `BETTER_AUTH_SECRET`) so throttle keys never store raw
+ * addresses or IPs and cannot be reversed by hashing the IPv4 space or an address list.
+ * Without a secret (local development) it falls back to a plain SHA-256.
+ */
+export async function hashThrottleKey(
+  value: string,
+  secret: string | undefined = getEnv('BETTER_AUTH_SECRET'),
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(value);
+  const digest = secret
+    ? await crypto.subtle.sign(
+        'HMAC',
+        await crypto.subtle.importKey(
+          'raw',
+          encoder.encode(secret),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['sign'],
+        ),
+        data,
+      )
+    : await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

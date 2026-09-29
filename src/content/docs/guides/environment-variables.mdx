@@ -2,7 +2,7 @@
 title: Environment variables
 description: Every variable the template reads, where to set it on each platform, and the two access patterns.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-29
 sidebar:
   order: 14
 ---
@@ -30,7 +30,7 @@ client, and Cloudflare exposes secrets through `process.env` when `nodejs_compat
 | `BETTER_AUTH_TRUSTED_ORIGINS`              | runtime       | Comma-separated extra origins; wildcards allowed.                                                                                                                           |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | runtime       | Enables GitHub sign-in.                                                                                                                                                     |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | runtime       | Enables Google sign-in.                                                                                                                                                     |
-| `RESEND_API_KEY`                           | runtime       | Magic links, verification, password resets, contact notifications. Unset: console in dev, disabled in production.                                                           |
+| `RESEND_API_KEY`                           | runtime       | Magic links, verification, password resets, contact notifications, newsletter confirmations. Unset: console in dev, disabled in production.                                 |
 | `EMAIL_FROM`                               | runtime       | Sender address, e.g. `Site <noreply@example.com>`.                                                                                                                          |
 | `CONTACT_TO_EMAIL`                         | runtime       | Recipient of contact notifications. Unset: messages are only visible in `/admin/messages`.                                                                                  |
 | `RESEND_AUDIENCE_ID`                       | runtime       | Optional Resend segment (audience, in older dashboards) that confirmed newsletter subscribers are mirrored into. Unset: subscribers live in the database only (CSV export). |
