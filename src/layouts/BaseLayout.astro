@@ -23,7 +23,7 @@ interface Props extends HeadProps {
 
 const { class: className, hideFooter = false, searchable = true, ...head } = Astro.props;
 // Pages under src/pages/<locale>/ render in that locale (Astro reads it from the path); the
-// language switcher and the hreflang links come from the `alternates` a translated page passes.
+// hreflang links come from the `alternates` a translated page passes (none while English only).
 const locale = resolveLocale(Astro.currentLocale);
 ---
 
@@ -35,7 +35,7 @@ const locale = resolveLocale(Astro.currentLocale);
   </head>
   <body class="flex min-h-dvh flex-col">
     <SkipLink />
-    <Header alternates={head.alternates} />
+    <Header />
     <main
       id="main"
       class={cn('flex-1', className)}

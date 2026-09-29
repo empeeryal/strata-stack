@@ -1,22 +1,14 @@
 ---
-import type { Locale } from '@/i18n';
 import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
 import { siteConfig } from '@/site.config';
 
 import AccountMenu from './AccountMenu.astro';
 import GitHubLink from './GitHubLink.astro';
-import LanguageSwitcher from './LanguageSwitcher.astro';
 import Logo from './Logo.astro';
 import MobileNav from './MobileNav.astro';
 import Search from './Search.astro';
 import ThemeToggle from './ThemeToggle.astro';
 
-interface Props {
-  /** Paths of the current page in other locales, for the language switcher. */
-  alternates?: Partial<Record<Locale, string>> | undefined;
-}
-
-const { alternates } = Astro.props;
 const locale = resolveLocale(Astro.currentLocale);
 const t = useTranslations(locale);
 const pathname = Astro.url.pathname;
@@ -52,11 +44,10 @@ const nav = siteConfig.nav.map((item) => ({
 
     <div class="ml-auto flex items-center gap-1">
       <Search />
-      <LanguageSwitcher alternates={alternates} class="hidden md:block" />
       <GitHubLink />
       <ThemeToggle />
       <AccountMenu placement="header" />
-      <MobileNav alternates={alternates} />
+      <MobileNav />
     </div>
   </div>
 </header>

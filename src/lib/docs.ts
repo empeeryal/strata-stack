@@ -27,7 +27,7 @@ export interface DocsSection {
 }
 
 /**
- * Locale of a docs entry from its folder: `de/guides/styling` is the German `guides/styling`.
+ * Locale of a docs entry from its folder: `<locale>/guides/styling` translates `guides/styling`.
  * Entries without a locale folder belong to the default locale.
  */
 export function docsLocaleOf(entry: Pick<CollectionEntry<'docs'>, 'id'>): Locale {

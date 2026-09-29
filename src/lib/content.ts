@@ -15,7 +15,7 @@ export function isPublished(data: { draft: boolean; pubDate: Date }, now = new D
 }
 
 /**
- * Locale of a post from its folder: `src/content/blog/de/<slug>.mdx` is the German version of
+ * Locale of a post from its folder: `src/content/blog/<locale>/<slug>.mdx` translates
  * `src/content/blog/<slug>.mdx`. Posts at the top level belong to the default locale.
  */
 export function postLocale(post: Pick<BlogPost, 'id'>): Locale {
@@ -40,17 +40,16 @@ export async function getPublishedPosts(locale: Locale = defaultLocale): Promise
   return (await getAllPublishedPosts()).filter((post) => postLocale(post) === locale);
 }
 
-/** Paths of `post` in the other locales that have a translation, for the language switcher. */
+/** Paths of `post` in the other locales that have a translation, for `hreflang` alternates. */
 export function postAlternates(
   post: Pick<BlogPost, 'id'>,
   all: Array<Pick<BlogPost, 'id'>>,
 ): Partial<Record<Locale, string>> {
   const slug = postSlug(post);
-  const own = postLocale(post);
   const alternates: Partial<Record<Locale, string>> = {};
   for (const candidate of all) {
-    const locale = postLocale(candidate);
-    if (locale !== own && postSlug(candidate) === slug) alternates[locale] = postHref(candidate);
+    if (candidate.id === post.id || postSlug(candidate) !== slug) continue;
+    alternates[postLocale(candidate)] = postHref(candidate);
   }
   return alternates;
 }
@@ -81,7 +80,7 @@ export function collectTags(posts: BlogPost[]): Array<{ tag: string; count: numb
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
 
-/** `/blog/<slug>` for the default locale, `/de/blog/<slug>` for a German post. */
+/** `/blog/<slug>` for the default locale, `/<locale>/blog/<slug>` for a translated post. */
 export function postHref(post: Pick<BlogPost, 'id'>): string {
   return localizePath(`/blog/${postSlug(post)}`, postLocale(post));
 }

@@ -32,18 +32,18 @@ which is built from this exact code.
 
 ## Features
 
-| Area          | What you get                                                                                                                                                                            |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                            |
-| **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts, i18n routing with a language switcher |
-| **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                      |
-| **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, two-factor authentication, verification, password reset, protected routes, rate limiting           |
-| **Accounts**  | Profile editing, data export, account deletion, change password; admin area with a contact inbox, newsletter subscribers, user management (roles, bans, sessions) and an audit log      |
-| **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                                                             |
-| **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, command palette with Pagefind search                                               |
-| **Security**  | Hash-based Content Security Policy, hardened response headers, CSRF origin checks, open-redirect protection, `security.txt`                                                             |
-| **Quality**   | TypeScript strict, ESLint 10, Prettier, Vitest (unit + Container API + React Testing Library), Playwright + axe, Lighthouse CI                                                          |
-| **Delivery**  | One `DEPLOY_TARGET` switch for Vercel, Cloudflare Workers, Netlify and Node; Dockerfile; CI matrix that builds every target; Dependabot; Changesets                                     |
+| Area          | What you get                                                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                        |
+| **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts, i18n-ready routing and UI strings |
+| **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                  |
+| **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, two-factor authentication, verification, password reset, protected routes, rate limiting       |
+| **Accounts**  | Profile editing, data export, account deletion, change password; admin area with a contact inbox, newsletter subscribers, user management (roles, bans, sessions) and an audit log  |
+| **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                                                         |
+| **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, command palette with Pagefind search                                           |
+| **Security**  | Hash-based Content Security Policy, hardened response headers, CSRF origin checks, open-redirect protection, `security.txt`                                                         |
+| **Quality**   | TypeScript strict, ESLint 10, Prettier, Vitest (unit + Container API + React Testing Library), Playwright + axe, Lighthouse CI                                                      |
+| **Delivery**  | One `DEPLOY_TARGET` switch for Vercel, Cloudflare Workers, Netlify and Node; Dockerfile; CI matrix that builds every target; Dependabot; Changesets                                 |
 
 ## Quick start
 
@@ -139,7 +139,7 @@ src/
   components/           ui primitives, site chrome, React islands, SEO head
   content/              docs, blog, authors, legal (MDX/JSON) + changelog loader
   db/                   Drizzle client and schema (auth schema generated)
-  i18n/                 locales, UI strings, language switcher helpers
+  i18n/                 locale config, UI strings, path helpers (English only by default)
   layouts/              Base, Docs, Blog, Auth, Admin
   lib/                  auth, session, email, env, contact, newsletter, caching, throttle, admin, seo
   middleware.ts         session, security headers, cache bypass

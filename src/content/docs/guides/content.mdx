@@ -67,11 +67,11 @@ it stable once published.
 
 ### Translations
 
-A post is translated by adding a file with the same slug under a locale folder, for example
-`src/content/blog/de/why-astro-7.mdx` next to `src/content/blog/why-astro-7.mdx`. The German
-post is served at `/de/blog/why-astro-7`, the two pages link to each other through the language
-switcher and `hreflang`, and the German blog index lists English posts that have no translation
-yet. See [Internationalisation](/docs/guides/internationalisation).
+The site ships in English, but the collection is prepared for translations: once a locale is
+configured, a post is translated by adding a file with the same slug under its folder, for
+example `src/content/blog/de/why-astro-7.mdx` next to `src/content/blog/why-astro-7.mdx`. The two
+pages then link to each other through `hreflang`, and the translated blog index lists English posts
+that have no translation yet. See [Internationalisation](/docs/guides/internationalisation).
 
 ## MDX components
 

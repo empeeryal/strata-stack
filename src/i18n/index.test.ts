@@ -7,10 +7,13 @@ import {
   defaultLocale,
   getLocaleFromPath,
   interpolate,
+  intlLocales,
   labelFor,
+  localeNames,
   locales,
   localizeHref,
   localizePath,
+  ogLocales,
   otherLocales,
   splitLocaleId,
   stripLocale,
@@ -22,6 +25,13 @@ describe('locale configuration', () => {
   it('keeps the default locale in step with site.config.ts', () => {
     expect(defaultLocale).toBe(siteConfig.locale);
     expect(locales).toContain(defaultLocale);
+    expect(ogLocales[defaultLocale]).toBe(siteConfig.ogLocale);
+  });
+
+  it('describes every locale once', () => {
+    for (const table of [localeNames, intlLocales, ogLocales]) {
+      expect(Object.keys(table).sort()).toEqual([...locales].sort());
+    }
   });
 
   it('has every string in every locale', () => {
@@ -36,43 +46,35 @@ describe('locale configuration', () => {
 });
 
 describe('paths', () => {
-  it('reads the locale from the first segment', () => {
-    expect(getLocaleFromPath('/de/blog/hello')).toBe('de');
-    expect(getLocaleFromPath('/de')).toBe('de');
+  it('reads the locale from the first segment and ignores prefixes that are not locales', () => {
     expect(getLocaleFromPath('/blog')).toBe('en');
     expect(getLocaleFromPath('/')).toBe('en');
-    expect(getLocaleFromPath('/design')).toBe('en');
+    expect(getLocaleFromPath('/de/blog/hello')).toBe('en');
   });
 
-  it('strips and adds the prefix', () => {
-    expect(stripLocale('/de/blog')).toBe('/blog');
-    expect(stripLocale('/de')).toBe('/');
+  it('adds and strips a prefix, which the default locale does not have', () => {
     expect(stripLocale('/blog')).toBe('/blog');
-    expect(localizePath('/blog', 'de')).toBe('/de/blog');
-    expect(localizePath('/de/blog', 'de')).toBe('/de/blog');
-    expect(localizePath('/', 'de')).toBe('/de');
-    expect(localizePath('/de/blog', 'en')).toBe('/blog');
+    expect(stripLocale('/de/blog')).toBe('/de/blog');
+    expect(localizePath('/blog', 'en')).toBe('/blog');
+    expect(localizePath('/', 'en')).toBe('/');
   });
 
-  it('sends chrome links to translated pages only when they exist', () => {
-    expect(localizeHref('/blog', 'de')).toBe('/de/blog');
-    expect(localizeHref('/docs', 'de')).toBe('/docs');
+  it('keeps chrome links on the English page', () => {
     expect(localizeHref('/blog', 'en')).toBe('/blog');
+    expect(localizeHref('/docs', 'en')).toBe('/docs');
   });
 
-  it('splits locale folders off content ids', () => {
-    expect(splitLocaleId('de/why-astro-7')).toEqual({ locale: 'de', slug: 'why-astro-7' });
+  it('splits locale folders off content ids for configured locales only', () => {
     expect(splitLocaleId('why-astro-7')).toEqual({ locale: 'en', slug: 'why-astro-7' });
-    expect(splitLocaleId('de')).toEqual({ locale: 'en', slug: 'de' });
-    expect(splitLocaleId('guides/de/thing')).toEqual({ locale: 'en', slug: 'guides/de/thing' });
+    expect(splitLocaleId('de/why-astro-7')).toEqual({ locale: 'en', slug: 'de/why-astro-7' });
+    expect(splitLocaleId('guides/styling')).toEqual({ locale: 'en', slug: 'guides/styling' });
   });
 });
 
 describe('translations', () => {
-  it('translates labels from site.config.ts and keeps the English one otherwise', () => {
-    expect(labelFor('de', '/docs', 'Docs')).toBe('Dokumentation');
-    expect(labelFor('de', '/nowhere', 'Nowhere')).toBe('Nowhere');
+  it('keeps the labels from site.config.ts when a locale has no translation', () => {
     expect(labelFor('en', '/docs', 'Docs')).toBe('Docs');
+    expect(labelFor('en', '/nowhere', 'Nowhere')).toBe('Nowhere');
   });
 
   it('fills placeholders and leaves unknown ones visible', () => {
@@ -81,19 +83,16 @@ describe('translations', () => {
   });
 
   it('returns strings for the locale with placeholders applied', () => {
-    const t = useTranslations('de');
-    expect(t('skip')).toBe('Zum Inhalt springen');
-    expect(t('blog.readingTime', { minutes: 4 })).toBe('4 Min. Lesezeit');
-    expect(useTranslations('en')('blog.readingTime', { minutes: 4 })).toBe('4 min read');
+    const t = useTranslations('en');
+    expect(t('skip')).toBe('Skip to content');
+    expect(t('blog.readingTime', { minutes: 4 })).toBe('4 min read');
+    expect(t('footer.copyright', { year: 2026, author: 'Ada' })).toBe(
+      '© 2026 Ada. Released under the MIT License.',
+    );
   });
 
-  it('collects the alternates of a translated chrome page', () => {
-    expect(alternatesFor('/blog')).toEqual({ en: '/blog', de: '/de/blog' });
-    expect(alternatesFor('/docs')).toEqual({ en: '/docs' });
-  });
-
-  it('lists the other locales for the switcher', () => {
-    expect(otherLocales('en')).toEqual(['de']);
-    expect(otherLocales('de')).toEqual(['en']);
+  it('lists the English alternate only and no other locale for a switcher', () => {
+    expect(alternatesFor('/blog')).toEqual({ en: '/blog' });
+    expect(otherLocales('en')).toEqual([]);
   });
 });

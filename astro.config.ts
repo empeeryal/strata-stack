@@ -57,8 +57,9 @@ export default defineConfig({
     inlineStylesheets: 'auto',
   },
 
-  // English lives at the root, every other locale under its prefix (`/de/...`). There is no
-  // fallback: a page exists in a locale only when it was translated (src/i18n, docs/guides/internationalisation).
+  // English lives at the root, every other locale under its prefix (`/<locale>/...`). There is
+  // no fallback: a page exists in a locale only when it was translated. The site ships English
+  // only; src/i18n/config.ts and docs/guides/internationalisation describe adding a language.
   i18n: {
     defaultLocale,
     locales: [...locales],

@@ -15,7 +15,7 @@ export function getLocaleFromPath(pathname: string): Locale {
   return isLocale(first) && first !== defaultLocale ? first : defaultLocale;
 }
 
-/** The pathname without its locale prefix: `/de/blog` becomes `/blog`, `/de` becomes `/`. */
+/** The pathname without its locale prefix: `/<locale>/blog` becomes `/blog`, `/<locale>` becomes `/`. */
 export function stripLocale(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean);
   const [first] = segments;
@@ -23,7 +23,7 @@ export function stripLocale(pathname: string): string {
   return `/${segments.join('/')}`;
 }
 
-/** Prefixes a locale-free pathname for `locale`: `/blog` becomes `/de/blog`, `/` becomes `/de`. */
+/** Prefixes a pathname for `locale`: `/blog` becomes `/<locale>/blog`; the default locale has no prefix. */
 export function localizePath(pathname: string, locale: Locale): string {
   const bare = stripLocale(pathname);
   if (locale === defaultLocale) return bare;
@@ -36,7 +36,7 @@ export function localizePath(pathname: string, locale: Locale): string {
  */
 export function localizeHref(href: string, locale: Locale): string {
   if (locale === defaultLocale) return href;
-  return localizedRoutes[locale][href] ?? href;
+  return localizedRoutes[locale]?.[href] ?? href;
 }
 
 /** Label for a `site.config.ts` navigation or footer entry in `locale`. */
@@ -45,8 +45,8 @@ export function labelFor(locale: Locale, key: string, fallback: string): string 
 }
 
 /**
- * Locale and slug of a content entry: `de/why-astro-7` is the German translation of
- * `why-astro-7`. Entries without a locale folder belong to the default locale.
+ * Locale and slug of a content entry: `<locale>/why-astro-7` is the translation of `why-astro-7`
+ * into that locale. Entries without a configured locale folder belong to the default locale.
  */
 export function splitLocaleId(id: string): { locale: Locale; slug: string } {
   const [first, ...rest] = id.split('/');
@@ -73,19 +73,20 @@ export function useTranslations(locale: Locale): Translate {
 
 /**
  * Paths of a chrome-level page in every locale that has it, from `localizedRoutes`: the input
- * for `alternates` on the layout. `/blog` yields `{ en: '/blog', de: '/de/blog' }`.
+ * for `alternates` on the layout. `/blog` yields `{ en: '/blog' }` plus one entry per locale
+ * whose `localizedRoutes` list it.
  */
 export function alternatesFor(path: string): Partial<Record<Locale, string>> {
   const alternates: Partial<Record<Locale, string>> = { [defaultLocale]: path };
   for (const locale of locales) {
     if (locale === defaultLocale) continue;
-    const translated = localizedRoutes[locale][path];
+    const translated = localizedRoutes[locale]?.[path];
     if (translated) alternates[locale] = translated;
   }
   return alternates;
 }
 
-/** Locales other than `locale`, in configured order; what the language switcher offers. */
+/** Locales other than `locale`, in configured order; what a language switcher offers. Empty while the site has one locale. */
 export function otherLocales(locale: Locale): Locale[] {
   return locales.filter((candidate) => candidate !== locale);
 }

@@ -27,28 +27,23 @@ describe('isPublished', () => {
 });
 
 describe('post locales', () => {
-  const posts = [{ id: 'why-astro-7' }, { id: 'de/why-astro-7' }, { id: 'deploy-anywhere' }];
+  // The site ships one locale; a folder that is not a configured locale is part of the slug.
+  const posts = [{ id: 'why-astro-7' }, { id: 'deploy-anywhere' }];
 
   it('reads the locale and slug from the folder', () => {
-    expect(postLocale({ id: 'de/why-astro-7' })).toBe('de');
-    expect(postSlug({ id: 'de/why-astro-7' })).toBe('why-astro-7');
     expect(postLocale({ id: 'why-astro-7' })).toBe('en');
+    expect(postSlug({ id: 'why-astro-7' })).toBe('why-astro-7');
+    expect(postLocale({ id: 'de/why-astro-7' })).toBe('en');
+    expect(postSlug({ id: 'de/why-astro-7' })).toBe('de/why-astro-7');
   });
 
-  it('builds localized links and images', () => {
+  it('builds links and images from the slug', () => {
     expect(postHref({ id: 'why-astro-7' })).toBe('/blog/why-astro-7');
-    expect(postHref({ id: 'de/why-astro-7' })).toBe('/de/blog/why-astro-7');
-    expect(postOgImage({ id: 'de/why-astro-7' })).toBe('/og/blog/de/why-astro-7.png');
+    expect(postOgImage({ id: 'why-astro-7' })).toBe('/og/blog/why-astro-7.png');
   });
 
-  it('finds translations by slug', () => {
-    expect(postAlternates({ id: 'why-astro-7' }, posts)).toEqual({ de: '/de/blog/why-astro-7' });
-    expect(postAlternates({ id: 'de/why-astro-7' }, posts)).toEqual({ en: '/blog/why-astro-7' });
-    expect(postAlternates({ id: 'deploy-anywhere' }, posts)).toEqual({});
-  });
-
-  it('lists the English posts a locale still lacks', () => {
-    expect(untranslatedPosts('de', posts).map((post) => post.id)).toEqual(['deploy-anywhere']);
+  it('finds no translations and nothing untranslated while there is one locale', () => {
+    expect(postAlternates({ id: 'why-astro-7' }, posts)).toEqual({});
     expect(untranslatedPosts('en', posts)).toEqual([]);
   });
 });

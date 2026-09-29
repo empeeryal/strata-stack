@@ -2,19 +2,12 @@
 import { Icon } from 'astro-icon/components';
 
 import { buttonVariants } from '@/components/ui/button-variants';
-import type { Locale } from '@/i18n';
 import { labelFor, localizeHref, resolveLocale, useTranslations } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { siteConfig } from '@/site.config';
 
 import AccountMenu from './AccountMenu.astro';
-import LanguageSwitcher from './LanguageSwitcher.astro';
 
-interface Props {
-  alternates?: Partial<Record<Locale, string>> | undefined;
-}
-
-const { alternates } = Astro.props;
 const locale = resolveLocale(Astro.currentLocale);
 const t = useTranslations(locale);
 const pathname = Astro.url.pathname;
@@ -64,7 +57,6 @@ const nav = siteConfig.nav.map((item) => ({
       <a href="/search" class="rounded-md px-3 py-3 text-base font-medium hover:bg-muted">
         {t('nav.search')}
       </a>
-      <LanguageSwitcher alternates={alternates} variant="drawer" class="mt-2 border-t pt-2" />
       <div class="mt-auto flex flex-col gap-2 border-t pt-4">
         <AccountMenu placement="drawer" />
         <a

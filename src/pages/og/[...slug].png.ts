@@ -23,7 +23,7 @@ export const prerender = true;
 type Props = Omit<OgTemplateProps, 'siteName' | 'host'>;
 
 export const getStaticPaths = (async () => {
-  // Posts of every locale get an image; the German ones live under /og/blog/de/.
+  // Posts of every locale get an image; a translated post's lives under /og/blog/<locale>/.
   const posts = await getAllPublishedPosts();
   const docs = await getCollection('docs', ({ data }) => !data.draft);
 
