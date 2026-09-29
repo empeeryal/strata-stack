@@ -34,7 +34,7 @@ which is built from this exact code.
 
 | Area          | What you get                                                                                                                                                                       |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, Vite 8, Rust compiler                                                                                               |
+| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                       |
 | **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts                                   |
 | **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                 |
 | **Auth**      | [Better Auth](https://better-auth.com): email/password, GitHub, Google, magic links, two-factor authentication, verification, password reset, protected routes, rate limiting      |

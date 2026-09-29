@@ -1,0 +1,53 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { buttonVariants } from '@/components/ui/button-variants';
+import { siteConfig } from '@/site.config';
+import { cn } from '@/lib/utils';
+
+/**
+ * Header link to the repository. The star count comes from `/api/repo-stats`, the template's
+ * cached route (docs/guides/caching), and is filled in by the browser: prerendered pages
+ * cannot know it, and a failed lookup simply leaves the plain icon link.
+ */
+---
+
+<a
+  href={siteConfig.social.github}
+  target="_blank"
+  rel="noopener noreferrer"
+  class={cn(buttonVariants({ variant: 'ghost' }), 'h-10 min-w-10 gap-1.5 px-2.5')}
+  aria-label="GitHub repository"
+  data-repo-link
+>
+  <Icon name="simple-icons:github" class="size-5" aria-hidden="true" />
+  <span data-repo-stars class="hidden text-xs font-medium tabular-nums sm:not-empty:inline"></span>
+</a>
+
+<script>
+  const link = document.querySelector<HTMLAnchorElement>('[data-repo-link]');
+  const count = link?.querySelector<HTMLElement>('[data-repo-stars]');
+
+  async function showStars() {
+    if (!link || !count) return;
+    try {
+      const response = await fetch('/api/repo-stats', { headers: { accept: 'application/json' } });
+      if (!response.ok) return;
+      const data = (await response.json()) as { stars: number | null };
+      if (typeof data.stars !== 'number') return;
+      const locale = document.documentElement.lang || 'en';
+      count.textContent = new Intl.NumberFormat(locale, {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+      }).format(data.stars);
+      link.setAttribute(
+        'aria-label',
+        `GitHub repository, ${data.stars.toLocaleString(locale)} stars`,
+      );
+    } catch {
+      // Offline or blocked: the link works without the count.
+    }
+  }
+
+  void showStars();
+</script>

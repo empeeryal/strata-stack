@@ -2,7 +2,7 @@
 title: Deploy to Node and Docker
 description: The standalone Node server, the multi-stage Dockerfile and notes for VPS and container platforms.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-29
 sidebar:
   order: 5
 ---
@@ -53,6 +53,10 @@ Put the server behind a TLS-terminating proxy (Caddy, nginx, a platform load bal
 middleware adds security headers to server-rendered responses; for static files add them at the
 proxy, using `public/_headers` as the reference list. Make sure the proxy forwards
 `X-Forwarded-For` so rate limiting sees real client addresses.
+
+Cached server-rendered responses (see [Caching](/docs/guides/caching)) live in the server's
+memory on this target, one copy per process. Behind a load balancer every instance fills its own;
+put a CDN in front if they should share one.
 
 ## Platforms
 

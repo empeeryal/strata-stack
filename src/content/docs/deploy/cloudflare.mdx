@@ -2,7 +2,7 @@
 title: Deploy to Cloudflare
 description: Running on Cloudflare Workers with static assets, workerd for on-demand routes and Node compatibility for Better Auth.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-21
+updatedDate: 2026-09-29
 sidebar:
   order: 3
 ---
@@ -72,6 +72,10 @@ Prerendered pages and build-time endpoints (Open Graph images use the native `re
 built in Node. On-demand routes always run in workerd, so keep Node-only packages out of
 `src/pages/api`, `src/actions` and `src/middleware.ts`. The libSQL client automatically uses its
 HTTP build on workerd.
+
+`config/cache.ts` selects `cacheCloudflare()` as the route cache provider, so `routeRules` and
+`Astro.cache` write `Cloudflare-CDN-Cache-Control` and `Cache-Tag`, and the adapter enables the
+Worker cache layer in the generated Wrangler configuration. See [Caching](/docs/guides/caching).
 
 ## Headers
 

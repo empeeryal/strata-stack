@@ -2,14 +2,16 @@ import { defineMiddleware } from 'astro:middleware';
 
 import { securityHeaders } from '../config/security-headers';
 
+import { shouldBypassCache } from './lib/caching';
 import { assertProductionConfig } from './lib/env';
 
 let configVerified = false;
 
 /**
  * Verifies the production configuration once per server instance, populates
- * `Astro.locals.user` / `Astro.locals.session` on server-rendered routes and applies the
- * shared security headers to every on-demand response. Prerendered pages are built at
+ * `Astro.locals.user` / `Astro.locals.session` on server-rendered routes, keeps the route cache
+ * off for personal responses and applies the shared security headers to every on-demand
+ * response. Prerendered pages are built at
  * compile time: they get empty locals and their headers come from the platform (see
  * integrations/security-headers.ts).
  */
@@ -39,6 +41,21 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const response = await next();
+
+  // Route rules and `Astro.cache.set()` may only cache anonymous GET responses of public
+  // routes. Decided after the route has run so its own `cache.set()` cannot re-enable it; the
+  // cache headers are written once the middleware returns (src/lib/caching.ts).
+  if (
+    shouldBypassCache({
+      method: context.request.method,
+      pathname: context.url.pathname,
+      cookieHeader: context.request.headers.get('cookie'),
+      hasSession: context.locals.session !== null,
+    })
+  ) {
+    context.cache.set(false);
+  }
+
   for (const [name, value] of Object.entries(securityHeaders)) {
     if (!response.headers.has(name)) response.headers.set(name, value);
   }

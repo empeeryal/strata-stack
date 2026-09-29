@@ -7,6 +7,7 @@ import pagefind from 'astro-pagefind';
 import { defineConfig, envField, fontProviders } from 'astro/config';
 
 import { resolveAdapter, resolveDeployTarget } from './config/adapter';
+import { resolveCacheProvider } from './config/cache';
 import { resolveSiteUrl } from './config/site-url';
 import { securityHeaders } from './integrations/security-headers';
 import { themeScript } from './integrations/theme-script';
@@ -46,6 +47,16 @@ export default defineConfig({
     inlineStylesheets: 'auto',
   },
   adapter: await resolveAdapter(deployTarget),
+
+  // Response cache behind `Astro.cache` and `routeRules`: the platform's CDN on Vercel, Netlify
+  // and Cloudflare, the server's memory on Node (config/cache.ts). Only anonymous GET responses
+  // of public routes are ever cached; src/middleware.ts turns it off for everything else.
+  cache: { provider: await resolveCacheProvider(deployTarget) },
+  routeRules: {
+    // GitHub allows 60 anonymous API requests an hour; one fetch an hour is plenty for a badge.
+    // Kept an hour, then served stale for a day while a fresh copy is fetched in the background.
+    '/api/repo-stats': { maxAge: 3600, swr: 86400, tags: ['github'] },
+  },
 
   integrations: [
     react(),
