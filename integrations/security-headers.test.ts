@@ -14,14 +14,17 @@ type Hooks = NonNullable<AstroIntegration['hooks']>;
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 /** Runs the integration's two hooks against a scratch project directory. */
-async function build(target: 'node' | 'vercel' | 'netlify', root: string, dir: string) {
+async function build(target: 'node' | 'vercel' | 'netlify', root: string, outDir: string) {
   const integration = securityHeaders({ target });
   const configDone = integration.hooks['astro:config:done'] as NonNullable<
     Hooks['astro:config:done']
   >;
   const buildDone = integration.hooks['astro:build:done'] as NonNullable<Hooks['astro:build:done']>;
-  await configDone({ config: { root: pathToFileURL(`${root}/`) } } as never);
-  await buildDone({ dir: pathToFileURL(`${dir}/`), logger } as never);
+  await configDone({
+    config: { root: pathToFileURL(`${root}/`), outDir: pathToFileURL(`${outDir}/`) },
+  } as never);
+  // For a server build the hook's `dir` is the client directory, not the output root.
+  await buildDone({ dir: pathToFileURL(`${outDir}/client/`), logger } as never);
 }
 
 describe('securityHeaders integration', () => {

@@ -24,8 +24,9 @@ export const serverEnv = {
   BETTER_AUTH_URL: baseURL,
   // Accounts created with these addresses get the admin role. The admin spec uses the first two
   // (and demotes and signs them out); the accessibility spec, which may run in another worker at
-  // the same time, has the third to itself.
-  ADMIN_EMAILS: 'admin-e2e@example.com,admin2-e2e@example.com,a11y-admin-e2e@example.com',
+  // the same time, has the third to itself. Its address must not contain the others: the admin
+  // spec finds table rows by the substring of an address.
+  ADMIN_EMAILS: 'admin-e2e@example.com,admin2-e2e@example.com,axe-e2e@example.com',
   // Notifications are "sent" to the console in test mode, so delivery shows as sent.
   CONTACT_TO_EMAIL: 'owner@example.com',
   // Unlocks the detailed /api/health response without an admin session.
