@@ -79,6 +79,13 @@ test.describe('interactive states', { tag: '@a11y' }, () => {
     await expectNoViolations(page);
   });
 
+  test('the back-to-top button after scrolling', async ({ page }) => {
+    await page.goto('/docs/getting-started/introduction');
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(page.getByRole('button', { name: 'Back to top' })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
   test('the pricing table with annual billing selected', async ({ page }) => {
     await page.goto('/docs/components/pricing-table');
     const table = page.locator('pricing-table').first();

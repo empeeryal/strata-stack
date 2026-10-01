@@ -1,0 +1,69 @@
+---
+import { Icon } from 'astro-icon/components';
+
+import { buttonVariants } from '@/components/ui/button-variants';
+import { resolveLocale, useTranslations } from '@/i18n';
+
+/**
+ * Floating "back to top" control. Hidden until the page has been scrolled about a screen,
+ * then fixed to the bottom corner; clicking scrolls to the top (smoothly unless the visitor
+ * prefers reduced motion, through the page's `scroll-behavior`) and moves focus to the main
+ * landmark, so keyboard and screen-reader users land where the page starts rather than on a
+ * button that has just disappeared.
+ */
+const t = useTranslations(resolveLocale(Astro.currentLocale));
+---
+
+<back-to-top>
+  <button
+    type="button"
+    hidden
+    class={buttonVariants({
+      variant: 'outline',
+      size: 'icon',
+      className:
+        'fixed right-4 bottom-4 z-30 animate-fade-up bg-background/90 shadow-soft backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:right-6 sm:bottom-6',
+    })}
+    aria-label={t('backToTop')}
+    title={t('backToTop')}
+  >
+    <Icon name="lucide:arrow-up" class="size-5" aria-hidden="true" />
+  </button>
+</back-to-top>
+
+<script>
+  /** Scrolled distance, as a share of the viewport height, after which the button appears. */
+  const THRESHOLD = 0.75;
+
+  class BackToTop extends HTMLElement {
+    connectedCallback() {
+      const button = this.querySelector('button');
+      if (!button) return;
+      let scheduled = false;
+
+      const update = () => {
+        scheduled = false;
+        button.hidden = window.scrollY < window.innerHeight * THRESHOLD;
+      };
+      const onScroll = () => {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(update);
+      };
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll, { passive: true });
+      update();
+
+      button.addEventListener('click', () => {
+        window.scrollTo({ top: 0 });
+        // Focus follows the scroll: the main landmark is the start of the page's content.
+        document.getElementById('main')?.focus({ preventScroll: true });
+      });
+    }
+  }
+
+  if (!customElements.get('back-to-top')) {
+    customElements.define('back-to-top', BackToTop);
+  }
+</script>

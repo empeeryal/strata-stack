@@ -12,6 +12,7 @@ import type { Locale } from './config';
  */
 const en = {
   skip: 'Skip to content',
+  backToTop: 'Back to top',
   'header.home': `${siteConfig.name} home`,
   'nav.main': 'Main',
   'nav.search': 'Search',
