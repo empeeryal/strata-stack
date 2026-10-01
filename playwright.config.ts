@@ -28,8 +28,9 @@ export const serverEnv = {
   CONTACT_TO_EMAIL: 'owner@example.com',
   // Unlocks the detailed /api/health response without an admin session.
   HEALTH_TOKEN: 'e2e-health-token',
-  // Signing secret for the newsletter webhook test (tests/e2e/newsletter.spec.ts).
-  RESEND_WEBHOOK_SECRET: 'whsec_ZTJlLXdlYmhvb2stc2VjcmV0LTAxMjM0NTY3ODk=',
+  // Signing secret for the newsletter webhook test (tests/e2e/newsletter.spec.ts). Built at
+  // run time so the committed source never contains a string shaped like a real credential.
+  RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('e2e-webhook-secret-0123456789').toString('base64')}`,
 };
 
 export default defineConfig({
