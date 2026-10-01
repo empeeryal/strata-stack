@@ -2,7 +2,7 @@
 title: Security
 description: The Content Security Policy, response headers, CSRF protection, production checks and secrets handling that ship enabled.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-09-30
 sidebar:
   order: 10
 ---
@@ -36,7 +36,10 @@ pages always receive the header.
   Inline `onclick` handlers, `<script is:inline>` written by hand (Astro does not hash those),
   third-party scripts from other origins, and Astro's `<ClientRouter />`. Add scripts through an
   integration's `injectScript('head-inline')` or as processed `<script>` tags, and list external
-  origins in `scriptDirective.resources` if you must load them.
+  origins in `scriptDirective.resources` if you must load them. A scoped `<style>` in a component
+  that a content file imports directly (rather than one registered in `mdx-components.ts`) is
+  hashed for the component's own routes but not for that page, so the browser refuses it there;
+  put such rules in `global.css` instead.
 </Callout>
 
 CSP is disabled in `astro dev`, so verify changes with `pnpm build && pnpm preview`. The e2e
@@ -81,6 +84,9 @@ everyone.
 
 - Better Auth rate limits every auth endpoint with database storage; sign-in, sign-up, magic
   link and password endpoints have stricter built-in limits.
+- Passwords are at least 12 characters and are refused when they appear in Have I Been
+  Pwned's breach corpus (a k-anonymity range lookup; see
+  [password rules](/docs/guides/authentication#password-rules)).
 - The contact form is throttled per address and per IP (`src/lib/throttle.ts`) and protected
   by a honeypot.
 - Sign-in links, verification links and reset tokens are bearer credentials. Without

@@ -63,7 +63,7 @@ export default function ChangePasswordForm() {
           name="password"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={12}
           maxLength={128}
         />
       </Field>
@@ -74,7 +74,7 @@ export default function ChangePasswordForm() {
           name="confirm"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={12}
           maxLength={128}
         />
       </Field>

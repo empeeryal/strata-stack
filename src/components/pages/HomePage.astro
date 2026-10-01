@@ -76,12 +76,12 @@ const isCode = (part: RichText[number]): part is { code: string } => typeof part
         <Icon name="lucide:sparkles" aria-hidden="true" />
         {copy.badge}
       </Badge>
-      <h1 class="max-w-4xl animate-fade-up text-4xl font-bold tracking-tight text-balance [animation-delay:80ms] sm:text-5xl md:text-6xl">
+      <h1 class="max-w-4xl animate-rise text-4xl font-bold tracking-tight text-balance [animation-delay:80ms] sm:text-5xl md:text-6xl">
         {copy.headline.before}
         <span class="text-gradient">{copy.headline.highlight}</span>
         {copy.headline.after}
       </h1>
-      <p class="max-w-2xl animate-fade-up text-lg text-pretty text-muted-foreground [animation-delay:160ms]">
+      <p class="max-w-2xl animate-rise text-lg text-pretty text-muted-foreground [animation-delay:160ms]">
         {copy.description}
       </p>
       <div class="flex animate-fade-up flex-wrap justify-center gap-3 [animation-delay:240ms]">
@@ -98,7 +98,7 @@ const isCode = (part: RichText[number]): part is { code: string } => typeof part
         code={quickstart}
         lang="bash"
         title={copy.terminal}
-        class="w-full max-w-2xl animate-fade-up text-left [animation-delay:320ms]"
+        class="w-full max-w-2xl animate-rise text-left [animation-delay:320ms]"
       />
     </div>
   </section>

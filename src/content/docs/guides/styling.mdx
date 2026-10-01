@@ -2,7 +2,7 @@
 title: Styling and dark mode
 description: Tailwind CSS 4, the OKLCH design tokens, self-hosted fonts and the flash-free theme switch.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-01
 sidebar:
   order: 1
 ---
@@ -107,5 +107,11 @@ a copy button to every code block. The React islands themselves are documented i
 React islands animate with [Motion](https://motion.dev). Import from `motion/react`, respect
 `useReducedMotion()` and hydrate lazily with `client:visible` where the island is below the
 fold. `DeployTargets.tsx` on the home page is the reference implementation. Astro components use
-CSS animations declared in `@theme` (`animate-fade-up`) so no JavaScript is required for
-above-the-fold motion.
+CSS animations declared in `@theme` so no JavaScript is required for above-the-fold motion:
+`animate-fade-up` fades and lifts, `animate-rise` only lifts.
+
+Use `animate-rise` for anything that may be the page's largest text or image, such as the hero
+headline, its lead paragraph and the quick-start code block. An element that starts at
+`opacity: 0` is not a Largest Contentful Paint candidate, and an opacity-only animation never
+repaints it on the main thread, so a hero that fades in can leave a page without an LCP at all on
+a slow device; the mobile Lighthouse run showed exactly that before the home page switched.

@@ -130,12 +130,8 @@ const option =
   </ul>
 </pricing-table>
 
-<style>
-  /* `hidden` must win over `display: contents` on the price groups. */
-  [data-price][hidden] {
-    display: none;
-  }
-</style>
+{/* The `[data-price][hidden]` rule lives in src/styles/global.css: this component is imported
+    by content pages directly, and a scoped <style> would be missing from their CSP hashes. */}
 
 <script>
   class PricingTable extends HTMLElement {

@@ -21,7 +21,34 @@ export default getViteConfig(
         provider: 'v8',
         reporter: ['text', 'html', 'lcov'],
         include: ['src/**', 'config/**', 'integrations/**'],
-        exclude: ['src/**/*.d.ts', 'src/content/**', 'src/db/schema/**', 'src/pages/**'],
+        // Left out of the unit report because only a running server exercises them: the
+        // pages, the actions, the middleware, the Better Auth and email wiring and the feed.
+        // The Playwright suite covers those paths end to end.
+        exclude: [
+          'src/**/*.d.ts',
+          'src/content/**',
+          'src/content.config.ts',
+          'src/db/schema/**',
+          'src/pages/**',
+          'src/actions/**',
+          'src/middleware.ts',
+          'src/lib/auth.ts',
+          'src/lib/email.ts',
+          'src/lib/session.ts',
+          'src/lib/rss.ts',
+        ],
+        // Floors, not targets: a pull request that drops a group below its floor fails the
+        // unit job. Raise a floor when the group's coverage has settled above it.
+        thresholds: {
+          'src/lib/**/*.ts': { lines: 85, branches: 80, functions: 85, statements: 85 },
+          'config/**/*.ts': { lines: 80, branches: 80, functions: 70, statements: 75 },
+          'src/components/react/**/*.tsx': {
+            lines: 80,
+            branches: 75,
+            functions: 75,
+            statements: 80,
+          },
+        },
       },
     },
   },

@@ -2,7 +2,7 @@
 title: Environment variables
 description: Every variable the template reads, where to set it on each platform, and the two access patterns.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-09-30
 sidebar:
   order: 14
 ---
@@ -28,6 +28,7 @@ client, and Cloudflare exposes secrets through `process.env` when `nodejs_compat
 | `BETTER_AUTH_SECRET`                       | runtime       | ≥ 32 random bytes.                                                                                                                                                          |
 | `BETTER_AUTH_URL`                          | runtime       | Public origin visitors use, as a full URL (`https://…`).                                                                                                                    |
 | `BETTER_AUTH_TRUSTED_ORIGINS`              | runtime       | Comma-separated extra origins; wildcards allowed.                                                                                                                           |
+| `PASSWORD_BREACH_CHECK`                    | runtime       | `false` skips the Have I Been Pwned check on new passwords (on by default; the 12-character minimum always applies).                                                        |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | runtime       | Enables GitHub sign-in.                                                                                                                                                     |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | runtime       | Enables Google sign-in.                                                                                                                                                     |
 | `RESEND_API_KEY`                           | runtime       | Magic links, verification, password resets, contact notifications, newsletter confirmations. Unset: console in dev, disabled in production.                                 |

@@ -169,14 +169,15 @@ export default function AuthForm({
           name="password"
           autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           required
-          minLength={8}
+          minLength={12}
           maxLength={128}
-          placeholder={mode === 'signup' ? 'At least 8 characters' : 'Your password'}
+          placeholder={mode === 'signup' ? 'At least 12 characters' : 'Your password'}
           aria-describedby={mode === 'signup' ? 'password-hint' : undefined}
         />
         {mode === 'signup' && (
           <p id="password-hint" className="text-xs text-muted-foreground">
-            Use at least 8 characters. A long passphrase or a password manager works best.
+            Use at least 12 characters; a passphrase or a password manager works best. Passwords
+            found in known data breaches are refused.
           </p>
         )}
       </Field>

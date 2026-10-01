@@ -61,9 +61,9 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           name="password"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={12}
           maxLength={128}
-          placeholder="At least 8 characters"
+          placeholder="At least 12 characters"
         />
       </Field>
       <Field>
@@ -73,7 +73,7 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           name="confirm"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={12}
           maxLength={128}
         />
       </Field>

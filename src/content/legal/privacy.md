@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy
 description: What data this site collects, why, how long it is kept, and how to access or delete it.
-updatedDate: 2026-09-29
+updatedDate: 2026-09-30
 ---
 
 > This is a starting point, not legal advice. Review it with counsel and adapt it to your
@@ -47,7 +47,10 @@ tabbed code example are stored in your browser's local storage, not sent to us.
 Depending on how this deployment is configured, the following providers process data on our
 behalf: the hosting platform (Vercel, Cloudflare, Netlify or our own server), the database
 provider (Turso) and the email provider (Resend) for sign-in links, verification and
-notifications. GitHub or Google only receive data when you choose to sign in with them.
+notifications. GitHub or Google only receive data when you choose to sign in with them. When you
+set or change a password, the first five characters of a hash of it are sent to Have I Been
+Pwned to check whether it appears in a known data breach; the password itself, and nothing that
+identifies you, leaves our server.
 
 ## Retention
 
