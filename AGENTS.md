@@ -52,7 +52,9 @@ netlify`). Application code must not branch on the platform.
   `src/lib/admin.ts`, whose SQL also enforces the last-admin rule; `resetUserTwoFactor()`;
   `revokeOwnSession()` in `src/lib/account.ts`; `removeSubscriber()` in `src/lib/newsletter.ts`),
   `recordAudit()` (best-effort) for Better Auth operations. Admin pages never change data on GET;
-  use an action.
+  use an action. Audited downloads (`/api/account/export`, `/admin/subscribers.csv`) are POST
+  forms: `prefetchAll` fetches every link that scrolls into view, so a GET endpoint with a side
+  effect fires without a click.
 - Email: `src/lib/email.ts` prints messages only outside production; never log links in production.
 - Security: `security.csp` in `astro.config.ts` (hash-based), `config/security-headers.ts`
   (mirrored in `public/_headers`, verified by a unit test).

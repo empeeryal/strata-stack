@@ -11,13 +11,20 @@ import { getAuthoritativeSession } from '@/lib/session';
 
 export const prerender = false;
 
+/** POST only, like the account export: a prefetched link must never produce an audited download. */
+export const GET: APIRoute = () =>
+  Response.json(
+    { error: 'Use the download button on the subscribers page: this export answers POST only.' },
+    { status: 405, headers: { Allow: 'POST' } },
+  );
+
 /**
  * Confirmed subscribers as CSV, for sending a newsletter from outside the provider's audience.
  * Each row carries the address's unsubscribe link, which the newsletter footer must include.
  * Administrators only, authorized like the admin pages; every download is audited because a
  * list of addresses leaves the system.
  */
-export const GET: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect }) => {
   const { user } = await getAuthoritativeSession(request.headers);
   if (!user) return redirect('/login?next=%2Fadmin%2Fsubscribers');
   if (!isAdmin(user)) return new Response(null, { status: 404 });

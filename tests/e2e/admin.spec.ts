@@ -45,14 +45,19 @@ test.describe('admin area', () => {
     }
   });
 
-  test('redirects anonymous visitors to the login page', async ({ request }) => {
+  test('redirects anonymous visitors to the login page', async ({ request, baseURL }) => {
     const response = await request.get('/admin', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
     expect(response.headers()['location']).toContain('/login?next=%2Fadmin');
 
-    const csv = await request.get('/admin/subscribers.csv', { maxRedirects: 0 });
+    const csv = await request.post('/admin/subscribers.csv', {
+      maxRedirects: 0,
+      headers: { origin: baseURL! },
+    });
     expect(csv.status()).toBe(302);
     expect(csv.headers()['location']).toContain('/login?next=%2Fadmin%2Fsubscribers');
+    // A GET never exports, so a prefetched link cannot record a download.
+    expect((await request.get('/admin/subscribers.csv')).status()).toBe(405);
   });
 
   test('manages the inbox', async ({ page }) => {
@@ -118,8 +123,10 @@ test.describe('admin area', () => {
 
     await page.goto('/admin/subscribers');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Subscribers');
-    await expect(page.getByRole('link', { name: 'Download confirmed (CSV)' })).toBeVisible();
-    const csv = await page.request.get('/admin/subscribers.csv');
+    await expect(page.getByRole('button', { name: 'Download confirmed (CSV)' })).toBeVisible();
+    const csv = await page.request.post('/admin/subscribers.csv', {
+      headers: { origin: new URL(page.url()).origin },
+    });
     expect(csv.status()).toBe(200);
     expect(csv.headers()['content-type']).toContain('text/csv');
     expect(await csv.text()).toMatch(/^email,confirmed_at,unsubscribe_url/);

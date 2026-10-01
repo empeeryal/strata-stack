@@ -2,7 +2,7 @@
 title: Privacy and data
 description: What personal data the template stores, the self-service export and deletion flows, retention, and the checklist for adapting the legal pages.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-01
 sidebar:
   order: 7
   badge: updated
@@ -29,9 +29,10 @@ must adapt before launch.
 
 From the dashboard a signed-in user can:
 
-- **Export** their data: `src/pages/api/account/export.ts` returns profile, sign-in methods,
-  sessions and, when the address is verified, contact messages from that address and the state
-  of its newsletter subscription. Tokens and hashes are never included.
+- **Export** their data: `src/pages/api/account/export.ts` (POST, from the dashboard's form)
+  returns profile, sign-in methods, sessions and, when the address is verified, contact messages
+  from that address and the state of its newsletter subscription. Tokens and hashes are never
+  included, and a GET answers 405 so a prefetched link can never record an export.
 - **Delete** their account through Better Auth's `deleteUser`. Password accounts confirm with
   the password; social-only accounts need a fresh session (younger than a day). The
   `beforeDelete` hook in `src/lib/auth.ts` refuses to remove the last administrator, and
