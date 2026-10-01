@@ -31,6 +31,7 @@ const t = useTranslations(resolveLocale(Astro.currentLocale));
 </style>
 
 <script>
+  import { trackEvent } from '@/lib/analytics';
   import { THEME_STORAGE_KEY } from '@/lib/theme-script';
 
   type Theme = 'light' | 'dark';
@@ -70,6 +71,7 @@ const t = useTranslations(resolveLocale(Astro.currentLocale));
       button.addEventListener('click', () => {
         const next: Theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
         apply(next, next);
+        trackEvent('Theme changed', { theme: next });
         label(this, button);
         try {
           localStorage.setItem(THEME_STORAGE_KEY, next);

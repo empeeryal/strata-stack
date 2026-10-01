@@ -9,11 +9,15 @@ vi.mock('@/lib/auth-client', () => ({
   authClient: { deleteUser: (...args: unknown[]) => deleteUser(...args) },
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import DeleteAccountForm from './DeleteAccountForm';
 
 describe('<DeleteAccountForm>', () => {
   beforeEach(() => {
     deleteUser.mockReset();
+    trackEvent.mockReset();
     vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
   });
 
@@ -35,6 +39,7 @@ describe('<DeleteAccountForm>', () => {
       }),
     );
     expect(window.location.assign).toHaveBeenCalledWith('/account-deleted');
+    expect(trackEvent).toHaveBeenCalledWith('Account deleted');
   });
 
   it('refuses a wrong confirmation word without calling the server', async () => {

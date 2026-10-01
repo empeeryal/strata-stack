@@ -2,6 +2,8 @@ import { ArrowRight, Check } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { type KeyboardEvent, useId, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
+
 interface Target {
   id: 'vercel' | 'cloudflare' | 'netlify' | 'node';
   label: string;
@@ -77,6 +79,11 @@ export default function DeployTargets() {
   const id = useId();
   const current = TARGETS.find((target) => target.id === active) ?? TARGETS[0]!;
 
+  function show(target: Target['id']) {
+    setActive(target);
+    trackEvent('Deploy target viewed', { target });
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const count = TARGETS.length;
     let next: number | null = null;
@@ -87,7 +94,7 @@ export default function DeployTargets() {
     if (next === null) return;
     event.preventDefault();
     const target = TARGETS[next]!;
-    setActive(target.id);
+    show(target.id);
     document.getElementById(`${id}-tab-${target.id}`)?.focus();
   }
 
@@ -105,7 +112,7 @@ export default function DeployTargets() {
               aria-selected={selected}
               aria-controls={`${id}-panel`}
               tabIndex={selected ? 0 : -1}
-              onClick={() => setActive(target.id)}
+              onClick={() => show(target.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className="relative flex-1 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-selected:text-foreground"
             >

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import { Alert, Button, UNEXPECTED_ERROR } from '../primitives';
@@ -62,8 +63,10 @@ export default function SocialButtons({
       if (result.error) {
         setError(result.error.message ?? 'Sign-in failed. Try again.');
         setPending(null);
+        return;
       }
       // On success the browser navigates to the provider; the button stays busy until then.
+      trackEvent('Social sign-in started', { provider });
     } catch {
       setError(UNEXPECTED_ERROR);
       setPending(null);

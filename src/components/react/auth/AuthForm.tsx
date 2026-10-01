@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import { Alert, Button, Field, Input, Label, PasswordInput, UNEXPECTED_ERROR } from '../primitives';
@@ -53,6 +54,7 @@ export default function AuthForm({
           setError(result.error.message ?? UNEXPECTED_ERROR);
           return;
         }
+        trackEvent('Signed up', { method: 'password' });
         // Without a session token the address must be verified before signing in.
         if (!result.data?.token) {
           setNotice(
@@ -82,6 +84,7 @@ export default function AuthForm({
         window.location.assign(`/two-factor${next}`);
         return;
       }
+      trackEvent('Signed in', { method: 'password', twoFactor: false });
       window.location.assign(redirectTo);
     } catch {
       setError(UNEXPECTED_ERROR);

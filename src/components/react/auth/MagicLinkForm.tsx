@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import { Alert, Button, Field, Input, Label, UNEXPECTED_ERROR } from '../primitives';
@@ -26,6 +27,7 @@ export default function MagicLinkForm({ redirectTo = '/dashboard' }: MagicLinkFo
         return;
       }
       setStatus('sent');
+      trackEvent('Magic link requested');
     } catch {
       setError(UNEXPECTED_ERROR);
       setStatus('idle');

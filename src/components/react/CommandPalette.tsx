@@ -20,6 +20,7 @@ import {
   useState,
 } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { hasAdminRole } from '@/lib/roles';
 import { THEME_STORAGE_KEY } from '@/lib/theme-script';
 import { cn } from '@/lib/utils';
@@ -325,9 +326,11 @@ export default function CommandPalette({
 
   const select = useCallback((item: Item) => {
     if (item.kind === 'action') {
+      trackEvent('Palette item selected', { kind: 'action', target: item.id });
       item.run();
       return;
     }
+    trackEvent('Palette item selected', { kind: item.kind, target: item.href });
     setOpen(false);
     location.assign(item.href);
   }, []);

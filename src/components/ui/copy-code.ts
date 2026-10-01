@@ -4,6 +4,8 @@
  * Browser only; imported from processed `<script>` tags, so it is covered by the CSP hashes.
  */
 
+import { trackEvent } from '@/lib/analytics';
+
 const RESET_MS = 1500;
 
 /** Copies the block's text and reports the result in the button's own label. */
@@ -13,6 +15,7 @@ export function bindCopyButton(button: HTMLButtonElement, source: HTMLElement): 
     try {
       await navigator.clipboard.writeText(source.innerText);
       button.textContent = 'Copied';
+      trackEvent('Code copied');
     } catch {
       button.textContent = 'Copy failed';
     }

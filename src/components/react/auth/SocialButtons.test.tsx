@@ -9,10 +9,16 @@ vi.mock('@/lib/auth-client', () => ({
   authClient: { signIn: { social: (...args: unknown[]) => social(...args) } },
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import SocialButtons from './SocialButtons';
 
 describe('<SocialButtons>', () => {
-  beforeEach(() => social.mockReset());
+  beforeEach(() => {
+    social.mockReset();
+    trackEvent.mockReset();
+  });
 
   it('renders nothing without configured providers', () => {
     const { container } = render(<SocialButtons providers={[]} />);
@@ -34,6 +40,7 @@ describe('<SocialButtons>', () => {
       'aria-busy',
       'true',
     );
+    expect(trackEvent).toHaveBeenCalledWith('Social sign-in started', { provider: 'github' });
   });
 
   it('shows the error and releases the button when the provider refuses', async () => {

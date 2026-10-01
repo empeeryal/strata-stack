@@ -17,6 +17,9 @@ vi.mock('astro:actions', () => ({
     Boolean(error && typeof error === 'object' && 'fields' in error),
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import NewsletterForm, { SUBSCRIBED_MESSAGE } from './NewsletterForm';
 
 async function submit(email = 'reader@example.com') {
@@ -26,7 +29,10 @@ async function submit(email = 'reader@example.com') {
 }
 
 describe('<NewsletterForm>', () => {
-  beforeEach(() => subscribe.mockReset());
+  beforeEach(() => {
+    subscribe.mockReset();
+    trackEvent.mockReset();
+  });
 
   it('posts to the newsletter page without JavaScript and carries the source', () => {
     render(<NewsletterForm source="footer" />);
@@ -48,6 +54,7 @@ describe('<NewsletterForm>', () => {
     expect(subscribe).toHaveBeenCalledTimes(1);
     expect(subscribe.mock.calls[0]?.[0]).toBeInstanceOf(FormData);
     expect(screen.queryByRole('form')).toBeNull();
+    expect(trackEvent).toHaveBeenCalledWith('Newsletter subscribed', { source: 'page' });
   });
 
   it('renders the field error returned by the action', async () => {
