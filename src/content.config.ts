@@ -29,7 +29,7 @@ const authors = defineCollection({
     name: z.string(),
     title: z.string().optional(),
     bio: z.string().optional(),
-    /** Absolute URL of an avatar image (e.g. https://github.com/<user>.png). */
+    /** Absolute URL of an avatar image, sized for its largest use (e.g. https://github.com/<user>.png?size=112). */
     avatar: z.url().optional(),
     url: z.url().optional(),
     github: z.string().optional(),

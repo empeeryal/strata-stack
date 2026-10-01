@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "pnpm exec cross-env HOST=127.0.0.1 PORT=4321 node ./dist/server/entry.mjs",
+      "startServerCommand": "node scripts/lhci-server.mjs",
       "startServerReadyPattern": "Server listening",
       "startServerReadyTimeout": 30000,
       "url": [

@@ -6,6 +6,7 @@ import Analytics from '@vercel/analytics/astro';
 import Head, { type Props as HeadProps } from '@/components/seo/Head.astro';
 import Footer from '@/components/site/Footer.astro';
 import Header from '@/components/site/Header.astro';
+import BackToTop from '@/components/ui/BackToTop.astro';
 import SkipLink from '@/components/ui/SkipLink.astro';
 import { resolveLocale } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -36,14 +37,17 @@ const locale = resolveLocale(Astro.currentLocale);
   <body class="flex min-h-dvh flex-col">
     <SkipLink />
     <Header />
+    {/* tabindex="-1" lets the skip link and the back-to-top button move focus here. */}
     <main
       id="main"
-      class={cn('flex-1', className)}
+      tabindex="-1"
+      class={cn('flex-1 outline-none', className)}
       data-pagefind-body={searchable ? '' : undefined}
     >
       <slot />
     </main>
     {!hideFooter && <Footer />}
+    <BackToTop />
     {PUBLIC_ANALYTICS === 'vercel' && <Analytics />}
   </body>
 </html>

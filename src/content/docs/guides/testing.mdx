@@ -2,7 +2,7 @@
 title: Testing
 description: Unit and component tests with Vitest, end-to-end tests with Playwright, accessibility checks with axe and Lighthouse budgets.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-30
+updatedDate: 2026-10-01
 sidebar:
   order: 11
 ---
@@ -93,6 +93,12 @@ median run. Two configurations cover the two shapes of visitor:
   (a server-rendered route with an auth island).
 - `lighthouserc.mobile.json` (Lighthouse's default mobile emulation with CPU and network
   throttling): the home page, a docs page and a blog post.
+
+Both configurations start the built Node server behind `scripts/lhci-server.mjs`, a small proxy
+that gzips text responses. The standalone Node server serves HTML, CSS and scripts uncompressed,
+while every supported deployment compresses them (the CDN on Vercel, Netlify and Cloudflare, the
+reverse proxy in front of Node), and auditing the raw server scored the mobile pages about ten
+points below what visitors see, enough to make the floors depend on the runner's speed.
 
 Performance, accessibility, best practices and SEO all block below their floors; a performance
 regression fails the pull request instead of printing a warning. Locally:

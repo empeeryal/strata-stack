@@ -94,9 +94,15 @@ fonts at build time.
 
 `src/components/ui` contains the design-system primitives used across the site: `Alert`,
 `Badge`, `Button`, `Card`, `Callout`, `Tabs`/`TabItem`, `Steps`, `Breadcrumbs`, `Pagination`,
-`BackLink`, `Divider`, `Toc`, `Prose`, `CodeBlock`, `Kbd` and `SkipLink`. Variants are described
-with `class-variance-authority` in `*-variants.ts` files so the React islands
+`BackLink`, `Divider`, `Toc`, `Prose`, `CodeBlock`, `Kbd`, `SkipLink` and `BackToTop`. Variants
+are described with `class-variance-authority` in `*-variants.ts` files so the React islands
 (`src/components/react/primitives.tsx`) share the same class recipes as the Astro components.
+
+`BackToTop` is part of every page through `BaseLayout`: a fixed button that appears once the
+page has been scrolled about a screen, scrolls back to the top (smoothly, unless the visitor
+prefers reduced motion) and moves focus to the `<main>` landmark, which carries `tabindex="-1"`
+for that reason and for the skip link. It is a custom element with a processed `<script>`, so it
+works under the CSP without an island.
 
 `Prose.astro` wraps rendered Markdown, adds anchor links to headings at render time and attaches
 a copy button to every code block. The React islands themselves are documented in the

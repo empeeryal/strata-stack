@@ -1,6 +1,7 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import BackToTop from '@/components/ui/BackToTop.astro';
 import Badge from '@/components/ui/Badge.astro';
 import BarChart from '@/components/ui/BarChart.astro';
 import Button from '@/components/ui/Button.astro';
@@ -42,6 +43,16 @@ describe('<Button>', () => {
     });
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain('target="_blank"');
+  });
+});
+
+describe('<BackToTop>', () => {
+  it('renders a hidden, labelled button inside its custom element', async () => {
+    const html = await container.renderToString(BackToTop);
+    expect(html).toContain('<back-to-top');
+    expect(html).toMatch(/<button[^>]*\shidden/);
+    expect(html).toContain('aria-label="Back to top"');
+    expect(html).toContain('fixed');
   });
 });
 
