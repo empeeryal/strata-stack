@@ -58,6 +58,9 @@ netlify`). Application code must not branch on the platform.
   confirm and unsubscribe pages show a button that posts an action, and the verification link
   does not sign the clicker in (`autoSignInAfterVerification: false`, see `src/lib/auth.ts`).
 - Email: `src/lib/email.ts` prints messages only outside production; never log links in production.
+- Analytics: `src/lib/analytics.ts` is the one catalogue of custom events (`trackEvent()`, a no-op
+  unless `PUBLIC_ANALYTICS=vercel`). Call it on success paths only; properties never carry personal
+  data. New events go into the `AnalyticsEvents` interface and the analytics guide.
 - Security: `security.csp` in `astro.config.ts` (hash-based), `config/security-headers.ts`
   (mirrored in `public/_headers`, verified by a unit test).
 

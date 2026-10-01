@@ -9,11 +9,15 @@ vi.mock('@/lib/auth-client', () => ({
   authClient: { signOut: (...args: unknown[]) => signOut(...args) },
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import SignOutButton from './SignOutButton';
 
 describe('<SignOutButton>', () => {
   beforeEach(() => {
     signOut.mockReset();
+    trackEvent.mockReset();
     vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
   });
 
@@ -23,6 +27,7 @@ describe('<SignOutButton>', () => {
     render(<SignOutButton redirectTo="/goodbye" />);
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/goodbye'));
+    expect(trackEvent).toHaveBeenCalledWith('Signed out');
   });
 
   it('says so when the session could not be ended, instead of pretending', async () => {

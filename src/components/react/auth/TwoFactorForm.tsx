@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import { Alert, Button, Field, Input, Label, UNEXPECTED_ERROR } from '../primitives';
@@ -60,6 +61,7 @@ export default function TwoFactorForm({ redirectTo }: TwoFactorFormProps) {
         setError(describeVerificationError(result.error, method));
         return;
       }
+      trackEvent('Signed in', { method: 'password', twoFactor: true });
       window.location.assign(redirectTo);
     } catch {
       setError(UNEXPECTED_ERROR);

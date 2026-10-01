@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import {
@@ -101,6 +102,7 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
         setError('That code did not match. Codes change every 30 seconds; try the current one.');
         return;
       }
+      trackEvent('Two-factor enabled');
       setStep('codes');
     });
   }
@@ -128,6 +130,7 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
         setError(result.error.message ?? UNEXPECTED_ERROR);
         return;
       }
+      trackEvent('Two-factor disabled');
       window.location.assign('/dashboard?notice=two-factor-disabled');
     });
   }

@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react';
 import { useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import { Alert, Button, UNEXPECTED_ERROR } from '../primitives';
@@ -19,6 +20,7 @@ export default function SignOutButton({ redirectTo = '/' }: { redirectTo?: strin
         setError(result.error.message ?? 'Sign-out failed. Try again.');
         return;
       }
+      trackEvent('Signed out');
       window.location.assign(redirectTo);
     } catch {
       setError(UNEXPECTED_ERROR);

@@ -22,6 +22,8 @@ overrides:
   sharp: ^0.35.4
   # miniflare (Cloudflare's local emulator) pins 7.29.0; GHSA-3wwx-pv8p-q78v is fixed in 7.29.1.
   undici@7.29.0: ^7.29.1
+  # Astro resolves 5.9.2; GHSA-mcm9-63f2-9j32 and GHSA-x5rw-q4pp-hg5g are fixed in 5.9.3.
+  devalue@<5.9.3: ^5.9.4
 
 # Advisories with no upstream fix in build-time tooling; reviewed on dependency upgrades
 # (see the CI guide, "Audit exceptions").

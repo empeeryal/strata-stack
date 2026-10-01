@@ -15,6 +15,9 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import TwoFactorForm, { CHALLENGE_OVER_MESSAGE } from './TwoFactorForm';
 
 describe('<TwoFactorForm>', () => {
@@ -39,6 +42,7 @@ describe('<TwoFactorForm>', () => {
       expect(verifyTotp).toHaveBeenCalledWith({ code: '123456', trustDevice: true }),
     );
     expect(window.location.assign).toHaveBeenCalledWith('/admin');
+    expect(trackEvent).toHaveBeenCalledWith('Signed in', { method: 'password', twoFactor: true });
   });
 
   it('switches to a backup code and explains a used one', async () => {

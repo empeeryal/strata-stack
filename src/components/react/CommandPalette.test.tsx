@@ -3,6 +3,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import CommandPalette, { type PaletteLink, type SearchApi } from './CommandPalette';
 
 const links: PaletteLink[] = [
@@ -49,6 +52,7 @@ function setup(props: Partial<Parameters<typeof CommandPalette>[0]> = {}) {
 describe('<CommandPalette>', () => {
   beforeEach(() => {
     assign.mockReset();
+    trackEvent.mockReset();
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { ...window.location, assign, href: 'http://localhost/' },
@@ -82,6 +86,10 @@ describe('<CommandPalette>', () => {
     expect(screen.queryByRole('option', { name: 'Docs' })).toBeNull();
     await user.keyboard('{Enter}');
     expect(assign).toHaveBeenCalledWith('/docs/getting-started/installation');
+    expect(trackEvent).toHaveBeenCalledWith('Palette item selected', {
+      kind: 'link',
+      target: '/docs/getting-started/installation',
+    });
   });
 
   it('moves the highlight with the arrow keys', async () => {

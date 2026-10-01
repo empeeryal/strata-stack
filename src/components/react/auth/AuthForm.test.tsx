@@ -17,6 +17,9 @@ vi.mock('@/lib/auth-client', () => ({
 
 import { UNEXPECTED_ERROR } from '../primitives';
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import AuthForm from './AuthForm';
 
 const PASSWORD = 'correct-horse-battery';
@@ -24,6 +27,7 @@ const PASSWORD = 'correct-horse-battery';
 describe('<AuthForm>', () => {
   beforeEach(() => {
     signInEmail.mockReset();
+    trackEvent.mockReset();
     signUpEmail.mockReset();
     sendVerificationEmail.mockReset();
     vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
@@ -39,6 +43,8 @@ describe('<AuthForm>', () => {
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith('/two-factor?next=%2Fadmin'),
     );
+    // The sign-in is counted once the second factor completes, not here.
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 
   it('signs in with email and password and redirects', async () => {
@@ -56,6 +62,7 @@ describe('<AuthForm>', () => {
       callbackURL: '/dashboard',
     });
     expect(window.location.assign).toHaveBeenCalledWith('/dashboard');
+    expect(trackEvent).toHaveBeenCalledWith('Signed in', { method: 'password', twoFactor: false });
   });
 
   it('shows the name field in signup mode and surfaces errors', async () => {
@@ -130,6 +137,7 @@ describe('<AuthForm>', () => {
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     await waitFor(() => expect(screen.getByText(/Check your inbox/)).toBeInTheDocument());
     expect(window.location.assign).not.toHaveBeenCalled();
+    expect(trackEvent).toHaveBeenCalledWith('Signed up', { method: 'password' });
   });
 
   it('only links to the password reset when email delivery is configured', () => {

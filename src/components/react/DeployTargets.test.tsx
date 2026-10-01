@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { HTMLAttributes, ReactNode } from 'react';
 
@@ -25,9 +25,14 @@ vi.mock('motion/react', () => {
   };
 });
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import DeployTargets from './DeployTargets';
 
 describe('<DeployTargets>', () => {
+  beforeEach(() => trackEvent.mockReset());
+
   it('shows Vercel first and switches the panel on click', async () => {
     const user = userEvent.setup();
     render(<DeployTargets />);
@@ -39,6 +44,7 @@ describe('<DeployTargets>', () => {
     await user.click(screen.getByRole('tab', { name: 'Node' }));
     expect(screen.getByRole('tab', { name: 'Node' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveTextContent('dist/server/entry.mjs');
+    expect(trackEvent).toHaveBeenCalledWith('Deploy target viewed', { target: 'node' });
     expect(screen.getByRole('link', { name: /Node deployment guide/ })).toHaveAttribute(
       'href',
       '/docs/deploy/node',

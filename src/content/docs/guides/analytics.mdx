@@ -1,0 +1,100 @@
+---
+title: Analytics
+description: Vercel Web Analytics behind one switch, and the custom events the template records for the interactions that matter, with no personal data in any of them.
+publishedDate: 2026-10-01
+sidebar:
+  order: 9
+  badge: new
+---
+
+import Callout from '@/components/ui/Callout.astro';
+
+The template ships with [Vercel Web Analytics](https://vercel.com/docs/analytics) behind one
+build-time switch: set `PUBLIC_ANALYTICS=vercel` and `BaseLayout.astro` renders the
+`@vercel/analytics` component, which loads the script from the deployment's own origin, so the
+Content Security Policy needs no change. Leave it at `none` (the default) and nothing analytics
+related is shipped to the browser. Page views come for free; this page is about the custom events
+the template records on top of them.
+
+## The events
+
+Every event the site can send is declared once, in `src/lib/analytics.ts`, as a TypeScript map
+from the event name to the properties it carries. The dashboard therefore shows a fixed, readable
+set of names instead of near-duplicates, and a typo in a component is a compile error.
+
+| Event                    | Properties                       | Sent when                                                         |
+| ------------------------ | -------------------------------- | ----------------------------------------------------------------- |
+| `Newsletter subscribed`  | `source` (footer, blog, page, …) | The newsletter form was accepted (every outcome looks the same)   |
+| `Contact message sent`   |                                  | The contact form stored a message                                 |
+| `Signed up`              | `method`                         | An account was created with a password                            |
+| `Signed in`              | `method`, `twoFactor`            | A password sign-in completed, with or without the second factor   |
+| `Magic link requested`   |                                  | A sign-in link was emailed                                        |
+| `Social sign-in started` | `provider`                       | The browser left for GitHub or Google                             |
+| `Signed out`             |                                  | The sign-out button ended the session                             |
+| `Two-factor enabled`     |                                  | The first authenticator code was confirmed                        |
+| `Two-factor disabled`    |                                  | The factor was turned off from the dashboard                      |
+| `Account deleted`        |                                  | A visitor deleted their own account                               |
+| `Palette item selected`  | `kind`, `target`                 | A page, search result or action was chosen in the command palette |
+| `Code copied`            |                                  | A code block's copy button was used                               |
+| `Theme changed`          | `theme`                          | The theme toggle switched to light or dark                        |
+| `Deploy target viewed`   | `target`                         | A tab of the deploy-target widget on the home page was opened     |
+| `Repository opened`      |                                  | The repository link in the header was followed                    |
+
+Events are recorded on the success path of an interaction, after the server has answered, so a
+refused form or a failed sign-in is not counted. None of the properties identifies a person: they
+say what kind of thing happened (which form, which provider, which theme), never to whom. That is
+what lets the [privacy policy](/legal/privacy) describe analytics as cookie-less and free of
+personal identifiers.
+
+<Callout type="note" title="Plan requirement">
+  Custom events appear in the Vercel dashboard on the Pro and Enterprise plans. On the Hobby plan
+  the calls are accepted and dropped; page views still work. See Vercel's [custom
+  events](https://vercel.com/docs/analytics/custom-events) documentation.
+</Callout>
+
+## Recording an event
+
+Call `trackEvent()` from a React island or a processed `<script>` and pass the name and, when the
+catalogue says so, the properties. TypeScript refuses an unknown name or a missing property:
+
+```ts
+import { trackEvent } from '@/lib/analytics';
+
+trackEvent('Newsletter subscribed', { source: 'footer' });
+trackEvent('Code copied');
+```
+
+The function is a no-op unless `PUBLIC_ANALYTICS=vercel`, so components call it unconditionally
+and the end-to-end suite, which builds without the switch, never talks to Vercel. It also never
+throws: the analytics client refuses to run outside a browser, and a page must not break over a
+metric.
+
+To add an event, extend the `AnalyticsEvents` interface in `src/lib/analytics.ts`, call
+`trackEvent()` where the interaction succeeds, and add a row to the table above. Keep the
+properties to a handful of short strings, numbers or booleans: Vercel caps the number of
+properties per plan, rejects nested objects and limits names and values to 255 characters. Never
+pass an email address, a name, an id or free text a visitor typed.
+
+## Where the calls live
+
+- `NewsletterForm.tsx`, `ContactForm.tsx`: after the action answers without an error.
+- `AuthForm.tsx`, `MagicLinkForm.tsx`, `SocialButtons.tsx`, `SignOutButton.tsx`,
+  `TwoFactorForm.tsx`: the sign-up, sign-in and sign-out paths. A password sign-in that needs the
+  second factor is counted when `TwoFactorForm` completes it, not when the password is accepted.
+- `TwoFactorSetup.tsx`, `DeleteAccountForm.tsx`: the dashboard's account actions.
+- `CommandPalette.tsx`, `DeployTargets.tsx`: the interactive islands on every page and the home
+  page.
+- `ThemeToggle.astro`, `GitHubLink.astro`, `copy-code.ts`: the processed scripts behind the
+  theme toggle, the header's repository link and the code blocks' copy buttons.
+
+The unit test of each island asserts its event with the analytics module mocked, and
+`src/lib/analytics.test.ts` covers the switch and the never-throws rule.
+
+## Server-side events
+
+Vercel also offers `track()` from `@vercel/analytics/server` for API routes and actions. The
+template does not use it: the server code runs unchanged on Vercel, Netlify, Cloudflare and Node,
+and that module only works inside a Vercel function. Every conversion the server sees (a
+sign-up, a newsletter confirmation, a contact message) has a client-side moment that is recorded
+instead. If your deployment is Vercel-only and you want server events, call the server `track()`
+from the action handlers in `src/actions/index.ts` behind the same `PUBLIC_ANALYTICS` check.

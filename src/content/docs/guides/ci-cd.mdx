@@ -4,7 +4,7 @@ description: The GitHub Actions workflows, the build matrix for every deploy tar
 publishedDate: 2026-09-18
 updatedDate: 2026-10-01
 sidebar:
-  order: 12
+  order: 13
 ---
 
 ## Pull request checks
@@ -41,8 +41,9 @@ measures compressed responses the way every deployment serves them.
 
 - `overrides` pins patchable transitive packages to a fixed version. Currently `fflate` inside
   the Open Graph image generator (Satori pins a version with a ZIP parsing flaw), `path-to-regexp`,
-  `sharp` and `undici` inside Cloudflare's local emulator (miniflare pins a release with a
-  WebSocket decompression flaw).
+  `sharp`, `undici` inside Cloudflare's local emulator (miniflare pins a release with a
+  WebSocket decompression flaw) and `devalue`, Astro's serializer for action results, moved to the
+  release that fixes two unhandled-rejection advisories.
 - `auditConfig.ignoreGhsas` lists advisories with no upstream fix in build-time tooling that never
   runs on the deployed site: two for `extract-zip` inside the Netlify adapter's development tooling
   (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3) and one for the esbuild 0.18 that drizzle-kit's

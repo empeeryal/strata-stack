@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
 import { Alert, Button, Field, Input, Label, PasswordInput, UNEXPECTED_ERROR } from '../primitives';
@@ -43,6 +44,7 @@ export default function DeleteAccountForm({ hasPassword }: DeleteAccountFormProp
         setError(result.error.message ?? UNEXPECTED_ERROR);
         return;
       }
+      trackEvent('Account deleted');
       window.location.assign('/account-deleted');
     } catch {
       setError(UNEXPECTED_ERROR);

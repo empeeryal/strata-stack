@@ -57,7 +57,10 @@ vercel({ imageService: true, staticHeaders: true });
 
 - Enable **Vercel Web Analytics** by setting `PUBLIC_ANALYTICS=vercel`; the `@vercel/analytics`
   Astro component is rendered only when this is set, and its beacons are same-origin so the CSP
-  needs no change.
+  needs no change. The template also records a fixed set of custom events (newsletter sign-ups,
+  sign-ins, searches, theme changes and more) that carry no personal data; the
+  [analytics guide](/docs/guides/analytics) lists them. Custom events need a Pro or Enterprise
+  plan to appear in the dashboard.
 - Turn on **ISR** for on-demand pages with `vercel({ isr: { expiration: 60 } })` if you add
   server-rendered pages that can be cached.
 - Store the database with the Turso integration from the Vercel Marketplace, which injects

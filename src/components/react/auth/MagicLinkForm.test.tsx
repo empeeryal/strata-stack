@@ -9,10 +9,16 @@ vi.mock('@/lib/auth-client', () => ({
   authClient: { signIn: { magicLink: (...args: unknown[]) => magicLink(...args) } },
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import MagicLinkForm from './MagicLinkForm';
 
 describe('<MagicLinkForm>', () => {
-  beforeEach(() => magicLink.mockReset());
+  beforeEach(() => {
+    magicLink.mockReset();
+    trackEvent.mockReset();
+  });
 
   it('asks for a sign-in link to the given destination', async () => {
     magicLink.mockResolvedValue({ data: {}, error: null });
@@ -24,6 +30,7 @@ describe('<MagicLinkForm>', () => {
       expect(magicLink).toHaveBeenCalledWith({ email: 'ada@example.com', callbackURL: '/admin' }),
     );
     expect(screen.getByText(/a sign-in link is on its way/)).toBeInTheDocument();
+    expect(trackEvent).toHaveBeenCalledWith('Magic link requested');
   });
 
   it('defaults to the dashboard and explains a failed send', async () => {

@@ -2,6 +2,7 @@ import { actions, isInputError } from 'astro:actions';
 import { type SubmitEvent, useId, useState } from 'react';
 
 import { ui } from '@/i18n/ui';
+import { trackEvent } from '@/lib/analytics';
 import type { NewsletterSource } from '@/lib/newsletter';
 import { cn } from '@/lib/utils';
 
@@ -73,6 +74,7 @@ export default function NewsletterForm({
         return;
       }
       setStatus('sent');
+      trackEvent('Newsletter subscribed', { source });
     } catch {
       setError(UNEXPECTED_ERROR);
       setStatus('idle');

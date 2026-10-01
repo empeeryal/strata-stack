@@ -11,6 +11,9 @@ vi.mock('astro:actions', () => ({
     Boolean(error && typeof error === 'object' && 'fields' in error),
 }));
 
+const trackEvent = vi.fn();
+vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 import ContactForm from './ContactForm';
 
 async function fillAndSubmit() {
@@ -22,7 +25,10 @@ async function fillAndSubmit() {
 }
 
 describe('<ContactForm>', () => {
-  beforeEach(() => contact.mockReset());
+  beforeEach(() => {
+    contact.mockReset();
+    trackEvent.mockReset();
+  });
 
   it('shows a success message after submitting', async () => {
     contact.mockResolvedValue({ data: { ok: true }, error: undefined });
@@ -31,6 +37,7 @@ describe('<ContactForm>', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Thanks'));
     expect(contact).toHaveBeenCalledTimes(1);
     expect(contact.mock.calls[0]?.[0]).toBeInstanceOf(FormData);
+    expect(trackEvent).toHaveBeenCalledWith('Contact message sent');
   });
 
   it('renders field errors returned by the action', async () => {

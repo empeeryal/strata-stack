@@ -1,6 +1,7 @@
 import { actions, isInputError } from 'astro:actions';
 import { type SubmitEvent, useState } from 'react';
 
+import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 import { Alert, Button, Field, Input, Label, Textarea, UNEXPECTED_ERROR } from './primitives';
@@ -37,6 +38,7 @@ export default function ContactForm() {
         return;
       }
       setStatus('sent');
+      trackEvent('Contact message sent');
     } catch {
       setError(UNEXPECTED_ERROR);
       setStatus('idle');

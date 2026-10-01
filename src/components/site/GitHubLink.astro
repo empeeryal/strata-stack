@@ -29,8 +29,11 @@ const t = useTranslations(resolveLocale(Astro.currentLocale));
 </a>
 
 <script>
+  import { trackEvent } from '@/lib/analytics';
+
   const link = document.querySelector<HTMLAnchorElement>('[data-repo-link]');
   const count = link?.querySelector<HTMLElement>('[data-repo-stars]');
+  link?.addEventListener('click', () => trackEvent('Repository opened'));
 
   async function showStars() {
     if (!link || !count) return;

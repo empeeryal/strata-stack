@@ -32,7 +32,9 @@ updatedDate: 2026-09-30
 
 The site does not use third-party advertising, tracking pixels or cross-site cookies. Fonts
 are self-hosted, so no requests are made to font providers. If analytics is enabled, it uses a
-privacy-friendly, cookie-less provider and never stores personal identifiers.
+privacy-friendly, cookie-less provider and never stores personal identifiers. Besides page views
+it counts a few interactions (for example a newsletter sign-up, a search, a theme change) as
+events that record what happened, never who did it.
 
 ## Cookies
 
