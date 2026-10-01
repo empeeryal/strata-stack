@@ -1,5 +1,11 @@
 # strata-stack
 
+## 0.24.1
+
+### Patch Changes
+
+- 6189376: Blog post: the fourth audit, what it found and how the fixes landed.
+
 ## 0.24.0
 
 ### Minor Changes
