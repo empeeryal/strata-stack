@@ -37,6 +37,24 @@ test.describe('authentication', () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
+  test('refuses short passwords and passwords from known breaches', async ({ page, request }) => {
+    // The length rule is enforced by the server for every client, not only by the form.
+    const short = await request.post('/api/auth/sign-up/email', {
+      data: { name: 'Short', email: `short-${Date.now()}@example.com`, password: 'only-eleven' },
+    });
+    expect(short.status()).toBe(400);
+
+    // Long enough, but in every breach corpus: the check answers before the account exists.
+    await page.goto('/signup');
+    await waitForIslands(page);
+    await page.getByLabel('Name').fill('Breached');
+    await page.getByLabel('Email', { exact: true }).fill(`breached-${Date.now()}@example.com`);
+    await page.getByLabel('Password', { exact: true }).fill('password1234');
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByRole('alert')).toContainText(/known data breach/i);
+    await expect(page).toHaveURL(/\/signup$/);
+  });
+
   test('redirects anonymous visitors from the dashboard', async ({ request }) => {
     const dashboard = await request.get('/dashboard', { maxRedirects: 0 });
     expect(dashboard.status()).toBe(302);

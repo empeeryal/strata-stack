@@ -1,7 +1,7 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
-import { admin, magicLink, twoFactor } from 'better-auth/plugins';
+import { admin, haveIBeenPwned, magicLink, twoFactor } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -50,7 +50,8 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
-    minPasswordLength: 8,
+    // Length is the floor; the haveIBeenPwned plugin below refuses passwords from known breaches.
+    minPasswordLength: 12,
     // Only enforce ownership of the address when a verification email can actually be
     // delivered; without a provider nobody could ever sign in.
     requireEmailVerification: emailConfigured,
@@ -235,6 +236,16 @@ export const auth = betterAuth({
       },
     }),
     admin(),
+    // Refuses a new password that appears in Have I Been Pwned's breach corpus, at sign-up,
+    // password change and reset. Only the first five characters of the password's SHA-1 hash
+    // leave the server (k-anonymity range query). The check fails closed: if the service cannot
+    // be reached the password is not accepted, so PASSWORD_BREACH_CHECK=false turns it off for
+    // deployments that cannot make that call.
+    haveIBeenPwned({
+      enabled: getEnv('PASSWORD_BREACH_CHECK') !== 'false',
+      customPasswordCompromisedMessage:
+        'That password appears in a known data breach. Choose a different one.',
+    }),
   ],
 
   session: {

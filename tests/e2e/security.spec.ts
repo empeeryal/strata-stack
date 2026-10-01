@@ -11,6 +11,7 @@ const PAGES = [
   '/search',
   '/changelog',
   '/contact',
+  '/docs/components/pricing-table',
 ];
 
 test.describe('security', () => {

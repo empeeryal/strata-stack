@@ -65,7 +65,9 @@ netlify`). Application code must not branch on the platform.
 - **Zod:** import `z` from `astro/zod` (Zod 4: `z.email()`, not `z.string().email()`).
 - **CSP:** never add `<script is:inline>` by hand (not hashed). Use processed `<script>` tags,
   `injectScript('head-inline', …)` from an integration, or list origins in `scriptDirective`.
-  Do not add `<ClientRouter />`. CSP is only active in builds, not `astro dev`.
+  Do not add `<ClientRouter />`. A component imported directly by an MDX file must not carry a
+  scoped `<style>` (its hash is missing from that page's policy); put the rule in `global.css`.
+  CSP is only active in builds, not `astro dev`.
 - **Server code** (`src/lib/auth.ts`, `src/lib/env.ts`, `src/lib/email.ts`, `src/db/*`) uses
   `process.env` and relative imports so the Better Auth CLI and Node scripts can load it.
 - **Cloudflare:** on-demand routes run in workerd. Keep Node-only packages out of API routes,
@@ -74,7 +76,9 @@ netlify`). Application code must not branch on the platform.
 - **pnpm settings** (`allowBuilds`, `overrides`, `auditConfig`) live in `pnpm-workspace.yaml`;
   pnpm 12 ignores a `pnpm` field in `package.json`.
 - **Semantic tokens** (`bg-card`, `text-muted-foreground`) instead of raw palette classes.
-- **Tests:** keep `tests/e2e` green, including the CSP and axe specs. Use `waitForIslands(page)`
+- **Tests:** keep `tests/e2e` green, including the CSP and axe specs. Coverage floors per file
+  group live in `vitest.config.ts`; Lighthouse budgets (desktop and mobile, performance blocking)
+  in `lighthouserc.json` and `lighthouserc.mobile.json`. Use `waitForIslands(page)`
   before interacting with React islands.
 - **Docs:** update `src/content/docs` and add a changeset (`pnpm changeset`) for user-facing changes.
 
