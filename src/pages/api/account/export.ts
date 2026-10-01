@@ -9,11 +9,22 @@ import { getAuthoritativeSession } from '@/lib/session';
 export const prerender = false;
 
 /**
+ * The export runs on POST only. With `prefetchAll` on, a plain link to a GET endpoint is fetched
+ * as soon as it scrolls into view, which would record an export nobody asked for; a form submit
+ * is never prefetched, and Astro's origin check covers it.
+ */
+export const GET: APIRoute = () =>
+  Response.json(
+    { error: 'Use the download button on the dashboard: this export answers POST only.' },
+    { status: 405, headers: { Allow: 'POST' } },
+  );
+
+/**
  * Data export for the signed-in user (privacy "right of access"). Returns the profile,
  * linked sign-in methods and sessions without any tokens or secrets, plus contact messages
  * and the newsletter subscription for the address when it has been verified as the user's own.
  */
-export const GET: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request }) => {
   // Personal data leaves the system here, so the session is verified against the database
   // rather than the cookie cache (a revoked session must not be able to export).
   const { user } = await getAuthoritativeSession(request.headers);

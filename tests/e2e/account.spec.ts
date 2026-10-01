@@ -12,8 +12,19 @@ test.describe('account self-service', () => {
     await signUp(page, 'Privacy Tester', email);
     await expect(page).toHaveURL(/\/dashboard$/);
 
-    // Export (same browser context, so the session cookie is sent).
-    const exported = await page.request.get('/api/account/export');
+    // The dashboard offers the export as a form, never as a link: every link is prefetched
+    // when it scrolls into view, and the export is recorded in the audit log.
+    const form = page
+      .getByRole('button', { name: 'Download my data' })
+      .locator('xpath=ancestor::form');
+    await expect(form).toHaveAttribute('method', 'POST');
+    await expect(form).toHaveAttribute('action', '/api/account/export');
+    expect((await page.request.get('/api/account/export')).status()).toBe(405);
+
+    // Export (same browser context, so the session cookie is sent; the Origin header is what a
+    // browser form submit carries and what Astro's origin check requires on POST).
+    const origin = new URL(page.url()).origin;
+    const exported = await page.request.post('/api/account/export', { headers: { origin } });
     expect(exported.status()).toBe(200);
     expect(exported.headers()['content-disposition']).toContain('attachment');
     const body = await exported.json();
@@ -161,8 +172,8 @@ test.describe('account self-service', () => {
     await expect(page.locator('[data-profile-avatar]')).toHaveText('AL');
   });
 
-  test('rejects unauthenticated export requests', async ({ request }) => {
-    const response = await request.get('/api/account/export');
+  test('rejects unauthenticated export requests', async ({ request, baseURL }) => {
+    const response = await request.post('/api/account/export', { headers: { origin: baseURL! } });
     expect(response.status()).toBe(401);
   });
 });

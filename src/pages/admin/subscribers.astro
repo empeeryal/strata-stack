@@ -137,11 +137,14 @@ const SOURCE_LABELS: Record<string, string> = {
           </a>
         )}
       </form>
-      {/* A real download, never prefetched: the export is recorded in the audit log. */}
-      <Button href="/admin/subscribers.csv" variant="outline" size="sm" data-astro-prefetch="false">
-        <Icon name="lucide:download" aria-hidden="true" />
-        Download confirmed (CSV)
-      </Button>
+      {/* A form, not a link: the download is recorded in the audit log, and a link would be
+          prefetched when it scrolls into view. */}
+      <form method="POST" action="/admin/subscribers.csv">
+        <Button type="submit" variant="outline" size="sm">
+          <Icon name="lucide:download" aria-hidden="true" />
+          Download confirmed (CSV)
+        </Button>
+      </form>
     </div>
   </div>
 

@@ -250,10 +250,14 @@ const emailConfigured = isEmailConfigured();
       from a verified address are included in the export and removed with the account.
     </p>
     <div class="mt-4 flex flex-wrap items-start gap-3">
-      <Button href="/api/account/export" variant="outline">
-        <Icon name="lucide:download" aria-hidden="true" />
-        Download my data
-      </Button>
+      {/* A form, not a link: links are prefetched when they scroll into view, and this
+          download is recorded in the audit log. */}
+      <form method="POST" action="/api/account/export">
+        <Button type="submit" variant="outline">
+          <Icon name="lucide:download" aria-hidden="true" />
+          Download my data
+        </Button>
+      </form>
       <DeleteAccountForm client:visible hasPassword={hasPassword} />
     </div>
   </Card>

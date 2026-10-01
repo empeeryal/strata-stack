@@ -2,7 +2,7 @@
 title: Newsletter form
 description: A double opt-in newsletter sign-up, as a small React island over an Astro Action, with confirmation and unsubscribe pages, an admin list with CSV export and an optional Resend audience mirror.
 publishedDate: 2026-09-28
-updatedDate: 2026-09-29
+updatedDate: 2026-10-01
 sidebar:
   order: 5
   badge: updated
@@ -94,7 +94,8 @@ The template stores subscribers; it does not send newsletters. Two ways to do th
   confirm through the form. Without the secret the endpoint answers 404, and the admin
   overview says so.
 
-- **CSV export.** The **Download confirmed (CSV)** button on `/admin/subscribers` produces
+- **CSV export.** The **Download confirmed (CSV)** button on `/admin/subscribers` posts to
+  `/admin/subscribers.csv` (a GET answers 405, so a prefetched link cannot record a download) and produces
   `email,confirmed_at,unsubscribe_url`. Whatever tool sends the newsletter must put each
   address's `unsubscribe_url` in the footer. Each download is recorded in the audit log.
 
