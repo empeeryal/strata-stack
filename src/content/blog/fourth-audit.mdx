@@ -1,0 +1,141 @@
+---
+title: 'The fourth audit: a link that proved the wrong thing, and opt-outs that expired'
+description: 'Four reviews, every finding checked against the code. What survived: a verification link that signed in whoever clicked it, opt-outs the provider never heard about, and a scan of the wrong page.'
+pubDate: 2026-10-01
+author: empeeryal
+tags: [security, testing, release]
+---
+
+The [third review](/blog/assurance-depth) was about yardsticks. Two releases later the template
+had a back-to-top button, audited downloads as forms and a Lighthouse harness that compresses
+what it measures, and it was time to read the whole thing again. Same method as the
+[second audit](/blog/second-audit): four reviews in parallel, one per area, every finding checked
+against the code before it was believed, and the survivors fixed in one release, 0.24.0. This time
+the two findings that mattered most were not bugs in a function. They were a link that proved
+something other than what the code assumed it proved, and a failure path that quietly deleted its
+own evidence.
+
+## First, a secret that was not one
+
+Before the audit started, GitHub's secret scanning flagged a "Stripe webhook signing secret" in the
+Playwright configuration: a string starting with `whsec_` followed by base64. It was the signing
+secret the end-to-end suite hands the test server so it can verify a forged provider webhook, and
+the base64 decodes to `e2e-webhook-secret-0123456789`. Not a credential for anything, never used
+outside a test run, nothing to rotate.
+
+It still deserved a fix, because the scanner is right about the shape and the next person to read
+the alert has to do the same investigation. The value is built at run time now, from the plain
+string, so the committed source no longer contains anything that looks like a secret. A fixture
+that resembles a credential costs a little of everyone's attention every time a tool looks at it.
+
+## A link that proves the wrong thing
+
+Sign-up with email verification works like this: you create an account with a password, the
+template emails you a link, and opening it marks the address verified. Better Auth offers to sign
+you in at that moment, so you land on your dashboard without typing the password again, and the
+template had that on. It is a pleasant default and it rests on an assumption: that the person who
+clicks the link is the person who chose the password.
+
+Consider the other order. Someone registers your address with their own password. You receive the
+template's own verification email, correctly worded, from the right domain, and you click it,
+because you may well have been meaning to sign up. You land signed in. Nothing looks wrong. The
+account is in your name, the role is whatever your address was configured to get, and the other
+person still knows the password. If your address was listed in `ADMIN_EMAILS` before you signed
+up, the other person is now an administrator of your site, and the one event that could have told
+you so felt like a normal first sign-in.
+
+The link proves that you own the mailbox. It does not prove that you chose the password, and
+signing you in treats the first as if it were the second. So the link no longer signs anyone in.
+It verifies the address and lands on the login page with a notice: sign in to continue, and if you
+did not create this account, use the password reset, which makes the account yours and revokes
+every other session. Everyone who signs up pays for this with one extra sign-in after clicking the
+link; the people who never signed up get a login form they cannot pass, which is the whole point.
+
+There is a second half. Without an email provider the template cannot require verification at
+all, so a fresh deployment can still be used. In that configuration, `ADMIN_EMAILS` meant that
+whoever registered one of those addresses first became an administrator, with no step in which
+the real owner was involved. The production checks refuse that combination now: configure email
+delivery, or sign up first and promote with the script.
+
+## Opt-outs the provider never heard about
+
+The newsletter keeps its own table of subscribers and, optionally, mirrors confirmed addresses into
+a Resend audience so broadcasts can be sent from there. Unsubscribing writes the row, then tells the
+provider. The second step can fail: an API key rotated, a provider outage, a network blip. The row
+recorded the failure in a column the admin page shows, and the documentation said the next change
+to that address would retry.
+
+Follow the path to its end. An unsubscribed row is deleted by the retention job after seven days.
+Nothing retried in between, because a confirmed address asking again only got an "already
+subscribed" email, and an unsubscribed one had no reason to change. So after a week the row, and
+with it the only record that the provider was never told, was gone, and the provider kept sending
+to someone who had opted out through the site's own link. The admin page would have shown the
+failure, under a tab nobody opens by default, for the week it existed.
+
+The fix has to make the failure impossible to forget rather than easier to notice. A row whose
+opt-out has not reached the provider is never pruned, however old. The retention job retries every
+failed sync before it deletes anything, and once the provider has been told the row goes with the
+other stale ones; the workflow just needs the Resend credentials to do it. The next change to an
+address retries, an administrator removing a row tells the provider first, and the overview counts
+the addresses the provider still misses, where someone will see it. The documentation now says
+what happens instead of what we hoped.
+
+Two neighbours of this finding went into the same release. Resend retries a failed webhook
+delivery for more than a day and signs each attempt afresh, so the signature's timestamp says only
+when the retry was sent; an opt-out event from before someone re-subscribed could arrive hours
+later and undo the new confirmation. The handler compares the event's own time with the row's
+confirmation and ignores anything older. And the confirmation link itself did its work on GET. We
+had learnt in the second audit that mail clients and security scanners open the links in an email,
+and had built the unsubscribe page as a button for exactly that reason; the confirmation page,
+twenty lines away, still subscribed whoever fetched it, which with a corporate link scanner means
+whoever was entered into the form. It is a button now, like its sibling.
+
+## A scan that passed on the login page
+
+The accessibility suite signs in once as an administrator and runs axe over the dashboard and the
+admin pages. The admin suite, which may run in another worker at the same time, signs in as the
+same administrator, demotes them, promotes them back and finally signs them out everywhere, to
+prove that each of those takes effect on the next request. Put the two together: once the admin
+suite has fired "sign out everywhere", every page the accessibility suite opens is a redirect to
+the login page, axe scans the login page, finds it fine, and the job is green.
+
+Nothing in the run said so, because the scans never asserted what page they were on. They do now,
+and the suite has an administrator of its own that nobody else touches. The fix took ten minutes;
+the lesson is older than the template. A test that does not check it is testing the thing it
+claims to test is a test of whatever happened to be there.
+
+## The small ones
+
+- **`pnpm start`**, the documented way to run the Node build, set no `NODE_ENV`, so a bare Node
+  deployment ran with every production rule off: the secret was not checked, sign-in links went to
+  the console. It sets `production` now.
+- **The sitemap** listed every page with a trailing slash while the canonical URL, Open Graph
+  and breadcrumbs used none, and on Cloudflare the canonical form was a redirect to the other.
+  Both agree now.
+- **Prerendered pages on Node** carried only the Content Security Policy; the other hardening
+  headers were left to a reverse proxy that platforms such as Fly or Render do not add. The build
+  writes them into the header map the server reads, and the policy gained `frame-ancestors`.
+- **Trusted browsers** for two-factor authentication survived a password change, a reset, "sign
+  out everywhere" and a ban. An intruder who had once completed the second step kept skipping it.
+  All four forget the trust.
+- **Deleting a password account** needed no password from any session younger than a day; the
+  form asked for one, the server did not insist. It does.
+- A banned account was told to verify its email; expired sessions were listed as live devices
+  and never deleted; the account export could be scripted to grow the audit log without limit;
+  an empty `BETTER_AUTH_URL` hid a perfectly good `SITE_URL`; and the Node guide now explains why
+  the proxy must set `X-Forwarded-For` rather than append to it, which is what nginx does by
+  default and what makes every per-address limit chooseable by the visitor.
+
+## What we took from it
+
+The second audit's lesson was that a guarantee has a direction. This one adds two. A proof is
+only a proof of what it actually demonstrates: the verification link demonstrated mailbox
+ownership, and the code acted as if it demonstrated authorship of the password; the accessibility
+scan demonstrated that some page had no violations, and the suite acted as if it were the admin
+page. And a failure path has to survive long enough to be acted on. Recording an error is not
+handling it if the record expires before anyone retries.
+
+Everything above is in 0.24.0 with a test for each fix. The
+[authentication](/docs/guides/authentication), [admin](/docs/guides/admin),
+[newsletter](/docs/components/newsletter-form), [Node deployment](/docs/deploy/node) and
+[testing](/docs/guides/testing) guides describe the current behaviour.
