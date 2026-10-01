@@ -1,0 +1,116 @@
+---
+title: 'The third review: floors, a longer yardstick and a hero with no LCP'
+description: 'A third outside audit found no bugs and three gaps in how we would notice one. Closing them turned up a CSP hole, a layout shift and a home page Lighthouse could not measure.'
+pubDate: 2026-10-01
+author: empeeryal
+tags: [testing, performance, security, release]
+---
+
+Two audits found bugs. The [first](/blog/what-an-outside-audit-found) found a last-administrator
+race and a redirect loop; the [second](/blog/second-audit) an open redirect, a proxy that made
+every visitor one visitor and a caching promise stated backwards. For the third we asked a
+different reviewer, OpenAI's Codex, to audit the whole site again, and it came back with no
+critical or high findings and a different kind of list: three places where a regression could
+land without anyone noticing. Coverage was measured but nothing failed when it dropped.
+Lighthouse ran one desktop pass over three URLs and treated a performance regression as a
+warning. Eight-character passwords were allowed. None of that is a bug. All of it is a yardstick
+that stops short of the thing you want to measure, and the interesting part of this release is
+what we found the moment the yardstick got longer.
+
+## Floors, not targets
+
+The unit suite collected coverage on every run and uploaded the report, and nothing read it. We
+looked at the numbers before deciding what to enforce, because a single global threshold would
+have been either meaningless or wrong. Overall coverage read 57%, dragged down by modules that
+unit tests cannot reach by design: the Better Auth configuration, the middleware, the actions, the
+pages. Those are exercised by the Playwright suite against a real server, and a number that says
+they are "uncovered" measures the wrong thing. The library code was at 81%, and the sensitive
+parts of it, the admin guards, the newsletter transitions, the environment checks, were already
+in the high nineties. The weak spot was the React islands: nine of them had no unit test at all.
+
+So the floors are per group of files. Library code must stay above 85% of lines, the build-time
+helpers above 80%, the islands above 80%, each a few points under what they measure today so the
+suite catches a drop without forcing tests for their own sake, and the server-only modules are
+excluded from the unit report with a comment that says who covers them instead. The nine islands
+got their tests, the Resend audience adapter got one, and the sign-in form's unverified-address
+and check-your-inbox paths, which had been reached only by hand, are asserted now. Ratchet the
+floors up as the numbers settle; never set one you have not measured.
+
+## A longer yardstick finds things
+
+The Lighthouse change was meant to be configuration: three runs per URL instead of one, assert
+on the median run, add a mobile profile, add pages that exercise an interactive island, Pagefind
+and a server-rendered route, and make the performance score block like the other three
+categories. We expected to tune a floor or two. We found three defects instead, one of which was
+a security regression the end-to-end suite had been checking for all along, on other pages.
+
+The pricing table's documentation page logged a Content Security Policy violation: the browser
+refused one of the page's own `<style>` elements. Astro hashes every scoped style of a route and
+puts the hashes in the policy, and the CSP test had confirmed that on seven pages. But the
+pricing table is imported directly by one MDX file rather than registered in the shared
+component map, and a component that reaches a page that way has its styles rendered into the
+head without its hash reaching the policy. The rule moved to the global stylesheet, the CSP test
+now covers that page, and the repository's agent guidance says not to put a scoped `<style>` in
+a component that content files import directly. The lesson is about test selection, not Astro:
+a check that passes on the pages you chose says nothing about the page you did not.
+
+The search page scored 0.78 on performance with a cumulative layout shift of 0.51. The page
+renders an empty results region, Pagefind fills it a moment later, and the footer, which was on
+screen until then, jumps down. A minimum height on the region keeps the footer below the fold
+until there is something to push it with. Twenty minutes, one CSS class, and it had been shipping
+since the search page existed.
+
+The home page on mobile was the strange one. Two of three runs reported no Largest Contentful
+Paint at all, and the third reported 4.8 seconds for a 58 by 16 pixel caption under the code
+block. The hero, headline, lead paragraph and code block included, fades in from `opacity: 0`.
+Chrome does not treat an element painted at opacity zero as a contentful paint, and an
+opacity-only animation finishes on the compositor without ever repainting the element, so the
+largest things on the page were invisible to the metric and Lighthouse was left with whatever
+painted late and plain. On desktop the viewport reached the unanimated sections below the hero,
+which is why nothing had flagged it. The fix is a second animation utility that moves but never
+hides, used for anything that may be a page's largest element; the badge and the buttons still
+fade. The mobile score went from 0.81 to 0.94, and more to the point, the page has an LCP again.
+
+## Twelve characters, and a list of breached passwords
+
+The password floor moved from eight characters to twelve across the auth configuration, the three
+forms and the guide. Length alone is a weak rule, so the same release adds Better Auth's
+`haveIBeenPwned` plugin: at sign-up, password change and password reset, the server sends the
+first five characters of the password's SHA-1 hash to Have I Been Pwned, receives every suffix in
+that range, and compares locally. Neither the password nor a hash that identifies it leaves the
+server. A match is refused with a message that says why, and the sign-up form states both rules
+before anyone types.
+
+Two properties of the plugin are worth knowing before you turn it on. It fails closed: if the
+service cannot be reached, the new password is not accepted and the person is asked to try again,
+which is the right default for a template and the wrong one for a deployment that cannot make
+outbound requests, so `PASSWORD_BREACH_CHECK=false` turns it off. And it runs in the end-to-end
+suite too, against the real service, with a password that the test knows is in the corpus and
+one that is not. That makes CI depend on an external API; we accepted it because a check that
+is only ever exercised with a mock is a check you have not seen work.
+
+## The export nobody asked for
+
+One more fix in this release came from the site's owner, not a reviewer: every visit to the
+dashboard wrote an `account.export` entry to the audit log. Nobody had exported anything. The
+cause was two correct decisions meeting. The template prefetches every link as soon as it
+scrolls into view, which is why navigation feels instant, and the "Download my data" button was
+a link to a GET endpoint that generates the export and records it. Scroll down, and the browser
+politely fetched your data export and threw it away, leaving the audit trail of a download that
+never happened.
+
+We had met this once before. The admin inbox used to mark a message read on GET, and
+prefetching marked every visible message read; that became a POST action, and the subscriber CSV
+link got a prefetch opt-out attribute. The opt-out was the wrong lesson. Anything audited is a
+side effect, a side effect belongs on POST, and an attribute someone has to remember is not a
+rule. Both downloads are forms now, a GET to either answers 405, and the agent guidance states
+the rule in one sentence so the next download does not need a reviewer to find it.
+
+## What we took from it
+
+A review that finds no bugs is not a review that found nothing. The three gaps were real, and
+closing them is what surfaced the three defects, none of which a reading of the code would have
+caught: they lived in the difference between the pages we tested and the pages we served, and in
+how a browser measures what it paints. Everything above is in 0.22.0 and 0.22.1, with the
+[testing](/docs/guides/testing), [authentication](/docs/guides/authentication) and
+[styling](/docs/guides/styling) guides describing the current rules.
