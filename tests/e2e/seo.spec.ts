@@ -33,6 +33,22 @@ test.describe('SEO and discovery endpoints', () => {
     expect(await securityTxt.text()).toContain('Contact:');
   });
 
+  test('the sitemap lists every page in its canonical form', async ({ page, request }) => {
+    const xml = await (await request.get('/sitemap-0.xml')).text();
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1] as string);
+    expect(locs.length).toBeGreaterThan(10);
+    // Canonical URLs have no trailing slash (except the root); the sitemap must say the same.
+    for (const loc of locs) expect(loc, loc).toMatch(new RegExp(`^${siteConfig.url}(/|/.+[^/])$`));
+    expect(locs).toContain(`${siteConfig.url}/about`);
+    expect(locs).not.toContain(`${siteConfig.url}/login`);
+
+    await page.goto('/about');
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      `${siteConfig.url}/about`,
+    );
+  });
+
   test('pages carry canonical, Open Graph and structured data', async ({ page }) => {
     await page.goto('/docs/getting-started/introduction');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(

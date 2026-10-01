@@ -55,7 +55,7 @@ identifies you, leaves our server.
 ## Retention
 
 - Accounts and their sessions are kept until you delete the account. Expired sessions are
-  removed automatically.
+  removed by the weekly retention job.
 - Contact messages are kept while they are open. Archived messages are deleted after one year
   (or the retention period configured for this deployment). Where a maximum age is configured,
   messages are deleted after it regardless of their state.

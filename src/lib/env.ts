@@ -49,13 +49,15 @@ const PLACEHOLDER_SECRET = /change-me|ci-only|e2e-only|example|placeholder/i;
 export function resolvePublicUrl(
   env: Record<string, string | undefined> = process.env,
 ): string | null {
-  const explicit = env.BETTER_AUTH_URL ?? env.SITE_URL;
+  // A dashboard happily stores a variable with an empty value; that must not hide the next one.
+  const first = (...names: string[]) => names.map((name) => env[name]?.trim()).find(Boolean);
+  const explicit = first('BETTER_AUTH_URL', 'SITE_URL');
   if (explicit) return stripSlash(explicit);
 
   // Platform-provided hosts (no protocol).
-  const vercel = env.VERCEL_PROJECT_PRODUCTION_URL ?? env.VERCEL_URL;
+  const vercel = first('VERCEL_PROJECT_PRODUCTION_URL', 'VERCEL_URL');
   if (vercel) return `https://${vercel}`;
-  const netlify = env.URL ?? env.DEPLOY_PRIME_URL;
+  const netlify = first('URL', 'DEPLOY_PRIME_URL');
   if (netlify) return stripSlash(netlify);
 
   return null;
@@ -203,6 +205,15 @@ export function checkProductionConfig(
       message:
         'RESEND_API_KEY is not set: magic links, email verification, password resets and newsletter confirmations are unavailable until email delivery is configured.',
     });
+    // Without verification nobody proves they own an address, so the first person to register
+    // one of these becomes an administrator.
+    if (getAdminEmails(env).length > 0) {
+      issues.push({
+        level: 'error',
+        message:
+          'ADMIN_EMAILS grants the admin role at sign-up, but without RESEND_API_KEY no email verification protects those addresses: anyone could register them first. Configure email delivery, or unset ADMIN_EMAILS and promote accounts with `pnpm admin:promote` after they sign up.',
+      });
+    }
   }
   if (!env.CONTACT_TO_EMAIL) {
     issues.push({

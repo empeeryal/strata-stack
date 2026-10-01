@@ -1,5 +1,5 @@
 ---
-import { count, desc, eq, gte } from 'drizzle-orm';
+import { and, count, desc, eq, gte, isNotNull, ne } from 'drizzle-orm';
 
 import Badge from '@/components/ui/Badge.astro';
 import BarChart from '@/components/ui/BarChart.astro';
@@ -32,6 +32,7 @@ const [
   recentAudit,
   recentArrivals,
   [subscribers],
+  [audienceFailures],
 ] = await Promise.all([
   db.select({ value: count() }).from(userTable),
   countActiveAdmins(db),
@@ -53,7 +54,17 @@ const [
     .select({ value: count() })
     .from(newsletterSubscribers)
     .where(eq(newsletterSubscribers.status, 'confirmed')),
+  db
+    .select({ value: count() })
+    .from(newsletterSubscribers)
+    .where(
+      and(
+        isNotNull(newsletterSubscribers.audienceError),
+        ne(newsletterSubscribers.status, 'pending'),
+      ),
+    ),
 ]);
+const unsynced = audienceFailures?.value ?? 0;
 
 const messagesPerDay = dailyCounts(
   recentArrivals.map((row) => row.createdAt),
@@ -95,11 +106,15 @@ const configuration = [
     ? [
         {
           label: 'Newsletter audience',
-          ok: Boolean(audienceId && isEmailConfigured()),
+          ok: Boolean(audienceId && isEmailConfigured()) && unsynced === 0,
           detail:
             audienceId && isEmailConfigured()
-              ? 'Confirmed subscribers are mirrored to the Resend audience for sending.'
-              : 'RESEND_AUDIENCE_ID is not set. Subscribers are stored here only; download them as CSV from the subscribers page.',
+              ? unsynced > 0
+                ? `${unsynced} address${unsynced === 1 ? '' : 'es'} could not be synced to the Resend audience; the subscribers page lists them in the Audience column and the weekly prune job retries them.`
+                : 'Confirmed subscribers are mirrored to the Resend audience for sending.'
+              : unsynced > 0
+                ? `RESEND_AUDIENCE_ID is not set, and ${unsynced} address${unsynced === 1 ? '' : 'es'} from an earlier configuration still need${unsynced === 1 ? 's' : ''} the provider; remove them from the subscribers page if the audience is no longer used.`
+                : 'RESEND_AUDIENCE_ID is not set. Subscribers are stored here only; download them as CSV from the subscribers page.',
         },
         ...(audienceId && isEmailConfigured()
           ? [

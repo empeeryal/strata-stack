@@ -24,8 +24,8 @@ the library code in `src/lib`, the build-time helpers in `config` and the React 
 request that drops a group below its floor fails the `unit` job. The floors sit a few points
 under the current numbers, so they catch a regression without forcing tests for their own sake;
 raise one when a group has settled above it. Files that only a running server exercises (pages,
-actions, the middleware, the Better Auth and email wiring, the feed) are left out of the unit
-report and covered by the Playwright suite instead.
+actions, the middleware, the Better Auth wiring, the feed) are left out of the unit report and
+covered by the Playwright suite instead.
 
 Three styles are used in the template:
 
@@ -59,9 +59,11 @@ pnpm test:e2e:ui         # Playwright UI mode
 ```
 
 Specs in `tests/e2e` cover the home page and dark mode, docs navigation, blog listing and tags,
-search, SEO endpoints and metadata, the contact form (including the honeypot), sign-up, sign-in
-and sign-out, account export and deletion, the admin area (inbox, roles, last-admin protection,
-health details), security headers, CSP violations and accessibility.
+search, SEO endpoints and metadata, the contact form (including the honeypot), the newsletter
+(double opt-in, unsubscribe, the signed provider webhook), sign-up, sign-in and sign-out,
+two-factor authentication, account export and deletion, the admin area (inbox, roles,
+last-admin protection, health details), route caching, the back-to-top button, the single-locale
+output, the design-system components, security headers, CSP violations and accessibility.
 
 <Callout type="tip" title="Waiting for islands">
   Interactive React islands hydrate asynchronously. Use the `waitForIslands(page)` helper before
@@ -69,7 +71,11 @@ health details), security headers, CSP violations and accessibility.
 </Callout>
 
 Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to use a preinstalled browser instead of the one Playwright
-downloads.
+downloads. `E2E_PORT` moves the test server off 4321, and `E2E_BASE_URL` points the suite at a
+server that is already running (tests that read the local database skip themselves). Every
+sign-up in the suite asks Have I Been Pwned whether the password is known, so the suite needs
+network access to `api.pwnedpasswords.com`; `PASSWORD_BREACH_CHECK=false pnpm test:e2e` runs it
+offline and skips the one test that checks the breach rule.
 
 ## Accessibility
 

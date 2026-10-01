@@ -72,10 +72,31 @@ describe('<AuthForm>', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Email already in use'),
     );
     expect(window.location.assign).not.toHaveBeenCalled();
+    // The verification link must land on the login page: it does not sign the clicker in.
+    expect(signUpEmail.mock.calls[0]?.[0]).toMatchObject({ callbackURL: '/login?verified=1' });
+  });
+
+  it('shows the ban message instead of the verification hint for a banned account', async () => {
+    signInEmail.mockResolvedValue({
+      data: null,
+      error: { status: 403, code: 'BANNED_USER', message: 'You have been banned.' },
+    });
+    const user = userEvent.setup();
+    render(<AuthForm mode="login" />);
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com');
+    await user.type(screen.getByLabelText('Password'), PASSWORD);
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('You have been banned.'),
+    );
+    expect(screen.queryByRole('button', { name: 'Resend the verification email' })).toBeNull();
   });
 
   it('offers to resend the verification email when the address is unverified', async () => {
-    signInEmail.mockResolvedValue({ data: null, error: { status: 403, message: 'Not verified' } });
+    signInEmail.mockResolvedValue({
+      data: null,
+      error: { status: 403, code: 'EMAIL_NOT_VERIFIED', message: 'Not verified' },
+    });
     sendVerificationEmail.mockResolvedValue({ data: {}, error: null });
     const user = userEvent.setup();
     render(<AuthForm mode="login" />);
@@ -90,7 +111,7 @@ describe('<AuthForm>', () => {
     await waitFor(() =>
       expect(sendVerificationEmail).toHaveBeenCalledWith({
         email: 'ada@example.com',
-        callbackURL: '/dashboard',
+        callbackURL: '/login?verified=1',
       }),
     );
     expect(screen.getByText(/Verification email sent/)).toBeInTheDocument();

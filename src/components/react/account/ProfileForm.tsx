@@ -19,21 +19,25 @@ export interface ProfileFormProps {
 export default function ProfileForm({ name, image }: ProfileFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invalidField, setInvalidField] = useState<'name' | 'image' | null>(null);
   const [preview, setPreview] = useState(image ?? '');
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setInvalidField(null);
     const data = new FormData(event.currentTarget);
     const nextName = String(data.get('name') ?? '')
       .trim()
       .replace(/\s+/g, ' ');
     const nextImage = String(data.get('image') ?? '').trim();
     if (nextName.length < NAME_MIN_LENGTH || nextName.length > NAME_MAX_LENGTH) {
+      setInvalidField('name');
       setError(`Please enter a name between ${NAME_MIN_LENGTH} and ${NAME_MAX_LENGTH} characters.`);
       return;
     }
     if (nextImage && !isHttpsUrl(nextImage)) {
+      setInvalidField('image');
       setError('The avatar must be an https:// link to an image.');
       return;
     }
@@ -55,7 +59,7 @@ export default function ProfileForm({ name, image }: ProfileFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" aria-label="Profile">
-      {error && <Alert>{error}</Alert>}
+      {error && <Alert id="profile-error">{error}</Alert>}
       <div className="flex items-start gap-4">
         <Avatar name={name} image={isHttpsUrl(preview) ? preview : null} size="lg" />
         <div className="min-w-0 flex-1 space-y-4">
@@ -69,6 +73,8 @@ export default function ProfileForm({ name, image }: ProfileFormProps) {
               required
               minLength={NAME_MIN_LENGTH}
               maxLength={NAME_MAX_LENGTH}
+              aria-invalid={invalidField === 'name' || undefined}
+              aria-describedby={invalidField === 'name' ? 'profile-error' : undefined}
             />
           </Field>
           <Field>
@@ -82,7 +88,10 @@ export default function ProfileForm({ name, image }: ProfileFormProps) {
               placeholder="https://github.com/you.png"
               pattern="https://.*"
               maxLength={2048}
-              aria-describedby="profile-image-hint"
+              aria-invalid={invalidField === 'image' || undefined}
+              aria-describedby={
+                invalidField === 'image' ? 'profile-error profile-image-hint' : 'profile-image-hint'
+              }
               onChange={(event) => setPreview(event.currentTarget.value.trim())}
             />
             <p id="profile-image-hint" className="text-xs text-pretty text-muted-foreground">

@@ -30,17 +30,18 @@ dark set on `[data-theme='dark']`. The `@theme inline` block maps them to Tailwi
 utilities, so `bg-background`, `text-muted-foreground`, `border-primary/40` and friends work
 everywhere and switch automatically with the theme.
 
-| Token                                  | Utility                                  | Purpose                                 |
-| -------------------------------------- | ---------------------------------------- | --------------------------------------- |
-| `--background` / `--foreground`        | `bg-background`, `text-foreground`       | Page surface and body text              |
-| `--card`                               | `bg-card`                                | Elevated surfaces                       |
-| `--muted` / `--muted-foreground`       | `bg-muted`, `text-muted-foreground`      | Subtle backgrounds and secondary text   |
-| `--primary`                            | `bg-primary`, `text-primary`             | Brand colour, buttons, links            |
-| `--accent`                             | `text-accent`                            | Gradient partner for the primary colour |
-| `--success` / `--warning` / `--danger` | `text-success` …                         | Status colours                          |
-| `--border` / `--input` / `--ring`      | `border`, `border-input`, `outline-ring` | Lines and focus rings                   |
-| `--chart-1`                            | `fill-chart-1`, `bg-chart-1`             | Chart marks, a darker step in dark mode |
-| `--radius`                             | `rounded-lg` …                           | Corner radius scale                     |
+| Token                                  | Utility                                  | Purpose                                                          |
+| -------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
+| `--background` / `--foreground`        | `bg-background`, `text-foreground`       | Page surface and body text                                       |
+| `--card`                               | `bg-card`                                | Elevated surfaces                                                |
+| `--muted` / `--muted-foreground`       | `bg-muted`, `text-muted-foreground`      | Subtle backgrounds and secondary text                            |
+| `--primary`                            | `bg-primary`, `text-primary`             | Brand colour, buttons, links                                     |
+| `--accent`                             | `text-accent`                            | Gradient partner for the primary colour                          |
+| `--success` / `--warning` / `--danger` | `text-success` …                         | Status colours                                                   |
+| `--border` / `--input` / `--ring`      | `border`, `border-input`, `outline-ring` | Lines and focus rings                                            |
+| `--chart-1`                            | `fill-chart-1`, `bg-chart-1`             | Chart marks, a darker step in dark mode                          |
+| `--overlay`                            | `backdrop:bg-overlay`                    | Dimming behind dialogs and the mobile menu; dark in both schemes |
+| `--radius`                             | `rounded-lg` …                           | Corner radius scale                                              |
 
 To rebrand, change the primary hue in both colour sets and update `themeColor` in
 `src/site.config.ts` so the browser UI matches.

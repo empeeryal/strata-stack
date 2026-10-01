@@ -42,7 +42,7 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
     {methods.social.length > 0 && (
       <>
         <Divider label="or" />
-        <SocialButtons client:load providers={methods.social} redirectTo={redirectTo} />
+        <SocialButtons client:idle providers={methods.social} redirectTo={redirectTo} />
       </>
     )}
   </div>

@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "astro dev",
     "dev:cloudflare": "cross-env DEPLOY_TARGET=cloudflare astro dev",
-    "start": "node ./dist/server/entry.mjs",
+    "start": "cross-env NODE_ENV=production node ./dist/server/entry.mjs",
     "build": "astro build",
     "build:node": "cross-env DEPLOY_TARGET=node astro build",
     "build:vercel": "cross-env DEPLOY_TARGET=vercel astro build",

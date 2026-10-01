@@ -44,16 +44,6 @@ function sameSignature(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** Produces the `v1,…` signature for a delivery; used by tests and by the docs example. */
-export async function signWebhookPayload(
-  secret: string,
-  id: string,
-  timestamp: string,
-  body: string,
-): Promise<string> {
-  return `v1,${await hmac(secret, `${id}.${timestamp}.${body}`)}`;
-}
-
 /**
  * Checks a delivery's signature against the raw request body. The signature header may list
  * several signatures (space separated, each `v1,<base64>`), for example during a secret
@@ -73,7 +63,15 @@ export async function verifyWebhookSignature(
     return 'expired';
   }
 
-  const expected = await hmac(secret, `${id}.${timestamp}.${body}`);
+  let expected: string;
+  try {
+    expected = await hmac(secret, `${id}.${timestamp}.${body}`);
+  } catch (error) {
+    // A secret that is not base64 can never match; refusing the delivery beats a 500 that the
+    // provider retries for a day.
+    console.error('[webhook] RESEND_WEBHOOK_SECRET is not a valid signing secret', error);
+    return 'invalid';
+  }
   for (const entry of signature.split(' ')) {
     const [version, value] = entry.split(',', 2);
     if (version === 'v1' && value && sameSignature(value, expected)) return 'ok';

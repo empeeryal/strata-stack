@@ -22,8 +22,8 @@ export default getViteConfig(
         reporter: ['text', 'html', 'lcov'],
         include: ['src/**', 'config/**', 'integrations/**'],
         // Left out of the unit report because only a running server exercises them: the
-        // pages, the actions, the middleware, the Better Auth and email wiring and the feed.
-        // The Playwright suite covers those paths end to end.
+        // pages, the actions, the middleware, the Better Auth wiring and the feed. The
+        // Playwright suite covers those paths end to end.
         exclude: [
           'src/**/*.d.ts',
           'src/content/**',
@@ -33,7 +33,6 @@ export default getViteConfig(
           'src/actions/**',
           'src/middleware.ts',
           'src/lib/auth.ts',
-          'src/lib/email.ts',
           'src/lib/session.ts',
           'src/lib/rss.ts',
         ],
@@ -48,6 +47,7 @@ export default getViteConfig(
             functions: 75,
             statements: 80,
           },
+          'integrations/**/*.ts': { lines: 80, branches: 70, functions: 80, statements: 80 },
         },
       },
     },

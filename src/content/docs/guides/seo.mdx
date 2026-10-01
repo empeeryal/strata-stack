@@ -77,6 +77,5 @@ The index is only produced by `pnpm build`; in development the last built index 
 
 ## Performance
 
-Lighthouse budgets are enforced in CI through `lighthouserc.json` (performance ≥ 90 as a
-warning; accessibility, best practices and SEO ≥ 95 as errors). Run `pnpm build:node` then
-`pnpm lhci` locally to reproduce the report.
+Lighthouse budgets block the pull request on desktop and mobile; the floors, the pages and how
+to run them locally are in the [testing guide](/docs/guides/testing#lighthouse).

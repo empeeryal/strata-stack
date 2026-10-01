@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { alertRole, alertVariants, type AlertVariant } from '@/components/ui/alert-variants';
+import { avatarClasses, type AvatarSize } from '@/components/ui/avatar-variants';
 import { badgeVariants, type BadgeVariantProps } from '@/components/ui/badge-variants';
 import { buttonVariants, type ButtonVariantProps } from '@/components/ui/button-variants';
 import { inputClasses, textareaClasses } from '@/components/ui/field-classes';
@@ -116,8 +117,6 @@ export function Badge({
   return <span className={cn(badgeVariants({ variant }), className)}>{children}</span>;
 }
 
-const AVATAR_SIZES = { sm: 'size-6 text-[10px]', md: 'size-9 text-xs', lg: 'size-16 text-lg' };
-
 /** React counterpart of `Avatar.astro`: the image, or initials on a neutral disc. */
 export function Avatar({
   name,
@@ -127,16 +126,12 @@ export function Avatar({
 }: {
   name: string;
   image?: string | null | undefined;
-  size?: keyof typeof AVATAR_SIZES;
+  size?: AvatarSize;
   className?: string | undefined;
 }) {
   // A link that fails to load falls back to the initials, like Avatar.astro.
   const [broken, setBroken] = useState<string | null>(null);
-  const classes = cn(
-    'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted font-semibold text-muted-foreground select-none',
-    AVATAR_SIZES[size],
-    className,
-  );
+  const classes = avatarClasses(size, className);
   return image && broken !== image ? (
     <img
       src={image}

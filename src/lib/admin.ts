@@ -33,17 +33,6 @@ export async function countActiveAdmins(db: DbExecutor, excludeUserId?: string):
   return rows.filter((row) => row.id !== excludeUserId && isAdmin(row) && !row.banned).length;
 }
 
-/** True when removing this user's access would leave the site without an administrator. */
-export async function isLastActiveAdmin(db: DbExecutor, userId: string): Promise<boolean> {
-  const [target] = await db
-    .select({ role: userTable.role, banned: userTable.banned })
-    .from(userTable)
-    .where(eq(userTable.id, userId))
-    .limit(1);
-  if (!target || !isAdmin(target) || target.banned) return false;
-  return (await countActiveAdmins(db, userId)) === 0;
-}
-
 export const LAST_ADMIN_MESSAGE =
   'This is the only administrator account. Make someone else an administrator first.';
 
@@ -70,8 +59,8 @@ const ADMIN_ROLE_PATTERN = `'%,admin,%'`;
  * Condition under which `userId` may lose access: it is not an active administrator, or
  * another active administrator exists. SQLite evaluates it inside the statement that makes
  * the change, so two administrators demoting, banning or deleting each other at the same
- * moment cannot both succeed: the second statement sees the first one's result. This is what
- * `isLastActiveAdmin()` checks in application code, made atomic.
+ * moment cannot both succeed: the second statement sees the first one's result. A read followed
+ * by a write would leave a gap between the two.
  */
 export function notLastActiveAdmin(userId: string): SQL {
   return sql`(
@@ -144,6 +133,8 @@ export async function banUserAccount(
       .returning({ id: userTable.id });
     if (updated.length === 0) await explainRefusal(tx, targetId);
     await tx.delete(sessionTable).where(eq(sessionTable.userId, targetId));
+    // A trusted browser would skip the second factor once the ban is lifted.
+    await forgetTrustedDevices(tx, targetId);
     await writeAudit(tx, {
       actorId: actor.id,
       actorEmail: actor.email,

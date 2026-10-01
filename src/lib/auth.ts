@@ -1,5 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, haveIBeenPwned, magicLink, twoFactor } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
@@ -56,6 +56,11 @@ export const auth = betterAuth({
     // delivered; without a provider nobody could ever sign in.
     requireEmailVerification: emailConfigured,
     revokeSessionsOnPasswordReset: true,
+    // A browser trusted for two-factor authentication must not outlive the password it was
+    // trusted under: a reset is how someone takes an account back.
+    onPasswordReset: async ({ user }) => {
+      await forgetTrustedDevices(db, user.id);
+    },
     sendResetPassword: async ({ user, url }) => {
       sendInBackground(
         {
@@ -83,7 +88,12 @@ export const auth = betterAuth({
 
   emailVerification: {
     sendOnSignUp: emailConfigured,
-    autoSignInAfterVerification: true,
+    // The link proves that whoever clicked it owns the mailbox, not that they chose the
+    // password. Signing the clicker in would hand the mailbox owner a session on an account
+    // somebody else may have registered in their name (with a password that person knows), and
+    // nothing would look wrong. They sign in with the password instead, and if they do not
+    // have one the reset flow makes the account theirs and revokes every other session.
+    autoSignInAfterVerification: false,
     sendVerificationEmail: async ({ user, url }) => {
       sendInBackground(
         {
@@ -136,6 +146,31 @@ export const auth = betterAuth({
   },
 
   hooks: {
+    // Deleting a password account always needs the password. Better Auth accepts a deletion
+    // without one from any session younger than a day; for an account that has a password
+    // that is a stolen cookie or an unattended browser away from erasing everything.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/delete-user') return;
+      const body = (ctx.body ?? {}) as { password?: unknown; token?: unknown };
+      if (body.password || body.token) return;
+      const session = await getSessionFromCtx(ctx);
+      if (!session) return;
+      const [credential] = await db
+        .select({ id: schema.account.id })
+        .from(schema.account)
+        .where(
+          and(
+            eq(schema.account.userId, session.user.id),
+            eq(schema.account.providerId, 'credential'),
+          ),
+        )
+        .limit(1);
+      if (credential) {
+        throw new APIError('BAD_REQUEST', {
+          message: 'Enter your password to delete the account.',
+        });
+      }
+    }),
     // Two-factor changes are privacy-relevant: record who turned it on (the first code
     // verified while signed in completes the setup), regenerated the backup codes or turned
     // it off. Best-effort, like the other Better Auth operations.
@@ -167,6 +202,13 @@ export const auth = betterAuth({
           // Trusted browsers would otherwise skip the second step if it is turned on again.
           await forgetTrustedDevices(db, user.id);
           await record('two_factor.disable');
+          return;
+        case '/change-password':
+        case '/revoke-other-sessions':
+        case '/revoke-sessions':
+          // Recovery steps. A browser an intruder marked as trusted would otherwise keep
+          // skipping the second factor for thirty days, however often the password changes.
+          await forgetTrustedDevices(db, user.id);
           return;
         default:
           return;
@@ -249,8 +291,10 @@ export const auth = betterAuth({
   ],
 
   session: {
-    // Cache the session in a signed cookie to avoid a database read on every request.
-    cookieCache: { enabled: true, maxAge: 5 * 60 },
+    // Cache the session in a signed cookie to avoid a database read on every request. Access
+    // decisions bypass it (src/lib/session.ts); a minute bounds how long Better Auth's own
+    // profile and two-factor endpoints keep serving a revoked or banned session.
+    cookieCache: { enabled: true, maxAge: 60 },
   },
 
   rateLimit: {

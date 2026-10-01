@@ -9,12 +9,6 @@ export function resolveLocale(value: string | undefined | null): Locale {
   return isLocale(value) ? value : defaultLocale;
 }
 
-/** Locale of a pathname from its first segment; the default locale has no prefix. */
-export function getLocaleFromPath(pathname: string): Locale {
-  const [first] = pathname.split('/').filter(Boolean);
-  return isLocale(first) && first !== defaultLocale ? first : defaultLocale;
-}
-
 /** The pathname without its locale prefix: `/<locale>/blog` becomes `/blog`, `/<locale>` becomes `/`. */
 export function stripLocale(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean);

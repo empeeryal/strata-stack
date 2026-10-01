@@ -23,6 +23,14 @@ test.describe('security', () => {
     }
   });
 
+  test('prerendered pages carry the hardening headers too', async ({ request }) => {
+    // The Node server has no reverse proxy here; the header map the build writes must do it.
+    const headers = (await request.get('/')).headers();
+    for (const [name, value] of Object.entries(securityHeaders)) {
+      expect(headers[name.toLowerCase()], name).toBe(value);
+    }
+  });
+
   test('prerendered pages are served with a hash-based Content Security Policy', async ({
     request,
   }) => {
@@ -30,6 +38,7 @@ test.describe('security', () => {
     const csp = response.headers()['content-security-policy'];
     expect(csp).toBeDefined();
     expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(csp).toMatch(/'sha256-[A-Za-z0-9+/=]+'/);
     expect(csp).not.toContain("script-src 'self' 'unsafe-inline'");

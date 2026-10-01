@@ -18,7 +18,7 @@ must adapt before launch.
 | ------------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Profile, verification, role                | `user`                  | Until the account is deleted                                                                                  |
 | Password hash / OAuth links                | `account`               | With the user                                                                                                 |
-| Sessions (IP, user agent)                  | `session`               | With the user; expired rows are removed by Better Auth                                                        |
+| Sessions (IP, user agent)                  | `session`               | With the user; expired rows are removed by `db:prune` (the dashboard and the export list live ones only)      |
 | Two-factor secret and backup codes         | `two_factor`            | Encrypted with `BETTER_AUTH_SECRET`; with the user, or when 2FA is turned off or reset by an administrator    |
 | Contact messages                           | `contact_message`       | Archived ones are pruned; open ones too if a maximum age is set (see below)                                   |
 | Newsletter subscribers                     | `newsletter_subscriber` | Confirmed ones until they unsubscribe; pending and unsubscribed rows pruned after `NEWSLETTER_RETENTION_DAYS` |
@@ -34,7 +34,8 @@ From the dashboard a signed-in user can:
   from that address and the state of its newsletter subscription. Tokens and hashes are never
   included, and a GET answers 405 so a prefetched link can never record an export.
 - **Delete** their account through Better Auth's `deleteUser`. Password accounts confirm with
-  the password; social-only accounts need a fresh session (younger than a day). The
+  the password, and the server refuses a deletion without it (a `before` hook in
+  `src/lib/auth.ts`); social-only accounts need a fresh session (younger than a day). The
   `beforeDelete` hook in `src/lib/auth.ts` refuses to remove the last administrator, and
   `afterDelete` removes contact messages from a verified address and records the deletion in
   the audit log.

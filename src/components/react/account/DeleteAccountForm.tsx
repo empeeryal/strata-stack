@@ -19,12 +19,15 @@ export default function DeleteAccountForm({ hasPassword }: DeleteAccountFormProp
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmInvalid, setConfirmInvalid] = useState(false);
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setConfirmInvalid(false);
     const form = new FormData(event.currentTarget);
     if (String(form.get('confirm') ?? '') !== CONFIRMATION) {
+      setConfirmInvalid(true);
       setError(`Type ${CONFIRMATION} to confirm.`);
       return;
     }
@@ -62,7 +65,7 @@ export default function DeleteAccountForm({ hasPassword }: DeleteAccountFormProp
         This removes your account, sessions, connected sign-in methods and, if your email is
         verified, contact messages sent from it. It cannot be undone.
       </Alert>
-      {error && <Alert>{error}</Alert>}
+      {error && <Alert id="delete-account-error">{error}</Alert>}
       {hasPassword && (
         <Field>
           <Label htmlFor="delete-password">Current password</Label>
@@ -76,7 +79,14 @@ export default function DeleteAccountForm({ hasPassword }: DeleteAccountFormProp
       )}
       <Field>
         <Label htmlFor="delete-confirm">Type {CONFIRMATION} to confirm</Label>
-        <Input id="delete-confirm" name="confirm" autoComplete="off" required />
+        <Input
+          id="delete-confirm"
+          name="confirm"
+          autoComplete="off"
+          required
+          aria-invalid={confirmInvalid || undefined}
+          aria-describedby={confirmInvalid ? 'delete-account-error' : undefined}
+        />
       </Field>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" variant="danger" loading={loading}>

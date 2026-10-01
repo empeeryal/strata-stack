@@ -372,7 +372,7 @@ export default function CommandPalette({
     <dialog
       ref={dialogRef}
       aria-label="Command palette"
-      className="m-0 w-full max-w-none bg-transparent p-0 backdrop:bg-black/40 open:flex open:justify-center sm:mt-[10vh] sm:h-auto sm:max-h-[80vh]"
+      className="m-0 w-full max-w-none bg-transparent p-0 backdrop:bg-overlay open:flex open:justify-center sm:mt-[10vh] sm:h-auto sm:max-h-[80vh]"
       onClose={() => setOpen(false)}
     >
       {open && (

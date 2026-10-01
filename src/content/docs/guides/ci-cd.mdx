@@ -121,8 +121,11 @@ table.
 reads the same database secrets as the migration workflow plus the optional
 `CONTACT_RETENTION_DAYS`, `CONTACT_MAX_AGE_DAYS` and `NEWSLETTER_RETENTION_DAYS` repository
 variables (see
-[privacy and data](/docs/guides/privacy-and-data#retention)). Check its runs now and then: a
-retention policy is only real while the job succeeds.
+[privacy and data](/docs/guides/privacy-and-data#retention)). If the newsletter mirrors
+subscribers to a Resend audience, add `RESEND_API_KEY` and `RESEND_AUDIENCE_ID` (a secret or a
+variable) as well: the job retries the audience syncs that failed before it prunes, and keeps
+an opt-out the provider has not received. Check its runs now and then: a retention policy is
+only real while the job succeeds.
 
 ## Deploy previews
 

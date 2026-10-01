@@ -22,6 +22,10 @@ export default function AuthForm({
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  // Where the verification link lands: the login page, with the destination preserved.
+  const verifiedCallback = `/login?verified=1${
+    redirectTo === '/dashboard' ? '' : `&next=${encodeURIComponent(redirectTo)}`
+  }`;
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +45,9 @@ export default function AuthForm({
           name,
           email,
           password,
-          callbackURL: redirectTo,
+          // The verification link does not sign the clicker in (see src/lib/auth.ts), so it
+          // lands on the login page, which explains the next step.
+          callbackURL: verifiedCallback,
         });
         if (result.error) {
           setError(result.error.message ?? UNEXPECTED_ERROR);
@@ -60,7 +66,8 @@ export default function AuthForm({
 
       const result = await authClient.signIn.email({ email, password, callbackURL: redirectTo });
       if (result.error) {
-        if (result.error.status === 403) {
+        // A ban is also a 403; only the verification case gets the resend offer.
+        if (result.error.status === 403 && result.error.code === 'EMAIL_NOT_VERIFIED') {
           setUnverifiedEmail(email);
           setError('Verify your email address before signing in.');
         } else {
@@ -89,7 +96,7 @@ export default function AuthForm({
     try {
       const result = await authClient.sendVerificationEmail({
         email: unverifiedEmail,
-        callbackURL: redirectTo,
+        callbackURL: verifiedCallback,
       });
       if (result.error) {
         setError(result.error.message ?? UNEXPECTED_ERROR);

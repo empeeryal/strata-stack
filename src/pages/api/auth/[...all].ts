@@ -12,7 +12,9 @@ export const ALL: APIRoute = (context) => {
   try {
     headers.set('x-forwarded-for', context.clientAddress);
   } catch {
-    /* clientAddress is unavailable in some environments */
+    // clientAddress is unavailable in some environments. The header the visitor sent must not
+    // stand in for it: Better Auth would key its limits on a value they chose.
+    headers.delete('x-forwarded-for');
   }
   return auth.handler(new Request(context.request, { headers }));
 };

@@ -1,10 +1,14 @@
 import type { APIRoute } from 'astro';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 
 import { db } from '@/db/client';
 import { account, contactMessages, newsletterSubscribers, session } from '@/db/schema';
 import { recordAudit } from '@/lib/admin';
 import { getAuthoritativeSession } from '@/lib/session';
+import { consumeThrottle, hashThrottleKey, type ThrottleRule } from '@/lib/throttle';
+
+/** Every export is audited; a script in a loop must not be able to grow the log without bound. */
+const EXPORT_LIMIT: ThrottleRule = { limit: 10, windowMs: 60 * 60 * 1000 };
 
 export const prerender = false;
 
@@ -31,6 +35,18 @@ export const POST: APIRoute = async ({ request }) => {
   if (!user) {
     return Response.json({ error: 'Sign in to export your data.' }, { status: 401 });
   }
+  const quota = await consumeThrottle(
+    db,
+    `export:user:${await hashThrottleKey(user.id)}`,
+    EXPORT_LIMIT,
+  );
+  if (!quota.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((quota.resetAt.getTime() - Date.now()) / 1000));
+    return Response.json(
+      { error: 'You have downloaded your data several times in the last hour. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
 
   const [accounts, sessions, messages, [newsletter]] = await Promise.all([
     db
@@ -49,7 +65,7 @@ export const POST: APIRoute = async ({ request }) => {
         userAgent: session.userAgent,
       })
       .from(session)
-      .where(eq(session.userId, user.id)),
+      .where(and(eq(session.userId, user.id), gt(session.expiresAt, new Date()))),
     user.emailVerified
       ? db
           .select({

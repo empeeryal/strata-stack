@@ -230,6 +230,8 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
           </ol>
           <div className="flex flex-wrap items-start gap-4">
             {qr && (
+              // Scanners need dark modules on white whatever the theme, so this is the one place
+              // that uses a raw palette colour instead of a semantic token.
               <img
                 src={qr}
                 alt="QR code for your authenticator app"
