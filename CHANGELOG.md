@@ -1,5 +1,17 @@
 # strata-stack
 
+## 0.23.0
+
+### Minor Changes
+
+- d105e39: Back-to-top button. Every page gets a fixed button (`src/components/ui/BackToTop.astro`, rendered by `BaseLayout`) that appears once the page has been scrolled about a screen, scrolls back to the top and moves focus to the main landmark, so keyboard and screen-reader users land at the start of the content. It respects the reduced-motion preference through the page's `scroll-behavior`, needs no island, and the main element now carries `tabindex="-1"` so both it and the skip link can move focus there.
+
+### Patch Changes
+
+- d105e39: Lighthouse now audits the Node build through a small gzip proxy (`scripts/lhci-server.mjs`). The standalone Node server serves text uncompressed while every supported deployment compresses it, and the raw numbers put the mobile pages about ten points below what visitors see, close enough to the floors that a slow CI runner failed the release. The author avatar is requested at the size it is shown (`?size=112`) instead of the full 625 KB GitHub original.
+- 1203975: Opening the dashboard no longer records an account export. Astro's `prefetchAll` fetched the "Download my data" link as soon as it scrolled into view, which ran the export and wrote an `account.export` audit entry without a click. Both audited downloads, the account export and the admin's subscriber CSV, are now POST forms; a GET to either answers 405. The guides and the agent guidance state the rule: a GET endpoint with a side effect fires without a click on a site that prefetches its links.
+- 1203975: Blog post: "The third review: floors, a longer yardstick and a hero with no LCP", on the coverage floors, the wider Lighthouse run and what it found, the password rules, and the dashboard export that prefetching triggered.
+
 ## 0.22.0
 
 ### Minor Changes
