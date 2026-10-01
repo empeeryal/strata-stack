@@ -22,7 +22,13 @@ The day-to-day side (monitoring, incidents, rotating secrets, backups) is collec
 ## Becoming an administrator
 
 - Set `ADMIN_EMAILS=you@example.com,ops@example.com` before those people sign up: the
-  database hook in `src/lib/auth.ts` assigns the role at creation.
+  database hook in `src/lib/auth.ts` assigns the role at creation. Until they do, anyone can
+  register one of those addresses. With email delivery configured that account cannot sign in
+  before the mailbox owner verifies it, and verifying does not sign the clicker in: the owner
+  signs in with the password, or takes the account over through **Forgot password**, which
+  revokes every other session. Without email delivery nothing protects the addresses, so the
+  production checks refuse `ADMIN_EMAILS` when `RESEND_API_KEY` is missing; sign up first and
+  promote with the script instead.
 - For existing accounts run `pnpm admin:promote user@example.com` (or `--revoke`).
 - Administrators can promote or demote each other from the users page, but never themselves.
 - **Resending a notification** claims the message for up to two minutes before sending, so two

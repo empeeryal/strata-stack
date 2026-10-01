@@ -12,9 +12,9 @@ import NewsletterForm from '@/components/react/NewsletterForm';
 
 The newsletter form appears in the footer of every page, after each blog post and on
 [/newsletter](/newsletter). It asks for an address only. Submitting it stores the address as
-_pending_ and sends one email with a confirmation link; nothing else is sent until that link is
-opened. Every newsletter then carries an unsubscribe link that ends the subscription with one
-click on a confirmation page.
+_pending_ and sends one email with a confirmation link; nothing else is sent until the visitor
+confirms on that page. Every newsletter then carries an unsubscribe link that ends the
+subscription with one click on a confirmation page.
 
 <Callout type="tip" title="Try it">
   <NewsletterForm client:visible source="docs" />
@@ -30,20 +30,26 @@ click on a confirmation page.
 
 1. **Request.** `NewsletterForm.tsx` posts the address to the `newsletter.subscribe` action. The
    action applies the same protections as the contact form: a honeypot field, per-address and
-   per-IP throttles in the `throttle` table, and Zod validation.
+   per-IP throttles in the `throttle` table, and Zod validation. A third, site-wide counter
+   (`NEWSLETTER_LIMITS.site`, 120 confirmation emails an hour) bounds what the form can be made
+   to send when the per-IP rule is defeated, for example by a proxy that forwards a visitor's own
+   `X-Forwarded-For` value; raise it if your launch day is bigger than that.
 2. **Store, then send.** `subscribeToNewsletter()` in `src/lib/newsletter.ts` inserts a
    `pending` row in `newsletter_subscriber` with a random 256-bit token and emails the
    confirmation link. A second request for a pending address issues a new token, which retires
    the earlier email; a request for a confirmed address sends an "already subscribed" email
    with the unsubscribe link instead. The visitor sees the same message in every case, so the
    form cannot be used to find out who is subscribed.
-3. **Confirm.** Opening `/newsletter/confirm?token=…` marks the row `confirmed`, records the
-   time and, when `RESEND_AUDIENCE_ID` is set, adds the address to the Resend segment. A link
-   works for seven days; after that the page asks the visitor to request a new one.
-4. **Unsubscribe.** `/newsletter/unsubscribe?token=…` shows the address and a button. The
-   button posts the `newsletter.unsubscribe` action; opening the link alone changes nothing,
-   because mail clients and security scanners fetch links from emails. The audience is updated
-   and an old confirmation link can no longer revive the subscription.
+3. **Confirm.** `/newsletter/confirm?token=…` shows the address and a **Confirm subscription**
+   button. The button posts the `newsletter.confirm` action, which marks the row `confirmed`,
+   records the time and, when `RESEND_AUDIENCE_ID` is set, adds the address to the Resend
+   segment. Opening the link alone changes nothing: mail clients and security scanners fetch
+   the links in an email, and a fetch must not subscribe an address that somebody else typed
+   into the form. A link works for seven days; after that the page asks the visitor to request
+   a new one.
+4. **Unsubscribe.** `/newsletter/unsubscribe?token=…` works the same way: the address, a
+   button, and the `newsletter.unsubscribe` action behind it. The audience is updated and an
+   old confirmation link can no longer revive the subscription.
 
 </Steps>
 
@@ -82,8 +88,11 @@ The template stores subscribers; it does not send newsletters. Two ways to do th
   `RESEND_API_KEY`, and confirmed addresses are created as contacts in it; unsubscribing here
   marks the contact unsubscribed there. Write and send from Resend's broadcasts, whose footer
   includes Resend's own unsubscribe link. The admin page shows an **Audience** column with the
-  addresses the provider has not received yet, for example because the API was unavailable;
-  the next change to that address retries.
+  addresses the provider has not received yet, for example because the API was unavailable,
+  and the overview counts them. They are retried when the address changes again, by the
+  weekly prune job (give it `RESEND_API_KEY` and `RESEND_AUDIENCE_ID` too) and when an
+  administrator removes the row; an opt-out the provider has not been told about is never
+  pruned while it waits, so a broadcast cannot keep going to someone who unsubscribed here.
 
   To make Resend's unsubscribe link count here as well, add a webhook in Resend
   (**Webhooks → Add**) with the URL `https://<your site>/api/newsletter/webhook` and the
@@ -97,15 +106,18 @@ The template stores subscribers; it does not send newsletters. Two ways to do th
 - **CSV export.** The **Download confirmed (CSV)** button on `/admin/subscribers` posts to
   `/admin/subscribers.csv` (a GET answers 405, so a prefetched link cannot record a download) and produces
   `email,confirmed_at,unsubscribe_url`. Whatever tool sends the newsletter must put each
-  address's `unsubscribe_url` in the footer. Each download is recorded in the audit log.
+  address's `unsubscribe_url` in the footer. Each download is recorded in the audit log. Cells
+  that could run as a spreadsheet formula are neutralised, except the addresses themselves:
+  `-deals@example.com` is a valid address, a leading apostrophe would break it, and a validated
+  address cannot contain the characters a formula needs.
 
 ## Data and retention
 
-| Status         | Meaning                                        | Kept                                         |
-| -------------- | ---------------------------------------------- | -------------------------------------------- |
-| `pending`      | Requested, confirmation not opened yet         | `NEWSLETTER_RETENTION_DAYS` (default 7)      |
-| `confirmed`    | Receives email                                 | Until unsubscribed or removed by an admin    |
-| `unsubscribed` | Opted out; the address is no longer written to | `NEWSLETTER_RETENTION_DAYS` after opting out |
+| Status         | Meaning                                        | Kept                                                                          |
+| -------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| `pending`      | Requested, confirmation not opened yet         | `NEWSLETTER_RETENTION_DAYS` (default 7)                                       |
+| `confirmed`    | Receives email                                 | Until unsubscribed or removed by an admin                                     |
+| `unsubscribed` | Opted out; the address is no longer written to | `NEWSLETTER_RETENTION_DAYS` after opting out, once the provider has been told |
 
 `pnpm db:prune` (the weekly **Prune data** workflow) deletes the rows in the last column, so an
 address that never confirmed or that opted out disappears from the database within days. The

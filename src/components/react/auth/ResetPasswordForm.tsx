@@ -13,14 +13,17 @@ interface ResetPasswordFormProps {
 export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   const [status, setStatus] = useState<'idle' | 'saving' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [mismatch, setMismatch] = useState(false);
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setMismatch(false);
     const form = new FormData(event.currentTarget);
     const newPassword = String(form.get('password') ?? '');
     const confirm = String(form.get('confirm') ?? '');
     if (newPassword !== confirm) {
+      setMismatch(true);
       setError('The passwords do not match.');
       return;
     }
@@ -53,7 +56,7 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {error && <Alert>{error}</Alert>}
+      {error && <Alert id="reset-password-error">{error}</Alert>}
       <Field>
         <Label htmlFor="new-password">New password</Label>
         <PasswordInput
@@ -75,6 +78,8 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           required
           minLength={12}
           maxLength={128}
+          aria-invalid={mismatch || undefined}
+          aria-describedby={mismatch ? 'reset-password-error' : undefined}
         />
       </Field>
       <Button type="submit" className="w-full" loading={status === 'saving'}>

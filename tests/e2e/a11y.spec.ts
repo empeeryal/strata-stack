@@ -4,7 +4,10 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 import { serverEnv } from '../../playwright.config';
 import { E2E_PASSWORD, fillContactForm, signIn, waitForIslands, waitForPalette } from './helpers';
 
-const [ADMIN_EMAIL] = serverEnv.ADMIN_EMAILS.split(',') as [string, string];
+// The third address in ADMIN_EMAILS belongs to this suite alone: the admin spec, which may run in
+// another worker at the same time, demotes and signs out the first two, and a scan of the login
+// page a redirect lands on would pass without testing anything.
+const ADMIN_EMAIL = serverEnv.ADMIN_EMAILS.split(',')[2] as string;
 
 /** Runs axe with the WCAG 2.1 AA rule set against the current page and fails on any violation. */
 async function expectNoViolations(page: Page) {
@@ -119,10 +122,14 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
   // another worker asserts that its own message stays new.
   const sender = `Axe Sender ${Date.now()}`;
 
-  async function asAdmin(browser: Browser, run: (page: Page) => Promise<void>) {
+  async function asAdmin(browser: Browser, path: string, run: (page: Page) => Promise<void>) {
     const context = await browser.newContext({ storageState });
     try {
-      await run(await context.newPage());
+      const page = await context.newPage();
+      await page.goto(path);
+      // Signed out (or demoted) the page would be the login page, and axe would scan that.
+      expect(new URL(page.url()).pathname).toBe(new URL(path, 'http://e2e').pathname);
+      await run(page);
     } finally {
       await context.close();
     }
@@ -158,24 +165,21 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
     '/admin/audit',
   ]) {
     test(`no accessibility violations on ${path}`, async ({ browser }) => {
-      await asAdmin(browser, async (page) => {
-        await page.goto(path);
+      await asAdmin(browser, path, async (page) => {
         await expectNoViolations(page);
       });
     });
   }
 
   test('the filtered audit log', async ({ browser }) => {
-    await asAdmin(browser, async (page) => {
-      await page.goto('/admin/audit?action=message.status&q=example.com');
+    await asAdmin(browser, '/admin/audit?action=message.status&q=example.com', async (page) => {
       await expect(page.locator('[data-list-summary]')).toBeVisible();
       await expectNoViolations(page);
     });
   });
 
   test('a message detail page', async ({ browser }) => {
-    await asAdmin(browser, async (page) => {
-      await page.goto(`/admin/messages?q=${encodeURIComponent(sender)}`);
+    await asAdmin(browser, `/admin/messages?q=${encodeURIComponent(sender)}`, async (page) => {
       await page.getByRole('link', { name: sender }).click();
       await expect(page).toHaveURL(/\/admin\/messages\/[^/]+$/);
       await expectNoViolations(page);
@@ -183,16 +187,14 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
   });
 
   test('the inbox at phone width', async ({ browser }) => {
-    await asAdmin(browser, async (page) => {
+    await asAdmin(browser, '/admin/messages', async (page) => {
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.goto('/admin/messages');
       await expectNoViolations(page);
     });
   });
 
   test('the dashboard with the account-deletion form open', async ({ browser }) => {
-    await asAdmin(browser, async (page) => {
-      await page.goto('/dashboard');
+    await asAdmin(browser, '/dashboard', async (page) => {
       await page.getByRole('button', { name: 'Delete my account' }).scrollIntoViewIfNeeded();
       await waitForIslands(page);
       await page.getByRole('button', { name: 'Delete my account' }).click();

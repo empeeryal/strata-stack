@@ -11,7 +11,6 @@ import {
   countActiveAdmins,
   deleteUserAccount,
   isAdmin,
-  isLastActiveAdmin,
   LastAdminError,
   notLastActiveAdmin,
   recordAudit,
@@ -105,44 +104,6 @@ describe('audit log', () => {
   });
 });
 
-describe('isLastActiveAdmin', () => {
-  let testDb: Awaited<ReturnType<typeof createTestDb>>;
-  beforeEach(async () => {
-    testDb = await createTestDb();
-  });
-  afterEach(() => testDb.close());
-
-  async function addUser(id: string, role: string | null, banned = false) {
-    const now = new Date();
-    await testDb.db.insert(user).values({
-      id,
-      name: id,
-      email: `${id}@example.com`,
-      emailVerified: true,
-      role,
-      banned,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  it('is true only for an active admin with no other active admin', async () => {
-    await addUser('alice', 'admin');
-    await addUser('carol', 'administrator'); // not the admin role
-    await addUser('dave', 'admin', true); // banned
-    await addUser('erin', 'user');
-
-    expect(await isLastActiveAdmin(testDb.db, 'alice')).toBe(true);
-    expect(await isLastActiveAdmin(testDb.db, 'erin')).toBe(false);
-    expect(await isLastActiveAdmin(testDb.db, 'dave')).toBe(false);
-    expect(await isLastActiveAdmin(testDb.db, 'nobody')).toBe(false);
-
-    await addUser('bob', 'user,admin');
-    expect(await isLastActiveAdmin(testDb.db, 'alice')).toBe(false);
-    expect(await isLastActiveAdmin(testDb.db, 'bob')).toBe(false);
-  });
-});
-
 describe('guarded user operations', () => {
   let testDb: Awaited<ReturnType<typeof createTestDb>>;
   const alice = { id: 'alice', email: 'alice@example.com' };
@@ -228,13 +189,20 @@ describe('guarded user operations', () => {
     expect(await countActiveAdmins(testDb.db)).toBe(3);
   });
 
-  it('bans with a reason and signs the account out everywhere', async () => {
+  it('bans with a reason and signs the account out everywhere, trusted browsers included', async () => {
+    const later = new Date(Date.now() + 3_600_000);
+    await testDb.db.insert(verification).values([
+      { id: 'v1', identifier: 'trust-device-aaa', value: 'bob', expiresAt: later },
+      { id: 'v2', identifier: 'trust-device-bbb', value: 'alice', expiresAt: later },
+    ]);
     await banUserAccount(testDb.db, alice, 'bob', 'spam');
 
     const [row] = await testDb.db.select().from(user).where(eq(user.id, 'bob'));
     expect(row).toMatchObject({ banned: true, banReason: 'spam', banExpires: null });
     expect(await testDb.db.select().from(session).where(eq(session.userId, 'bob'))).toHaveLength(0);
     expect(await testDb.db.select().from(session)).toHaveLength(1); // Alice keeps hers
+    const devices = await testDb.db.select({ id: verification.id }).from(verification);
+    expect(devices.map((device) => device.id)).toEqual(['v2']);
     const [entry] = await testDb.db.select().from(auditLog);
     expect(entry).toMatchObject({ action: 'user.ban', details: '{"reason":"spam"}' });
   });

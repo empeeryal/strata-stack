@@ -18,6 +18,9 @@ pnpm build:node
 HOST=0.0.0.0 PORT=4321 pnpm start
 ```
 
+`pnpm start` sets `NODE_ENV=production`, which turns on the production rules: the secret and the
+public URL are checked at the first request, and email is never written to the console. To look
+at a production build locally without those rules, run `node ./dist/server/entry.mjs` directly.
 The server reads configuration from the process environment only; nothing is loaded from `.env`
 at runtime. Provide `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` and `SITE_URL` (at
 build time) through your platform.
@@ -52,13 +55,33 @@ to a Turso database; see [CI and releases](/docs/guides/ci-cd#database-migration
 Put the server behind a TLS-terminating proxy (Caddy, nginx, a platform load balancer). The
 proxy should also compress responses: the Node server sends HTML, CSS and scripts as they are,
 and compression is what keeps the mobile Lighthouse scores where the CI budgets expect them
-(Caddy does it by default; nginx needs `gzip on`). The middleware adds security headers to
-server-rendered responses; for static files add them at the proxy, using `public/_headers` as
-the reference list. Make sure the proxy forwards the original
+(Caddy does it by default; nginx needs `gzip on`). The server sends the security headers itself,
+for server-rendered responses through the middleware and for prerendered pages through the
+header map the build writes (`integrations/security-headers.ts`); the proxy only needs to pass
+them through. Make sure the proxy forwards the original
 `Host`, plus `X-Forwarded-For` and `X-Forwarded-Proto`: Astro only trusts those headers when
 `Host` is the site's own hostname (`security.allowedDomains`, filled in from the site URL by
 `config/trusted-hosts.ts`), and without them every visitor would share the proxy's address for
 rate limiting.
+
+The proxy must **set** `X-Forwarded-For` to the connecting address, not append to a value the
+visitor sent: Astro reads the first address in the header, so an appended header lets anyone
+pick their own rate-limit key by sending `X-Forwarded-For` themselves. Caddy does the right
+thing by default (it drops forwarded headers from clients that are not in `trusted_proxies`).
+With nginx use `$remote_addr`, not the common `$proxy_add_x_forwarded_for`:
+
+```nginx
+location / {
+  proxy_pass http://127.0.0.1:4321;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $remote_addr;
+  proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+If a CDN sits in front of the proxy, make the proxy trust that CDN's addresses and take the
+visitor's address from the header the CDN sets, so that the first value is still one a visitor
+could not choose.
 
 Cached server-rendered responses (see [Caching](/docs/guides/caching)) live in the server's
 memory on this target, one copy per process. Behind a load balancer every instance fills its own;

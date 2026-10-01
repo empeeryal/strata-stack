@@ -8,6 +8,7 @@ import {
   getContactRetentionDays,
   getDatabaseConfig,
   getNewsletterRetentionDays,
+  resolvePublicUrl,
 } from './env';
 
 const STRONG_SECRET = 'x'.repeat(40);
@@ -40,6 +41,23 @@ describe('checkProductionConfig', () => {
     ).toContainEqual(
       expect.objectContaining({ level: 'error', message: expect.stringContaining('placeholder') }),
     );
+  });
+
+  it('refuses ADMIN_EMAILS when no email delivery can verify those addresses', () => {
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: STRONG_SECRET,
+      BETTER_AUTH_URL: 'https://example.com',
+      DATABASE_URL: 'libsql://db.turso.io',
+      CONTACT_TO_EMAIL: 'owner@example.com',
+    };
+    expect(checkProductionConfig({ ...base, ADMIN_EMAILS: 'ops@example.com' })).toContainEqual(
+      expect.objectContaining({ level: 'error', message: expect.stringContaining('ADMIN_EMAILS') }),
+    );
+    expect(
+      checkProductionConfig({ ...base, ADMIN_EMAILS: 'ops@example.com', RESEND_API_KEY: 're_1' }),
+    ).toEqual([]);
+    expect(checkProductionConfig(base).filter((issue) => issue.level === 'error')).toEqual([]);
   });
 
   it('requires a public URL and prefers https', () => {
@@ -174,5 +192,20 @@ describe('getNewsletterRetentionDays', () => {
     expect(getNewsletterRetentionDays({ NEWSLETTER_RETENTION_DAYS: '30' })).toBe(30);
     expect(getNewsletterRetentionDays({ NEWSLETTER_RETENTION_DAYS: '0' })).toBe(7);
     expect(getNewsletterRetentionDays({ NEWSLETTER_RETENTION_DAYS: 'later' })).toBe(7);
+  });
+});
+
+describe('resolvePublicUrl', () => {
+  it('skips variables that are set but empty and strips a trailing slash', () => {
+    expect(resolvePublicUrl({ BETTER_AUTH_URL: '', SITE_URL: 'https://example.com/' })).toBe(
+      'https://example.com',
+    );
+    expect(resolvePublicUrl({ BETTER_AUTH_URL: '  ', VERCEL_URL: 'preview.vercel.app' })).toBe(
+      'https://preview.vercel.app',
+    );
+    expect(resolvePublicUrl({ URL: '', DEPLOY_PRIME_URL: 'https://deploy.netlify.app' })).toBe(
+      'https://deploy.netlify.app',
+    );
+    expect(resolvePublicUrl({})).toBeNull();
   });
 });

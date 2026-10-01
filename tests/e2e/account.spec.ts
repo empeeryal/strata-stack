@@ -33,6 +33,14 @@ test.describe('account self-service', () => {
     expect(body.sessions.length).toBeGreaterThan(0);
     expect(JSON.stringify(body)).not.toMatch(/token|password/i);
 
+    // A password account cannot be deleted without the password, however fresh the session.
+    const withoutPassword = await page.request.post('/api/auth/delete-user', {
+      data: {},
+      headers: { origin },
+    });
+    expect(withoutPassword.status()).toBe(400);
+    expect((await page.request.get('/dashboard', { maxRedirects: 0 })).status()).toBe(200);
+
     await submitAccountDeletion(page, E2E_PASSWORD);
     await expect(page).toHaveURL(/\/account-deleted$/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('deleted');

@@ -65,7 +65,8 @@ and covered by `src/lib/contact.test.ts`:
    handler, which answers with the normal success response without storing anything.
 2. **Throttling** per sender: 3 messages per hour per email address and 5 per 15 minutes per
    IP, counted in the `throttle` table (`src/lib/throttle.ts`) so limits hold across serverless
-   instances. Keys are SHA-256 hashes, never raw addresses. Exceeding a limit returns
+   instances. Keys are HMAC-SHA256 hashes keyed with `BETTER_AUTH_SECRET`, never raw
+   addresses. Exceeding a limit returns
    `TOO_MANY_REQUESTS`.
 3. **Server-side validation** with length limits.
 4. **Origin checks** by Astro (`security.checkOrigin`) so only same-origin pages can post.

@@ -1,8 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { signWebhookPayload, verifyWebhookSignature } from './webhook-signature';
+import { verifyWebhookSignature } from './webhook-signature';
 
 const secret = `whsec_${btoa('a-test-secret-of-reasonable-length')}`;
+
+/** Signs a delivery the way Resend (Svix) does; the module under test only verifies. */
+async function signWebhookPayload(
+  signingSecret: string,
+  id: string,
+  ts: string,
+  payload: string,
+): Promise<string> {
+  const raw = Buffer.from(signingSecret.replace(/^whsec_/, ''), 'base64');
+  const key = await crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, [
+    'sign',
+  ]);
+  const digest = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${id}.${ts}.${payload}`),
+  );
+  return `v1,${Buffer.from(digest).toString('base64')}`;
+}
 const body = '{"type":"contact.updated","data":{"email":"reader@example.com"}}';
 const now = Date.UTC(2026, 8, 29, 12, 0, 0);
 const timestamp = String(Math.floor(now / 1000));
@@ -50,6 +69,14 @@ describe('verifyWebhookSignature', () => {
     expect(
       await verifyWebhookSignature(secret, await headers({ timestamp: 'soon' }), body, now),
     ).toBe('expired');
+  });
+
+  it('refuses deliveries instead of failing when the secret is not base64', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await verifyWebhookSignature('whsec_not*base64!', await headers(), body, now)).toBe(
+      'invalid',
+    );
+    expect(error).toHaveBeenCalledOnce();
   });
 
   it('reports missing headers', async () => {

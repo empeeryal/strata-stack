@@ -8,17 +8,20 @@ import { Alert, Button, Field, Label, PasswordInput, UNEXPECTED_ERROR } from '..
 export default function ChangePasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mismatch, setMismatch] = useState(false);
   const [done, setDone] = useState(false);
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setMismatch(false);
     setDone(false);
     const form = event.currentTarget;
     const data = new FormData(form);
     const currentPassword = String(data.get('current') ?? '');
     const newPassword = String(data.get('password') ?? '');
     if (newPassword !== String(data.get('confirm') ?? '')) {
+      setMismatch(true);
       setError('The new passwords do not match.');
       return;
     }
@@ -45,7 +48,7 @@ export default function ChangePasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" aria-label="Change password">
-      {error && <Alert>{error}</Alert>}
+      {error && <Alert id="change-password-error">{error}</Alert>}
       {done && <Alert variant="success">Password updated. Other sessions were signed out.</Alert>}
       <Field>
         <Label htmlFor="current-password">Current password</Label>
@@ -76,6 +79,8 @@ export default function ChangePasswordForm() {
           required
           minLength={12}
           maxLength={128}
+          aria-invalid={mismatch || undefined}
+          aria-describedby={mismatch ? 'change-password-error' : undefined}
         />
       </Field>
       <Button type="submit" variant="outline" loading={loading}>

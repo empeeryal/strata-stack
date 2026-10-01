@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { serverEnv } from '../../playwright.config';
+
 import { E2E_PASSWORD, signUp, waitForIslands } from './helpers';
 
 // Auth requests share one rate-limit bucket (same client IP); run them one at a time.
@@ -45,6 +47,10 @@ test.describe('authentication', () => {
     expect(short.status()).toBe(400);
 
     // Long enough, but in every breach corpus: the check answers before the account exists.
+    test.skip(
+      serverEnv.PASSWORD_BREACH_CHECK === 'false',
+      'PASSWORD_BREACH_CHECK=false: the breach check is off for this run',
+    );
     await page.goto('/signup');
     await waitForIslands(page);
     await page.getByLabel('Name').fill('Breached');

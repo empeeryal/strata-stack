@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const contacts = {
+  get: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   segments: { add: vi.fn() },
@@ -17,14 +18,16 @@ import { createResendAudience, getNewsletterAudience } from './audience';
 
 describe('createResendAudience', () => {
   beforeEach(() => {
+    contacts.get.mockReset().mockResolvedValue({ data: null, error: { message: 'Not found' } });
     contacts.create.mockReset().mockResolvedValue({ data: { id: 'c1' }, error: null });
     contacts.update.mockReset().mockResolvedValue({ data: { id: 'c1' }, error: null });
     contacts.segments.add.mockReset().mockResolvedValue({ data: {}, error: null });
   });
 
-  it('creates a subscribed contact in the segment', async () => {
+  it('creates a subscribed contact in the segment when the provider does not know the address', async () => {
     const audience = createResendAudience('re_key', 'seg_1');
     await audience.add('reader@example.com');
+    expect(contacts.get).toHaveBeenCalledWith({ email: 'reader@example.com' });
     expect(contacts.create).toHaveBeenCalledWith({
       email: 'reader@example.com',
       unsubscribed: false,
@@ -33,10 +36,14 @@ describe('createResendAudience', () => {
     expect(contacts.update).not.toHaveBeenCalled();
   });
 
-  it('re-subscribes an existing contact and makes sure it is in the segment', async () => {
-    contacts.create.mockResolvedValue({ data: null, error: { message: 'Contact already exists' } });
+  it('re-subscribes a known contact and makes sure it is in the segment, without creating it', async () => {
+    contacts.get.mockResolvedValue({
+      data: { id: 'c1', email: 'reader@example.com', unsubscribed: true },
+      error: null,
+    });
     const audience = createResendAudience('re_key', 'seg_1');
     await audience.add('reader@example.com');
+    expect(contacts.create).not.toHaveBeenCalled();
     expect(contacts.update).toHaveBeenCalledWith({
       email: 'reader@example.com',
       unsubscribed: false,
@@ -47,8 +54,12 @@ describe('createResendAudience', () => {
     });
   });
 
-  it('surfaces provider errors from the fallback path', async () => {
-    contacts.create.mockResolvedValue({ data: null, error: { message: 'exists' } });
+  it('surfaces provider errors from every step', async () => {
+    contacts.create.mockResolvedValue({ data: null, error: { message: 'Create failed' } });
+    await expect(createResendAudience('re_key', 'seg_1').add('a@example.com')).rejects.toThrow(
+      'Create failed',
+    );
+    contacts.get.mockResolvedValue({ data: { id: 'c1' }, error: null });
     contacts.update.mockResolvedValue({ data: null, error: { message: 'Update failed' } });
     await expect(createResendAudience('re_key', 'seg_1').add('a@example.com')).rejects.toThrow(
       'Update failed',
@@ -84,5 +95,6 @@ describe('getNewsletterAudience', () => {
     expect(getNewsletterAudience()).toBeNull();
     vi.stubEnv('RESEND_AUDIENCE_ID', 'seg_1');
     expect(getNewsletterAudience()).not.toBeNull();
+    expect(getNewsletterAudience({ RESEND_API_KEY: 're_key' })).toBeNull();
   });
 });

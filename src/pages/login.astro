@@ -26,8 +26,31 @@ Astro.locals.user = null;
 Astro.locals.session = null;
 
 const methods = enabledAuthMethods();
-// Verification and magic-link callbacks land here with `?error=` when a link is bad.
-const linkError = Astro.url.searchParams.get('error');
+// Verification and magic-link callbacks land here with `?error=` when a link is bad, and the
+// OAuth callback (via the dashboard) with the provider's or Better Auth's error code. The visitor
+// clicked a button in the second case, so "that link" would be the wrong explanation.
+const errorCode = Astro.url.searchParams.get('error')?.toLowerCase() ?? null;
+const ERROR_MESSAGES: Record<string, string> = {
+  // Better Auth's OAuth callback codes (better-auth/oauth2/errors) and the provider's own.
+  email_not_verified:
+    'An account with that email address exists but the address is not verified yet. Sign in with your password and verify it first.',
+  email_not_found: 'The provider did not share an email address. Use another way to sign in.',
+  email_does_not_match:
+    'The provider reported a different email address than the account you are connecting.',
+  unable_to_link_account: 'That provider account cannot be connected to this account.',
+  account_already_linked_to_different_user:
+    'That provider account is already connected to another account here.',
+  access_denied: 'The provider did not grant access. Try again, or use another way to sign in.',
+  user_not_found: 'No account matches that sign-in. Create one first.',
+};
+const linkError = errorCode
+  ? (ERROR_MESSAGES[errorCode] ??
+    (/token|expired|invalid_callback|state_/.test(errorCode)
+      ? 'That link is invalid or has expired. Sign in again or request a new one.'
+      : 'Sign-in could not be completed. Try again, or use another way to sign in.'))
+  : null;
+// The verification link lands here (it does not sign in, see src/lib/auth.ts).
+const verified = Astro.url.searchParams.get('verified') === '1';
 
 const ways = ['your email and password'];
 if (methods.magicLink) ways.push('a magic link');
@@ -46,8 +69,15 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
   subheading={subheading}
 >
   <div class="space-y-6">
-    {linkError && (
-      <Alert>That link is invalid or has expired. Sign in again or request a new one.</Alert>
+    {linkError && <Alert>{linkError}</Alert>}
+    {verified && !linkError && (
+      <Alert variant="success">
+        Your email address is verified. Sign in to continue. If you did not create this account, use{' '}
+        <a href="/forgot-password" class="font-medium underline underline-offset-4">
+          Forgot password
+        </a>{' '}
+        to make it yours.
+      </Alert>
     )}
     <AuthForm
       client:load
@@ -58,13 +88,13 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
     {methods.magicLink && (
       <>
         <Divider label="or" />
-        <MagicLinkForm client:load redirectTo={redirectTo} />
+        <MagicLinkForm client:idle redirectTo={redirectTo} />
       </>
     )}
     {methods.social.length > 0 && (
       <>
         <Divider label="or" />
-        <SocialButtons client:load providers={methods.social} redirectTo={redirectTo} />
+        <SocialButtons client:idle providers={methods.social} redirectTo={redirectTo} />
       </>
     )}
   </div>

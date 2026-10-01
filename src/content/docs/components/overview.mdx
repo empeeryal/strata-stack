@@ -16,19 +16,19 @@ shows how far a plain Astro component gets before an island is needed.
 
 ## What ships
 
-| Island                 | Used on                           | Hydration                        | Page                                                                    |
-| ---------------------- | --------------------------------- | -------------------------------- | ----------------------------------------------------------------------- |
-| `CommandPalette`       | Every page, from the header       | `client:idle`                    | [Command palette](/docs/components/command-palette)                     |
-| `ContactForm`          | `/contact`                        | `client:visible`                 | [Actions and forms](/docs/guides/actions-and-forms)                     |
-| `NewsletterForm`       | Footer, blog posts, `/newsletter` | `client:visible` / `client:load` | [Newsletter form](/docs/components/newsletter-form)                     |
-| `BarChart` (Astro)     | Admin overview                    | none, server SVG                 | [Bar chart](/docs/components/bar-chart)                                 |
-| `PricingTable` (Astro) | Docs example                      | none, a processed script         | [Pricing table](/docs/components/pricing-table)                         |
-| `DeployTargets`        | Home page                         | `client:visible`                 | [Styling and dark mode](/docs/guides/styling#motion)                    |
-| Auth and account forms | Sign-in, sign-up, dashboard       | `client:load`                    | [Authentication](/docs/guides/authentication)                           |
-| `ProfileForm`          | Dashboard                         | `client:visible`                 | [Profile form](/docs/components/profile-form)                           |
-| `SessionList`          | Dashboard                         | `client:idle`                    | [Session list](/docs/components/session-list)                           |
-| `TwoFactorSetup`       | Dashboard                         | `client:visible`                 | [Authentication](/docs/guides/authentication#two-factor-authentication) |
-| `TwoFactorForm`        | `/two-factor`                     | `client:load`                    | [Authentication](/docs/guides/authentication#two-factor-authentication) |
+| Island                 | Used on                           | Hydration                                                                                                                                         | Page                                                                    |
+| ---------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `CommandPalette`       | Every page, from the header       | `client:idle`                                                                                                                                     | [Command palette](/docs/components/command-palette)                     |
+| `ContactForm`          | `/contact`                        | `client:visible`                                                                                                                                  | [Actions and forms](/docs/guides/actions-and-forms)                     |
+| `NewsletterForm`       | Footer, blog posts, `/newsletter` | `client:visible`; `client:idle` in the footer                                                                                                     | [Newsletter form](/docs/components/newsletter-form)                     |
+| `BarChart` (Astro)     | Admin overview                    | none, server SVG                                                                                                                                  | [Bar chart](/docs/components/bar-chart)                                 |
+| `PricingTable` (Astro) | Docs example                      | none, a processed script                                                                                                                          | [Pricing table](/docs/components/pricing-table)                         |
+| `DeployTargets`        | Home page                         | `client:visible`                                                                                                                                  | [Styling and dark mode](/docs/guides/styling#motion)                    |
+| Auth and account forms | Sign-in, sign-up, dashboard       | `client:load` for the sign-in and sign-up form; `client:idle` for the magic-link, social and sign-out controls; `client:visible` on the dashboard | [Authentication](/docs/guides/authentication)                           |
+| `ProfileForm`          | Dashboard                         | `client:visible`                                                                                                                                  | [Profile form](/docs/components/profile-form)                           |
+| `SessionList`          | Dashboard                         | `client:idle`                                                                                                                                     | [Session list](/docs/components/session-list)                           |
+| `TwoFactorSetup`       | Dashboard                         | `client:visible`                                                                                                                                  | [Authentication](/docs/guides/authentication#two-factor-authentication) |
+| `TwoFactorForm`        | `/two-factor`                     | `client:load`                                                                                                                                     | [Authentication](/docs/guides/authentication#two-factor-authentication) |
 
 ## Conventions
 

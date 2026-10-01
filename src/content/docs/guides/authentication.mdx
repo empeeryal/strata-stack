@@ -63,6 +63,11 @@ off otherwise, so a fresh clone can still sign in. With verification on:
 
 - sign-up sends a verification email and returns no session; the form tells the user to
   check their inbox;
+- opening the link marks the address verified and lands on the login page with a notice. It
+  does not sign the clicker in (`autoSignInAfterVerification: false`): the link proves who owns
+  the mailbox, not who chose the password, and an account somebody else registered in your name
+  would otherwise come with a session that made everything look fine. Whoever does not know the
+  password uses **Forgot password**, which makes the account theirs and revokes other sessions;
 - signing in with an unverified address fails and offers to resend the email;
 - the dashboard shows the verification state and a "Send verification email" button;
 - sign-up responses are identical for new and existing addresses (enumeration protection).
@@ -102,7 +107,9 @@ card the backup codes can be regenerated and the factor turned off, both with th
 At sign-in, Better Auth answers a correct password with `twoFactorRedirect` instead of a
 session. The sign-in form sends the visitor to `/two-factor` (`TwoFactorForm`), where the code
 from the app or one backup code completes the sign-in; "Trust this device for 30 days" skips
-the step on that browser. Each pending sign-in allows five wrong codes and lasts ten minutes; after
+the step on that browser. That trust is forgotten whenever the account is recovered or locked
+down: a password change or reset, "sign out everywhere" (the user's own or an administrator's),
+a ban, and turning the factor off or resetting it. Each pending sign-in allows five wrong codes and lasts ten minutes; after
 that the form sends the visitor back to the password step. Ten failed attempts in a row lock the
 second step for fifteen minutes.
 
@@ -141,9 +148,11 @@ The dashboard lets signed-in users:
 - download their data as JSON (`POST /api/account/export`: profile, sign-in methods, sessions
   and, for verified addresses, contact messages; never tokens or password hashes). The button is
   a form, not a link, because links are prefetched when they scroll into view and the export is
-  recorded in the audit log; a GET answers 405;
+  recorded in the audit log; a GET answers 405 and more than ten downloads an hour answer 429;
 - delete their account (`user.deleteUser` in Better Auth). Password accounts confirm with
-  their password; social-only accounts need a session younger than one day. The
+  their password, and the server refuses a deletion without it (a `before` hook in
+  `src/lib/auth.ts`, so a stolen cookie is not enough); social-only accounts need a session
+  younger than one day. The
   `afterDelete` hook removes contact messages from a verified address and writes an audit
   entry.
 
@@ -170,13 +179,19 @@ what administrators can do.
 
 ## Protecting routes
 
-Server-rendered pages read `Astro.locals.user` and redirect when it is missing:
+Server-rendered pages confirm the session against the database and redirect when it is
+missing. `Astro.locals.user` comes from the cookie cache and is fine for showing a name, not for
+deciding access (see [sessions and cookies](#sessions-and-cookies)):
 
 ```astro title="src/pages/dashboard.astro"
 ---
+import { getAuthoritativeSession } from '@/lib/session';
+
 export const prerender = false;
 
-const { user } = Astro.locals;
+const { user, session } = await getAuthoritativeSession(Astro.request.headers, Astro.cookies);
+Astro.locals.user = user;
+Astro.locals.session = session;
 if (!user) {
   return Astro.redirect('/login?next=/dashboard');
 }
@@ -217,13 +232,14 @@ a retry message instead of spinning forever.
 
 ## Sessions and cookies
 
-Sessions live in the `session` table and are cached in a signed cookie for five minutes
+Sessions live in the `session` table and are cached in a signed cookie for one minute
 (`session.cookieCache`), so most requests never touch the database. Cookies are `HttpOnly`,
 `SameSite=Lax` and `Secure` in production. Astro's own session storage is disabled
 (`session: false`); enable it per platform if you need `Astro.session` for unrelated state.
 
-The cache is a display optimisation: the header or the dashboard may show a stale name or
-role for up to five minutes after a change. Anything that _decides_ access must not rely on
+The cache is a display optimisation: the header may show a stale name or role for up to a
+minute after a change, and Better Auth's own profile and two-factor endpoints accept the cached
+session for that long. Anything that _decides_ access must not rely on
 it, because a revoked session or a removed role would otherwise keep working until the cache
 expires. `getAuthoritativeSession()` in `src/lib/session.ts` (Better Auth's `getSession` with
 `disableCookieCache: true`) reads the database instead; the admin pages, the admin actions, the

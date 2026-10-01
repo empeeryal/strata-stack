@@ -13,6 +13,13 @@
   "observability": {
     "enabled": true,
   },
+  // Static pages are served at their canonical address without a trailing slash (the sitemap,
+  // canonical and Open Graph URLs all use that form); Workers' default would redirect to the
+  // slashed one instead.
+  "assets": {
+    "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
+  },
   // Session KV and Images bindings are provisioned automatically by the adapter when
   // used. Add D1/R2/KV bindings here when your project needs them.
 }

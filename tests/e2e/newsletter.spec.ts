@@ -53,11 +53,20 @@ test.describe('newsletter', () => {
     const token = await tokenFor(email);
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
+    // Opening the confirmation link changes nothing either; the button does.
     const heading = page.getByRole('heading', { level: 1 });
     await page.goto(`/newsletter/confirm?token=${token}`);
-    await expect(heading).toHaveText('You are subscribed');
+    await expect(heading).toHaveText('Confirm your subscription');
+    await expect(page.getByText(email)).toBeVisible();
     await page.reload();
-    await expect(heading).toHaveText('You were already subscribed');
+    await expect(heading).toHaveText('Confirm your subscription');
+    await page.getByRole('button', { name: 'Confirm subscription' }).click();
+    await expect(page).toHaveURL(/\/newsletter\/confirm\?token=/);
+    await expect(heading).toHaveText('You are subscribed');
+    await expect(page.getByText(email)).toBeVisible();
+    await page.reload();
+    await expect(heading).toHaveText('You are subscribed');
+    await expect(page.getByRole('button', { name: 'Confirm subscription' })).toHaveCount(0);
 
     // Opening the unsubscribe link changes nothing; the button does.
     await page.goto(`/newsletter/unsubscribe?token=${token}`);
@@ -117,6 +126,7 @@ test.describe('newsletter', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Check your inbox' })).toBeVisible();
     const token = await tokenFor(email);
     await page.goto(`/newsletter/confirm?token=${token}`);
+    await page.getByRole('button', { name: 'Confirm subscription' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('You are subscribed');
 
     const body = JSON.stringify({

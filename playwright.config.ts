@@ -22,14 +22,21 @@ export const serverEnv = {
   DATABASE_URL: 'file:./.data/e2e.db',
   BETTER_AUTH_SECRET: 'e2e-only-secret-never-use-in-production-0123456789',
   BETTER_AUTH_URL: baseURL,
-  // Accounts created with these addresses get the admin role (see tests/e2e/admin.spec.ts).
-  ADMIN_EMAILS: 'admin-e2e@example.com,admin2-e2e@example.com',
+  // Accounts created with these addresses get the admin role. The admin spec uses the first two
+  // (and demotes and signs them out); the accessibility spec, which may run in another worker at
+  // the same time, has the third to itself. Its address must not contain the others: the admin
+  // spec finds table rows by the substring of an address.
+  ADMIN_EMAILS: 'admin-e2e@example.com,admin2-e2e@example.com,axe-e2e@example.com',
   // Notifications are "sent" to the console in test mode, so delivery shows as sent.
   CONTACT_TO_EMAIL: 'owner@example.com',
   // Unlocks the detailed /api/health response without an admin session.
   HEALTH_TOKEN: 'e2e-health-token',
-  // Signing secret for the newsletter webhook test (tests/e2e/newsletter.spec.ts).
-  RESEND_WEBHOOK_SECRET: 'whsec_ZTJlLXdlYmhvb2stc2VjcmV0LTAxMjM0NTY3ODk=',
+  // Every sign-up asks Have I Been Pwned whether the password is known. Set it to `false` to run
+  // the suite offline; the one test that needs the live answer skips itself.
+  PASSWORD_BREACH_CHECK: process.env.PASSWORD_BREACH_CHECK ?? 'true',
+  // Signing secret for the newsletter webhook test (tests/e2e/newsletter.spec.ts). Built at
+  // run time so the committed source never contains a string shaped like a real credential.
+  RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('e2e-webhook-secret-0123456789').toString('base64')}`,
 };
 
 export default defineConfig({

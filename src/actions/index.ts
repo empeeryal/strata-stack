@@ -8,6 +8,7 @@ import {
   banUserAccount,
   changeUserRole,
   deleteUserAccount,
+  forgetTrustedDevices,
   isAdmin,
   LastAdminError,
   recordAudit,
@@ -31,6 +32,7 @@ import { sendEmail } from '@/lib/email';
 import { getEnv } from '@/lib/env';
 import {
   NEWSLETTER_SOURCES,
+  confirmSubscription,
   NewsletterEmailError,
   NewsletterThrottledError,
   removeSubscriber,
@@ -163,6 +165,11 @@ export const server = {
         website: z.string().max(200).optional(),
       }),
       handler: async (input, context) => {
+        // The page and the forms disappear with the flag; the action must not keep sending
+        // confirmation emails for anyone who posts to it directly.
+        if (!siteConfig.newsletter.enabled) {
+          throw new ActionError({ code: 'NOT_FOUND', message: 'The newsletter is not available.' });
+        }
         try {
           const outcome = await subscribeToNewsletter(
             input,
@@ -189,6 +196,22 @@ export const server = {
             message: 'We could not save your request. Please try again later.',
           });
         }
+      },
+    }),
+
+    /**
+     * Confirms the subscription the token in the confirmation email belongs to. Behind the
+     * button on the confirmation page, not its GET, for the same reason as the unsubscribe.
+     */
+    confirm: defineAction({
+      accept: 'form',
+      input: z.object({ token: newsletterToken }),
+      handler: async ({ token }) => {
+        const outcome = await confirmSubscription(token, newsletterDeps());
+        if (outcome === 'invalid') {
+          throw new ActionError({ code: 'NOT_FOUND', message: 'This link is not valid.' });
+        }
+        return { outcome, token };
       },
     }),
 
@@ -466,6 +489,8 @@ export const server = {
         } catch (error) {
           throw toActionError(error, 'Could not revoke the sessions.');
         }
+        // Signing someone out everywhere includes the browsers they trusted for two-factor.
+        await forgetTrustedDevices(db, targetId);
         await recordAudit(db, {
           actorId: actor.id,
           actorEmail: actor.email,

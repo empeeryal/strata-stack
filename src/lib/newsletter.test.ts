@@ -164,6 +164,46 @@ describe('subscribeToNewsletter', () => {
     expect(row?.token).not.toBe(token);
   });
 
+  it('starts a re-subscribing address with a clean provider record', async () => {
+    const token = await subscribeAndConfirm('reader@example.com');
+    audience.remove.mockRejectedValueOnce(new Error('Resend is down'));
+    await unsubscribeFromNewsletter(token, deps());
+    expect((await rows())[0]?.audienceError).toBe('Resend is down');
+
+    await subscribeToNewsletter({ email: 'reader@example.com' }, ctx, deps());
+    const [row] = await rows();
+    expect(row).toMatchObject({ status: 'pending', audienceError: null, audienceSyncedAt: null });
+  });
+
+  it('retries a failed audience add when a confirmed address asks again', async () => {
+    audience.add.mockRejectedValueOnce(new Error('audience unavailable'));
+    await subscribeAndConfirm('reader@example.com');
+    expect((await rows())[0]?.audienceError).toBe('audience unavailable');
+
+    expect(await subscribeToNewsletter({ email: 'reader@example.com' }, ctx, deps())).toBe(
+      'already-subscribed',
+    );
+    expect(audience.add).toHaveBeenCalledTimes(2);
+    const [row] = await rows();
+    expect(row?.audienceError).toBeNull();
+    expect(row?.audienceSyncedAt).toBeInstanceOf(Date);
+  });
+
+  it('caps the confirmation emails the site sends in an hour, whoever asks', async () => {
+    const { limit } = NEWSLETTER_LIMITS.site;
+    for (let i = 0; i < limit; i += 1) {
+      await subscribeToNewsletter(
+        { email: `reader-${i}@example.com` },
+        { ip: `203.0.113.${i % 250}` },
+        deps(),
+      );
+    }
+    await expect(
+      subscribeToNewsletter({ email: 'one-more@example.com' }, { ip: '198.51.100.1' }, deps()),
+    ).rejects.toBeInstanceOf(NewsletterThrottledError);
+    expect(sendEmail).toHaveBeenCalledTimes(limit);
+  });
+
   it('throttles repeated requests for one address', async () => {
     for (let i = 0; i < NEWSLETTER_LIMITS.perEmail.limit; i += 1) {
       await subscribeToNewsletter({ email: 'reader@example.com' }, { ip: null }, deps());
@@ -314,10 +354,28 @@ describe('unsubscribeFromNewsletter', () => {
 });
 
 describe('applyProviderContactEvent', () => {
-  const event = (type: string, unsubscribed?: boolean, email = 'Reader@example.com') => ({
+  const event = (
+    type: string,
+    unsubscribed?: boolean,
+    email = 'Reader@example.com',
+    createdAt = new Date().toISOString(),
+  ) => ({
     type,
-    created_at: '2026-09-29T12:00:00.000Z',
+    created_at: createdAt,
     data: { id: 'c_1', email, ...(unsubscribed === undefined ? {} : { unsubscribed }) },
+  });
+
+  it('ignores a retried opt-out that predates the current confirmation', async () => {
+    await subscribeAndConfirm('reader@example.com');
+    const stale = event('contact.updated', true, 'reader@example.com', '2026-01-01T00:00:00.000Z');
+
+    expect(await applyProviderContactEvent(stale, deps())).toBe('ignored');
+    expect((await rows())[0]?.status).toBe('confirmed');
+    expect(await testDb.db.select().from(auditLog)).toHaveLength(0);
+
+    // Without a usable time the event is applied, as before.
+    const undated = { ...event('contact.updated', true), created_at: 'yesterday' };
+    expect(await applyProviderContactEvent(undated, deps())).toBe('unsubscribed');
   });
 
   it('marks a confirmed address unsubscribed when the provider says so, once', async () => {
@@ -404,6 +462,19 @@ describe('removeSubscriber', () => {
     expect(await rows()).toHaveLength(0);
     const [entry] = await auditEntries();
     expect(entry?.details).toBe('{"status":"confirmed","provider":"failed"}');
+  });
+
+  it('tells the provider about an opt-out it never received before deleting the row', async () => {
+    const token = await subscribeAndConfirm('reader@example.com');
+    audience.remove.mockRejectedValueOnce(new Error('Resend is down'));
+    await unsubscribeFromNewsletter(token, deps());
+    const [row] = await rows();
+    expect(row).toMatchObject({ status: 'unsubscribed', audienceError: 'Resend is down' });
+
+    expect(await removeSubscriber(row?.id ?? '', actor, deps())).toBe('removed');
+    expect(audience.remove).toHaveBeenCalledTimes(2);
+    const [entry] = await auditEntries();
+    expect(entry?.details).toBe('{"status":"unsubscribed","provider":"removed"}');
   });
 
   it('leaves the audience alone for an address that never confirmed', async () => {

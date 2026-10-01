@@ -1,38 +1,43 @@
 ---
+import { actions } from 'astro:actions';
 import { Icon } from 'astro-icon/components';
 
+import Alert from '@/components/ui/Alert.astro';
 import Button from '@/components/ui/Button.astro';
+import { db } from '@/db/client';
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { confirmSubscription, type ConfirmOutcome } from '@/lib/newsletter';
-import { newsletterDeps } from '@/lib/newsletter-deps';
+import { findSubscriberByToken, isConfirmationExpired } from '@/lib/newsletter';
 import { siteConfig } from '@/site.config';
 
 export const prerender = false;
 
-// The link in the confirmation email lands here. Opening it is the confirmation, as with
-// email verification links; the token is single-purpose and only ever in the recipient's inbox.
+// The link in the confirmation email lands here. Confirming is a POST behind a button, like
+// unsubscribing: mail clients and link scanners fetch the URLs in an email, and a fetch must
+// not subscribe an address that somebody else typed into the form.
+const result = Astro.getActionResult(actions.newsletter.confirm);
+if (result && !result.error) {
+  // The form's action replaces the query string, so the token comes back with the result.
+  return Astro.redirect(`/newsletter/confirm?token=${encodeURIComponent(result.data.token)}`);
+}
 const token = Astro.url.searchParams.get('token') ?? '';
-const outcome = await confirmSubscription(token, newsletterDeps());
+const subscriber = token ? await findSubscriberByToken(db, token) : null;
+const error = result?.error?.message ?? null;
 
-const copy: Record<ConfirmOutcome, { title: string; text: string; icon: string }> = {
-  confirmed: {
-    title: 'You are subscribed',
-    text: `Thanks for confirming. ${siteConfig.name} updates will arrive at this address; every email ends with an unsubscribe link.`,
-    icon: 'lucide:mail-check',
-  },
-  'already-confirmed': {
-    title: 'You were already subscribed',
-    text: 'This address was confirmed earlier, so nothing has changed.',
-    icon: 'lucide:mail-check',
-  },
-  invalid: {
-    title: 'This link is not valid',
-    text: 'It may have been replaced by a newer confirmation email, or the request was withdrawn. Subscribe again to receive a fresh link.',
-    icon: 'lucide:mail-x',
-  },
-};
-const { title, text, icon } = copy[outcome];
-if (outcome === 'invalid') Astro.response.status = 404;
+const state =
+  !subscriber ||
+  subscriber.status === 'unsubscribed' ||
+  (subscriber.status === 'pending' && isConfirmationExpired(subscriber))
+    ? 'invalid'
+    : subscriber.status === 'confirmed'
+      ? 'done'
+      : 'ask';
+const title =
+  state === 'invalid'
+    ? 'This link is not valid'
+    : state === 'done'
+      ? 'You are subscribed'
+      : 'Confirm your subscription';
+if (state === 'invalid') Astro.response.status = 404;
 Astro.response.headers.set('Cache-Control', 'no-store');
 ---
 
@@ -43,19 +48,51 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   searchable={false}
   class="container max-w-2xl py-16"
 >
-  <div
-    class="rounded-xl border bg-card p-8 text-center shadow-soft"
-    data-newsletter-outcome={outcome}
-  >
-    <Icon name={icon} class="mx-auto size-10 text-primary" aria-hidden="true" />
+  <div class="rounded-xl border bg-card p-8 text-center shadow-soft" data-newsletter-state={state}>
+    <Icon
+      name={state === 'invalid' ? 'lucide:mail-x' : 'lucide:mail-check'}
+      class="mx-auto size-10 text-primary"
+      aria-hidden="true"
+    />
     <h1 class="mt-4 text-3xl font-bold tracking-tight text-balance">{title}</h1>
-    <p class="mt-3 text-pretty text-muted-foreground">{text}</p>
+    {error && <Alert class="mt-4 text-left">{error}</Alert>}
+
+    {state === 'invalid' && (
+      <p class="mt-3 text-pretty text-muted-foreground">
+        It may have been replaced by a newer confirmation email, it may be older than seven days, or
+        the request was withdrawn. Subscribe again to receive a fresh link.
+      </p>
+    )}
+
+    {state === 'ask' && subscriber && (
+      <p class="mt-3 text-pretty text-muted-foreground">
+        Send {siteConfig.name} updates to{' '}
+        <strong class="font-medium text-foreground">{subscriber.email}</strong>. Every email ends
+        with an unsubscribe link. If you did not ask for this, just close the page: nothing is sent
+        until you confirm.
+      </p>
+    )}
+
+    {state === 'done' && subscriber && (
+      <p class="mt-3 text-pretty text-muted-foreground">
+        Thanks for confirming. {siteConfig.name} updates will arrive at{' '}
+        <strong class="font-medium text-foreground">{subscriber.email}</strong>; every email ends
+        with an unsubscribe link.
+      </p>
+    )}
+
     <div class="mt-6 flex flex-wrap justify-center gap-3">
-      {outcome === 'invalid' && siteConfig.newsletter.enabled && (
+      {state === 'ask' && (
+        <form method="POST" action={actions.newsletter.confirm}>
+          <input type="hidden" name="token" value={token} />
+          <Button type="submit">Confirm subscription</Button>
+        </form>
+      )}
+      {state === 'invalid' && siteConfig.newsletter.enabled && (
         <Button href="/newsletter">Subscribe again</Button>
       )}
-      <Button href="/" variant={outcome === 'invalid' ? 'outline' : 'primary'}>
-        Back to the site
+      <Button href="/" variant={state === 'done' ? 'primary' : 'outline'}>
+        {state === 'ask' ? 'Not now' : 'Back to the site'}
       </Button>
     </div>
   </div>

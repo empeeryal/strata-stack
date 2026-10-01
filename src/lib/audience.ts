@@ -1,4 +1,3 @@
-import { getEnv } from './env';
 import type { NewsletterAudience } from './newsletter';
 
 /**
@@ -14,14 +13,19 @@ export function createResendAudience(apiKey: string, segmentId: string): Newslet
   return {
     async add(email) {
       const resend = await client();
-      const created = await resend.contacts.create({
-        email,
-        unsubscribed: false,
-        segments: [{ id: segmentId }],
-      });
-      if (!created.error) return;
-      // The address may already be a contact (an earlier subscription): flip the flag and
-      // make sure it is in the segment.
+      // Look first: Resend does not promise an error for creating a contact that exists, and a
+      // contact from an earlier subscription may be marked unsubscribed or sit outside the
+      // segment, which a create call would leave as it is.
+      const existing = await resend.contacts.get({ email });
+      if (existing.error) {
+        const created = await resend.contacts.create({
+          email,
+          unsubscribed: false,
+          segments: [{ id: segmentId }],
+        });
+        if (!created.error) return;
+        throw new Error(created.error.message);
+      }
       const updated = await resend.contacts.update({ email, unsubscribed: false });
       if (updated.error) throw new Error(updated.error.message);
       const added = await resend.contacts.segments.add({ email, segmentId });
@@ -38,9 +42,13 @@ export function createResendAudience(apiKey: string, segmentId: string): Newslet
 /**
  * The segment configured through `RESEND_API_KEY` and `RESEND_AUDIENCE_ID`, or null when
  * either is missing. Subscribers are always stored in the database; the mirror is optional.
+ * Reads `process.env` directly (an empty value counts as unset) so the retention script can
+ * load this module outside Astro.
  */
-export function getNewsletterAudience(): NewsletterAudience | null {
-  const apiKey = getEnv('RESEND_API_KEY');
-  const segmentId = getEnv('RESEND_AUDIENCE_ID');
+export function getNewsletterAudience(
+  env: NodeJS.ProcessEnv = process.env,
+): NewsletterAudience | null {
+  const apiKey = env.RESEND_API_KEY || undefined;
+  const segmentId = env.RESEND_AUDIENCE_ID || undefined;
   return apiKey && segmentId ? createResendAudience(apiKey, segmentId) : null;
 }

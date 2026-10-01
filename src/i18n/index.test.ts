@@ -5,7 +5,6 @@ import { siteConfig } from '@/site.config';
 import {
   alternatesFor,
   defaultLocale,
-  getLocaleFromPath,
   interpolate,
   intlLocales,
   labelFor,
@@ -46,12 +45,6 @@ describe('locale configuration', () => {
 });
 
 describe('paths', () => {
-  it('reads the locale from the first segment and ignores prefixes that are not locales', () => {
-    expect(getLocaleFromPath('/blog')).toBe('en');
-    expect(getLocaleFromPath('/')).toBe('en');
-    expect(getLocaleFromPath('/de/blog/hello')).toBe('en');
-  });
-
   it('adds and strips a prefix, which the default locale does not have', () => {
     expect(stripLocale('/blog')).toBe('/blog');
     expect(stripLocale('/de/blog')).toBe('/de/blog');

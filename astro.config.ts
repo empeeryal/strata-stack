@@ -82,6 +82,13 @@ export default defineConfig({
     mdx(),
     sitemap({
       filter: (page) => !SITEMAP_EXCLUDE.some((pattern) => pattern.test(new URL(page).pathname)),
+      // The integration appends a slash to every URL unless `trailingSlash` is 'never'. The
+      // pages' canonical and Open Graph URLs and the breadcrumbs carry none, and a sitemap that
+      // lists the other form hands search engines a duplicate of every page.
+      serialize: (item) => ({
+        ...item,
+        url: item.url.replace(/^(https?:\/\/[^/]+\/.+?)\/$/, '$1'),
+      }),
     }),
     icon(),
     pagefind(),
@@ -190,6 +197,9 @@ export default defineConfig({
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
+        // Delivered as a header on Node, Vercel and Netlify. Browsers ignore it in a <meta> policy
+        // (Cloudflare), where the X-Frame-Options header from public/_headers takes over.
+        "frame-ancestors 'none'",
       ],
       styleDirective: {
         resources: [

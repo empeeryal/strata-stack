@@ -52,7 +52,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     'email,confirmed_at,unsubscribe_url',
     ...rows.map((row) =>
       csvRow([
-        row.email,
+        // Addresses are written as they are: a leading apostrophe would break one that starts
+        // with `+` or `-`, and a validated address cannot form a spreadsheet formula.
+        [row.email, { neutralise: false }],
         row.confirmedAt ? row.confirmedAt.toISOString() : '',
         unsubscribeUrl(siteUrl, row.token),
       ]),

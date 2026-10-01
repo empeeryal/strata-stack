@@ -7,8 +7,8 @@ export type AuthoritativeSession = Pick<App.Locals, 'user' | 'session'>;
 /**
  * Resolves the session from the database instead of the signed cookie cache.
  *
- * The middleware populates `locals.user` from the cookie cache (`session.cookieCache`, five
- * minutes), which is fine for showing a name in the header. Wherever access is *decided*
+ * The middleware populates `locals.user` from the cookie cache (`session.cookieCache`, one
+ * minute), which is fine for showing a name in the header. Wherever access is *decided*
  * (admin pages and actions, the dashboard, the account export, the auth pages' redirect for
  * signed-in visitors) the cache is bypassed so that a demotion, a ban or "sign out
  * everywhere" takes effect on the next request rather than when the cache expires. This

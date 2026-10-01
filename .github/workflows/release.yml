@@ -23,7 +23,9 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Create release pull request or tag release
-        uses: changesets/action@v2
+        # Third-party actions in a job with write permissions are pinned to a commit, not a tag
+        # that could be moved; Dependabot keeps the pin and the version comment current.
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           version-script: pnpm changeset:version
           publish-script: pnpm changeset:tag

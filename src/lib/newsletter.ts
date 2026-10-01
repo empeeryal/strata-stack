@@ -70,8 +70,10 @@ export type UnsubscribeOutcome = 'unsubscribed' | 'already-unsubscribed' | 'inva
  *
  * - `unsubscribed`: the address opted out (or was deleted) at the provider and the row now
  *   says so
- * - `ignored`: nothing to do, because the event is not an opt-out, the row already agrees, or
- *   the payload has no usable address
+ * - `ignored`: nothing to do, because the event is not an opt-out, the row already agrees,
+ *   the payload has no usable address, or the event predates the address's current
+ *   confirmation (the provider retries failed deliveries for more than a day, and a retried
+ *   opt-out must not undo a subscription made since)
  * - `unknown-address`: the provider knows an address this site never stored
  */
 export type ProviderEventOutcome = 'unsubscribed' | 'ignored' | 'unknown-address';
@@ -92,10 +94,21 @@ export class NewsletterEmailError extends Error {
   }
 }
 
-/** Per-sender limits; both apply. Same numbers as the contact form. */
-export const NEWSLETTER_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule } = {
+/**
+ * Subscription limits; all three apply. The per-sender numbers are the contact form's. The
+ * site-wide ceiling bounds how many confirmation emails the form can be made to send in an
+ * hour when the per-IP rule is defeated, for example by a proxy that forwards a visitor's own
+ * `X-Forwarded-For` value (see the Node deployment guide); it is well above what a site this
+ * size sees from people.
+ */
+export const NEWSLETTER_LIMITS: {
+  perIp: ThrottleRule;
+  perEmail: ThrottleRule;
+  site: ThrottleRule;
+} = {
   perIp: { limit: 5, windowMs: 15 * 60 * 1000 },
   perEmail: { limit: 3, windowMs: 60 * 60 * 1000 },
+  site: { limit: 120, windowMs: 60 * 60 * 1000 },
 };
 
 /** 256 random bits as base64url: URL-safe and free of characters that mail clients break on. */
@@ -125,8 +138,8 @@ function confirmationEmail(to: string, token: string, deps: NewsletterDeps): Ema
   return {
     to,
     subject: `Confirm your subscription to ${deps.siteName}`,
-    text: `Open this link to confirm that you want to receive email from ${deps.siteName}:\n\n${url}\n\nIf you did not request this, you can ignore this email and nothing will be sent.`,
-    html: `<p>Open this link to confirm that you want to receive email from <strong>${deps.siteName}</strong>:</p><p><a href="${url}">${url}</a></p><p>If you did not request this, you can ignore this email and nothing will be sent.</p>`,
+    text: `Open this link and press Confirm to receive email from ${deps.siteName}:\n\n${url}\n\nIf you did not request this, you can ignore this email and nothing will be sent.`,
+    html: `<p>Open this link and press <strong>Confirm</strong> to receive email from <strong>${deps.siteName}</strong>:</p><p><a href="${url}">${url}</a></p><p>If you did not request this, you can ignore this email and nothing will be sent.</p>`,
   };
 }
 
@@ -169,6 +182,7 @@ export async function subscribeToNewsletter(
     checks.push([`newsletter:ip:${await hashThrottleKey(context.ip)}`, NEWSLETTER_LIMITS.perIp]);
   }
   checks.push([`newsletter:email:${await hashThrottleKey(email)}`, NEWSLETTER_LIMITS.perEmail]);
+  checks.push(['newsletter:site', NEWSLETTER_LIMITS.site]);
   for (const [key, rule] of checks) {
     const result = await consumeThrottle(deps.db, key, rule, now());
     if (!result.allowed) throw new NewsletterThrottledError(result.resetAt);
@@ -181,6 +195,9 @@ export async function subscribeToNewsletter(
     .limit(1);
 
   if (existing?.status === 'confirmed') {
+    // The provider may still be missing this address from an earlier failure; this is a change
+    // to the address, so it is the moment to try again.
+    if (existing.audienceError) await syncAudience(existing.id, email, 'add', deps);
     await send(alreadySubscribedEmail(email, existing.token, deps));
     return 'already-subscribed';
   }
@@ -193,6 +210,10 @@ export async function subscribeToNewsletter(
     confirmationSentAt: at,
     unsubscribedAt: null,
     updatedAt: at,
+    // A pending address is not at the provider by design; a result from its earlier life
+    // would otherwise show up in the admin list as a failure that needs attention.
+    audienceSyncedAt: null,
+    audienceError: null,
   };
   if (existing) {
     await deps.db
@@ -255,10 +276,25 @@ export async function findSubscriberByToken(db: Database, token: string) {
   return row ?? null;
 }
 
+/** Whether a pending address's confirmation link has passed its window. */
+export function isConfirmationExpired(
+  row: { confirmationSentAt: Date | null },
+  at: Date = new Date(),
+): boolean {
+  return (
+    row.confirmationSentAt !== null &&
+    at.valueOf() - row.confirmationSentAt.valueOf() > CONFIRMATION_TTL_MS
+  );
+}
+
 /**
  * Confirms the subscription a token belongs to and mirrors the address to the provider
  * audience when one is configured. A token of an unsubscribed address is refused: ending a
  * subscription must not be undone by an old confirmation link, only by subscribing again.
+ *
+ * Runs behind the button on the confirmation page, never on GET: mail clients and link
+ * scanners open the links in an email, and a fetch must not subscribe an address that was
+ * entered by someone else.
  */
 export async function confirmSubscription(
   token: string,
@@ -271,12 +307,7 @@ export async function confirmSubscription(
   const now = deps.now ?? (() => new Date());
   const at = now();
   // A link from long ago no longer proves the address wants mail now.
-  if (
-    row.confirmationSentAt &&
-    at.valueOf() - row.confirmationSentAt.valueOf() > CONFIRMATION_TTL_MS
-  ) {
-    return 'invalid';
-  }
+  if (isConfirmationExpired(row, at)) return 'invalid';
   // The status predicate makes the change atomic: an unsubscribe or provider opt-out that
   // landed between the read above and this write wins, and the stale link stays invalid.
   const [confirmed] = await deps.db
@@ -355,9 +386,21 @@ export async function applyProviderContactEvent(
   deps: NewsletterDeps,
 ): Promise<ProviderEventOutcome> {
   if (!event || typeof event !== 'object') return 'ignored';
-  const { type, data } = event as { type?: unknown; data?: unknown };
+  const {
+    type,
+    data,
+    created_at: createdAt,
+  } = event as {
+    type?: unknown;
+    data?: unknown;
+    created_at?: unknown;
+  };
   if (typeof type !== 'string' || !data || typeof data !== 'object') return 'ignored';
-  const { email: rawEmail, unsubscribed } = data as { email?: unknown; unsubscribed?: unknown };
+  const {
+    email: rawEmail,
+    unsubscribed,
+    updated_at: updatedAt,
+  } = data as { email?: unknown; unsubscribed?: unknown; updated_at?: unknown };
   if (typeof rawEmail !== 'string' || !rawEmail.includes('@')) return 'ignored';
 
   const optedOut =
@@ -372,6 +415,10 @@ export async function applyProviderContactEvent(
     .limit(1);
   if (!row) return 'unknown-address';
   if (row.status === 'unsubscribed') return 'ignored';
+  // Each retry of a delivery is signed afresh, so the signature's timestamp says nothing about
+  // when the opt-out happened; the event's own time does.
+  const happenedAt = eventTime(createdAt) ?? eventTime(updatedAt);
+  if (happenedAt && row.confirmedAt && happenedAt < row.confirmedAt) return 'ignored';
 
   const now = deps.now ?? (() => new Date());
   const at = now();
@@ -399,6 +446,12 @@ export async function applyProviderContactEvent(
   return 'unsubscribed';
 }
 
+function eventTime(value: unknown): Date | null {
+  if (typeof value !== 'string') return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.valueOf()) ? null : parsed;
+}
+
 /** Thrown when the subscriber an admin operation targets does not exist (or was just removed). */
 export class SubscriberNotFoundError extends Error {
   constructor() {
@@ -414,10 +467,11 @@ export class SubscriberNotFoundError extends Error {
 export type RemoveSubscriberOutcome = 'removed' | 'removed-unsynced';
 
 /**
- * Deletes a subscriber for an administrator. A confirmed address is marked unsubscribed at
- * the provider first (best effort; a failure is reported, not hidden), then the row and its
- * audit entry are written in one transaction. Two admins removing the same row see one
- * success and one "not found".
+ * Deletes a subscriber for an administrator. An address the provider may still be sending to
+ * (confirmed, or unsubscribed with the opt-out not yet delivered) is marked unsubscribed there
+ * first (best effort; a failure is reported, not hidden), then the row and its audit entry are
+ * written in one transaction. Two admins removing the same row see one success and one "not
+ * found".
  */
 export async function removeSubscriber(
   id: string,
@@ -432,7 +486,9 @@ export async function removeSubscriber(
   if (!row) throw new SubscriberNotFoundError();
 
   let provider: 'removed' | 'failed' | 'skipped' = 'skipped';
-  if (row.status === 'confirmed' && deps.audience) {
+  const providerMaySend =
+    row.status === 'confirmed' || (row.status === 'unsubscribed' && row.audienceError !== null);
+  if (providerMaySend && deps.audience) {
     try {
       await deps.audience.remove(row.email);
       provider = 'removed';

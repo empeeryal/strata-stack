@@ -18,7 +18,13 @@ describe('csvField', () => {
     expect(csvField('\tx')).toBe("'\tx");
   });
 
-  it('joins a row', () => {
+  it('leaves a validated column alone when asked, but still quotes it', () => {
+    expect(csvField('-deals@example.com', { neutralise: false })).toBe('-deals@example.com');
+    expect(csvField('+a,b@example.com', { neutralise: false })).toBe('"+a,b@example.com"');
+  });
+
+  it('joins a row, with per-cell options', () => {
     expect(csvRow(['a', 'b,c', '=x'])).toBe(`a,"b,c",'=x`);
+    expect(csvRow([['-x@example.com', { neutralise: false }], '=y'])).toBe(`-x@example.com,'=y`);
   });
 });
