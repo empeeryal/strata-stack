@@ -37,3 +37,10 @@ auditConfig:
     # node-forge inside listhen, the local HTTPS dev server of the Netlify adapter's tooling
     # (RSA signature verification); no patched release exists and nothing of it is deployed.
     - GHSA-86w9-cpqp-85rv
+    # braces inside the Netlify adapter's function bundler (fast-glob); a crafted glob pattern
+    # can exhaust the stack during a build. No patched release; nothing of it is deployed.
+    - GHSA-vfj7-8cjw-p6xm
+    # http-cache-semantics, Astro's cache policy for assets fetched at build time; the flaw
+    # concerns a shared HTTP cache serving several users, which a build is not. No patched
+    # release; revisit when Astro updates the dependency.
+    - GHSA-ch52-4w7c-c8xp
