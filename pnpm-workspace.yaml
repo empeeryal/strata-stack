@@ -34,3 +34,6 @@ auditConfig:
     - GHSA-7pqw-9j4j-h8q3
     # esbuild 0.18 pinned by drizzle-kit's config loader; the flaw is in esbuild's dev server.
     - GHSA-67mh-4wv8-2f99
+    # node-forge inside listhen, the local HTTPS dev server of the Netlify adapter's tooling
+    # (RSA signature verification); no patched release exists and nothing of it is deployed.
+    - GHSA-86w9-cpqp-85rv
