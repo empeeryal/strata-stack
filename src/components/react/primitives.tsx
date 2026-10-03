@@ -6,6 +6,7 @@ import {
   type LabelHTMLAttributes,
   type ReactNode,
   useState,
+  useSyncExternalStore,
 } from 'react';
 
 import { alertRole, alertVariants, type AlertVariant } from '@/components/ui/alert-variants';
@@ -149,3 +150,17 @@ export function Avatar({
 
 /** Message for failures that are not API results (dropped connection, runtime error). */
 export const UNEXPECTED_ERROR = 'Something went wrong. Check your connection and try again.';
+
+const subscribeToNothing = () => () => {};
+
+/**
+ * Whether this browser can create and use passkeys (WebAuthn). The server assumes it can, so
+ * the markup matches until hydration; a browser without support then re-renders once.
+ */
+export function useWebAuthnSupport(): boolean {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => typeof window.PublicKeyCredential !== 'undefined',
+    () => true,
+  );
+}

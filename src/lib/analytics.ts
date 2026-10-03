@@ -17,8 +17,8 @@ export interface AnalyticsEvents {
   'Contact message sent': undefined;
   /** An account was created with a password (it may still have to verify its address). */
   'Signed up': { method: 'password' };
-  /** A password sign-in completed, with or without the second factor. */
-  'Signed in': { method: 'password'; twoFactor: boolean };
+  /** A sign-in completed: with a password (with or without the second factor) or a passkey. */
+  'Signed in': { method: 'password' | 'passkey'; twoFactor: boolean };
   /** A sign-in link was sent; the sign-in itself happens from the email. */
   'Magic link requested': undefined;
   /** The browser left for an OAuth provider; the sign-in completes on the callback. */
@@ -26,6 +26,10 @@ export interface AnalyticsEvents {
   'Signed out': undefined;
   'Two-factor enabled': undefined;
   'Two-factor disabled': undefined;
+  'Passkey added': undefined;
+  'Passkey removed': undefined;
+  /** A new address was submitted; the change itself may still wait for a link to be opened. */
+  'Email change requested': undefined;
   'Account deleted': undefined;
   /** Something was chosen in the command palette: a page, a search result or an action. */
   'Palette item selected': { kind: 'link' | 'result' | 'action'; target: string };

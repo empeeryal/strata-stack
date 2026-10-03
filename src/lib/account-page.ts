@@ -9,6 +9,11 @@ export const ACCOUNT_NOTICES = {
   'profile-updated': 'Profile updated.',
   'two-factor-enabled': 'Two-factor authentication is on. Keep your backup codes somewhere safe.',
   'two-factor-disabled': 'Two-factor authentication is off.',
+  'passkey-added': 'Passkey added. You can sign in with it from the login page.',
+  'passkey-removed': 'Passkey removed.',
+  'email-updated': 'Email address updated.',
+  'email-change':
+    'Link confirmed. If the address shown above has not changed yet, a verification link is on its way to the new address; open it to finish.',
 } as const;
 
 export type AccountNotice = keyof typeof ACCOUNT_NOTICES;

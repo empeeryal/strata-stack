@@ -253,6 +253,9 @@ export const AUDIT_ACTIONS = [
   'two_factor.disable',
   'two_factor.backup_codes',
   'user.reset_two_factor',
+  'passkey.add',
+  'passkey.remove',
+  'account.change_email',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

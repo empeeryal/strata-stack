@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { and, eq, gt } from 'drizzle-orm';
 
 import { db } from '@/db/client';
-import { account, contactMessages, newsletterSubscribers, session } from '@/db/schema';
+import { account, contactMessages, newsletterSubscribers, passkey, session } from '@/db/schema';
 import { recordAudit } from '@/lib/admin';
 import { getAuthoritativeSession } from '@/lib/session';
 import { consumeThrottle, hashThrottleKey, type ThrottleRule } from '@/lib/throttle';
@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  const [accounts, sessions, messages, [newsletter]] = await Promise.all([
+  const [accounts, passkeys, sessions, messages, [newsletter]] = await Promise.all([
     db
       .select({
         providerId: account.providerId,
@@ -57,6 +57,17 @@ export const POST: APIRoute = async ({ request }) => {
       })
       .from(account)
       .where(eq(account.userId, user.id)),
+    // Name, kind and date only: the public key and the credential id identify the key to a
+    // relying party, not the person, and are of no use outside the authenticator.
+    db
+      .select({
+        name: passkey.name,
+        deviceType: passkey.deviceType,
+        backedUp: passkey.backedUp,
+        createdAt: passkey.createdAt,
+      })
+      .from(passkey)
+      .where(eq(passkey.userId, user.id)),
     db
       .select({
         createdAt: session.createdAt,
@@ -117,6 +128,7 @@ export const POST: APIRoute = async ({ request }) => {
       updatedAt: user.updatedAt,
     },
     accounts,
+    passkeys,
     sessions,
     contactMessages: messages,
     newsletter: newsletter ?? null,

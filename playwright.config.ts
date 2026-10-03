@@ -10,10 +10,14 @@ import { defineConfig, devices } from '@playwright/test';
  * request. Playwright launches the web server *before* `globalSetup`, which is why the reset
  * lives in the command rather than in tests/e2e/global-setup.ts. Set E2E_BASE_URL to run the
  * suite against a server that is already running elsewhere.
+ *
+ * The server binds 127.0.0.1 (a runner's `localhost` may resolve to IPv6 first), but the browser
+ * visits it as `localhost`: WebAuthn needs a hostname as the relying party, and an IP address
+ * is not one (tests/e2e/passkeys.spec.ts). Chrome and Node fall back to IPv4 for `localhost`.
  */
 const PORT = Number(process.env.E2E_PORT ?? 4321);
 const externalBaseUrl = process.env.E2E_BASE_URL;
-const baseURL = externalBaseUrl ?? `http://127.0.0.1:${PORT}`;
+const baseURL = externalBaseUrl ?? `http://localhost:${PORT}`;
 
 export const serverEnv = {
   HOST: '127.0.0.1',

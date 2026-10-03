@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy
 description: What data this site collects, why, how long it is kept, and how to access or delete it.
-updatedDate: 2026-09-30
+updatedDate: 2026-10-03
 ---
 
 > This is a starting point, not legal advice. Review it with counsel and adapt it to your
@@ -14,7 +14,10 @@ updatedDate: 2026-09-30
   address was verified, a hashed password or the identity returned by GitHub or Google, and
   the session records needed to keep you signed in (creation time, expiry, IP address and
   browser user agent). If you turn on two-factor authentication we also store the
-  authenticator secret and backup codes, encrypted, until you turn it off.
+  authenticator secret and backup codes, encrypted, until you turn it off. If you add a passkey
+  we store its public key, an identifier for it, the kind of device or password manager that
+  holds it and the name you give it, until you remove it; the private key never leaves your
+  device.
 - **Contact form messages.** Messages you send through the contact form are stored together
   with the name and email address you provide so we can reply. Their workflow state (new,
   read, archived) and whether the notification to us was delivered are stored as well.
@@ -75,8 +78,8 @@ You can exercise your rights yourself from your account dashboard:
   ("Download my data").
 - **Erasure.** Delete your account, its sessions and connected sign-in methods. Contact
   messages sent from a verified email address are deleted with it.
-- **Rectification.** Change your name, avatar and password from the dashboard, or contact us
-  to correct other details.
+- **Rectification.** Change your name, avatar, email address and password from the dashboard,
+  or contact us to correct other details.
 - **Newsletter.** Every newsletter ends with an unsubscribe link; using it stops all further
   email and removes the address after the retention period above.
 

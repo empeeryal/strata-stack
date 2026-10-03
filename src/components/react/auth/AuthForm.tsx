@@ -157,7 +157,9 @@ export default function AuthForm({
           id="email"
           name="email"
           type="email"
-          autoComplete="email"
+          // `webauthn` lets the browser offer saved passkeys in this field's autofill (see
+          // PasskeyButton, which starts that request on the login page).
+          autoComplete={mode === 'login' ? 'email webauthn' : 'email'}
           required
           placeholder="you@example.com"
         />

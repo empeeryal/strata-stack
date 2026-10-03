@@ -25,7 +25,7 @@ test.describe('authentication', () => {
     await waitForIslands(page);
     await page.getByLabel('Email').first().fill(email);
     await page.getByLabel('Password', { exact: true }).fill(E2E_PASSWORD);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
@@ -34,7 +34,7 @@ test.describe('authentication', () => {
     await waitForIslands(page);
     await page.getByLabel('Email').first().fill('nobody@example.com');
     await page.getByLabel('Password', { exact: true }).fill('definitely-wrong');
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(/invalid email or password/i);
     await expect(page).toHaveURL(/\/login$/);
   });

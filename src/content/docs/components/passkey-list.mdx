@@ -1,0 +1,76 @@
+---
+title: Passkey list
+description: The dashboard's passkeys as an island over Better Auth's passkey plugin, with the sign-in button for the login page, how the WebAuthn ceremonies run in the browser, and how the end-to-end suite tests them with a virtual authenticator.
+publishedDate: 2026-10-03
+sidebar:
+  order: 8
+  badge: new
+---
+
+The **Passkeys** card on the dashboard lists the passkeys on the account and lets the user add,
+rename and remove them. It is an island, `src/components/react/account/PasskeyList.tsx`, over the
+client half of Better Auth's [passkey plugin](https://better-auth.com/docs/plugins/passkey): the
+server renders the list from `auth.api.listPasskeys()`, the island runs the browser's WebAuthn
+prompt and calls the plugin's endpoints. Its counterpart on the login page,
+`src/components/react/auth/PasskeyButton.tsx`, signs in with one. The
+[authentication guide](/docs/guides/authentication#passkeys) explains what a passkey is and how
+the plugin is configured; this page is about the two components.
+
+## What the list shows
+
+Each row comes from `toPasskeyItem()` in `src/lib/passkeys.ts`, which keeps what a page may show
+and nothing else: the id, the user's name for the key, a label, whether the key is synced
+(`backedUp`), and the creation date formatted on the server so the island and the page agree.
+The label is the name when there is one; otherwise the authenticator's maker, which Better Auth
+resolves from the model identifier (AAGUID) the authenticator reported ("Google Password Manager",
+"1Password"); otherwise the word "Passkey". Apple's platforms hide the identifier, so their keys
+show the generic word until they are named. The public key and the credential id never reach the
+island.
+
+## Adding, renaming, removing
+
+<Steps>
+
+1. **Add a passkey** opens a short form with an optional name and calls
+   `authClient.passkey.addPasskey()`. The browser or password manager shows its prompt; the
+   plugin verifies the attestation on the server and stores the key. The name is applied
+   afterwards with `updatePasskey()`: passed to the registration it would also become the
+   account name the authenticator displays in its prompt. On success the page reloads with a
+   notice, because the account card's list of sign-in methods is server rendered.
+2. **Rename** is an inline form that calls `updatePasskey()` and updates the row in place, with a
+   status message for screen readers.
+3. **Remove** asks first (the key keeps existing on the device and would offer itself although it
+   no longer works) and calls `deletePasskey()`; the page reloads with a notice.
+
+</Steps>
+
+The browser's reasons for a registration that did not happen are translated: a device that
+already holds a passkey for the account, a closed prompt, a session older than a day (Better Auth
+requires a fresh session to add a credential). A browser without WebAuthn still sees the list and
+can remove keys, with a note that adding needs a current browser; the check runs through
+`useSyncExternalStore`, so the server renders the capable state and the browser corrects it once
+without a hydration mismatch.
+
+## The sign-in button
+
+`PasskeyButton` renders **Sign in with a passkey** under the password form and calls
+`authClient.signIn.passkey()`. When the browser supports conditional mediation
+(`PublicKeyCredential.isConditionalMediationAvailable()`), it also starts an autofill request on
+mount, so the saved passkeys appear in the email field's suggestions (the field carries
+`autocomplete="email webauthn"`); picking one signs in without pressing the button. The request
+stays pending until a key is picked or the button starts its own ceremony, which cancels it; a
+cancellation is not shown as an error. A successful sign-in records the `Signed in` analytics
+event with `method: 'passkey'` and navigates to the requested page.
+
+## Tests
+
+- `src/lib/passkeys.test.ts` covers the label and the display item.
+- `src/components/react/account/PasskeyList.test.tsx` and
+  `src/components/react/auth/PasskeyButton.test.tsx` run the islands with the auth client
+  mocked: listing, adding with a name applied afterwards, a refused registration, renaming in
+  place, the remove prompt, the autofill request and a browser without WebAuthn.
+- `tests/e2e/passkeys.spec.ts` attaches a software authenticator through the Chrome DevTools
+  Protocol (`WebAuthn.enable`, `WebAuthn.addVirtualAuthenticator` with user verification and
+  automatic presence), adds a passkey from the dashboard, renames it, signs out and back in with
+  the passkey alone, checks that an authenticator without a key for the site is refused, removes
+  the key, and probes the endpoints without a session or a challenge.

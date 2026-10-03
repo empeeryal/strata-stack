@@ -28,7 +28,10 @@ runtime fails the pull request instead of a production deploy.
 
 The `e2e` and `lighthouse` jobs start the built Node server on `127.0.0.1` explicitly
 (`HOST=127.0.0.1`) instead of the adapter's default `localhost`, which resolves to IPv6 first on
-GitHub's runners while the tests connect over IPv4. The Playwright web-server command also resets
+GitHub's runners while the tests connect over IPv4. The browser in the Playwright suite still
+visits the server as `http://localhost:4321`, because WebAuthn needs a hostname as the relying
+party and refuses an IP address (`tests/e2e/passkeys.spec.ts`); Chrome and Node fall back to IPv4
+for `localhost` on their own. The Playwright web-server command also resets
 and migrates `.data/e2e.db` before the server starts (Playwright launches the web server before
 `globalSetup`), and the tracked `.data/.gitkeep` keeps that directory present on a fresh checkout.
 The Lighthouse job puts the server behind `scripts/lhci-server.mjs`, a gzip proxy, so the audit

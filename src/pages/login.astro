@@ -1,6 +1,7 @@
 ---
 import AuthForm from '@/components/react/auth/AuthForm';
 import MagicLinkForm from '@/components/react/auth/MagicLinkForm';
+import PasskeyButton from '@/components/react/auth/PasskeyButton';
 import SocialButtons from '@/components/react/auth/SocialButtons';
 import Alert from '@/components/ui/Alert.astro';
 import Divider from '@/components/ui/Divider.astro';
@@ -42,6 +43,9 @@ const ERROR_MESSAGES: Record<string, string> = {
     'That provider account is already connected to another account here.',
   access_denied: 'The provider did not grant access. Try again, or use another way to sign in.',
   user_not_found: 'No account matches that sign-in. Create one first.',
+  // The link that completes an email change only works in a signed-in browser (src/lib/auth.ts).
+  sign_in_to_change_email:
+    'Sign in to finish changing your email address. You are returned to the link afterwards.',
 };
 const linkError = errorCode
   ? (ERROR_MESSAGES[errorCode] ??
@@ -52,7 +56,7 @@ const linkError = errorCode
 // The verification link lands here (it does not sign in, see src/lib/auth.ts).
 const verified = Astro.url.searchParams.get('verified') === '1';
 
-const ways = ['your email and password'];
+const ways = ['your email and password', 'a passkey'];
 if (methods.magicLink) ways.push('a magic link');
 if (methods.social.length > 0) ways.push('a connected account');
 const subheading =
@@ -85,6 +89,8 @@ const nextQuery = redirectTo !== '/dashboard' ? `?next=${encodeURIComponent(redi
       redirectTo={redirectTo}
       passwordReset={methods.passwordReset}
     />
+    <Divider label="or" />
+    <PasskeyButton client:idle redirectTo={redirectTo} />
     {methods.magicLink && (
       <>
         <Divider label="or" />

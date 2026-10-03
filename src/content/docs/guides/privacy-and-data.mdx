@@ -2,7 +2,7 @@
 title: Privacy and data
 description: What personal data the template stores, the self-service export and deletion flows, retention, and the checklist for adapting the legal pages.
 publishedDate: 2026-09-18
-updatedDate: 2026-10-01
+updatedDate: 2026-10-03
 sidebar:
   order: 7
   badge: updated
@@ -20,6 +20,7 @@ must adapt before launch.
 | Password hash / OAuth links                | `account`               | With the user                                                                                                 |
 | Sessions (IP, user agent)                  | `session`               | With the user; expired rows are removed by `db:prune` (the dashboard and the export list live ones only)      |
 | Two-factor secret and backup codes         | `two_factor`            | Encrypted with `BETTER_AUTH_SECRET`; with the user, or when 2FA is turned off or reset by an administrator    |
+| Passkeys (public key, credential id, name) | `passkey`               | With the user, or when the passkey is removed from the dashboard                                              |
 | Contact messages                           | `contact_message`       | Archived ones are pruned; open ones too if a maximum age is set (see below)                                   |
 | Newsletter subscribers                     | `newsletter_subscriber` | Confirmed ones until they unsubscribe; pending and unsubscribed rows pruned after `NEWSLETTER_RETENTION_DAYS` |
 | Throttle counters (keyed hash of IP/email) | `throttle`              | Expire after 15 minutes / 1 hour, pruned by `db:prune`                                                        |
@@ -39,8 +40,11 @@ From the dashboard a signed-in user can:
   `beforeDelete` hook in `src/lib/auth.ts` refuses to remove the last administrator, and
   `afterDelete` removes contact messages from a verified address and records the deletion in
   the audit log.
-- **Change** their password, which signs out other sessions, and their name and avatar
-  (rectification) from the profile form.
+- **Change** their password, which signs out other sessions, their email address (with the
+  password, and through links to the current and the new address where email delivery exists;
+  see [changing the email address](/docs/guides/authentication#changing-the-email-address)), and
+  their name and avatar (rectification) from the profile form.
+- **Add and remove passkeys**; the export lists each one's name, kind and date.
 
 ## Requests from people without an account
 
