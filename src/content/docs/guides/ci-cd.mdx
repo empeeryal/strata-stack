@@ -50,9 +50,13 @@ measures compressed responses the way every deployment serves them.
 - `auditConfig.ignoreGhsas` lists advisories with no upstream fix in build-time tooling that never
   runs on the deployed site: two for `extract-zip` inside the Netlify adapter's development tooling
   (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3), one for the esbuild 0.18 that drizzle-kit's
-  config loader pins (GHSA-67mh-4wv8-2f99, a flaw in esbuild's development server), and one for
-  `node-forge` inside `listhen`, the local HTTPS development server of the same Netlify tooling
-  (GHSA-86w9-cpqp-85rv, an RSA signature verification flaw with no patched release).
+  config loader pins (GHSA-67mh-4wv8-2f99, a flaw in esbuild's development server), two in the
+  same Netlify tooling for `node-forge` inside `listhen`, its local HTTPS development server
+  (GHSA-86w9-cpqp-85rv, an RSA signature verification flaw) and `braces` inside its function
+  bundler's glob matcher (GHSA-vfj7-8cjw-p6xm, stack exhaustion on a crafted pattern), and one
+  for `http-cache-semantics`, the cache policy Astro applies to assets it fetches at build time
+  (GHSA-ch52-4w7c-c8xp, about a shared HTTP cache serving several users, which a build is not).
+  None of these has a patched release.
 
 Review both lists when upgrading dependencies: drop an entry once the package has moved past the
 advisory, and check that a plain `pnpm audit` reports nothing.
