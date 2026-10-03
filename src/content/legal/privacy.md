@@ -30,6 +30,11 @@ updatedDate: 2026-10-03
   message text or passwords.
 - **Server logs.** Our hosting provider records standard request logs (IP address, user agent,
   requested URL) for security and debugging. Logs are retained for a limited time.
+- **Error reports.** If error monitoring is enabled for this deployment and something on the
+  site breaks, a report is sent to our monitoring provider (Sentry) with the error, the page it
+  happened on, the browser and operating system, and the pages and requests just before it. It
+  never contains your account, your address, cookies, form contents or anything typed into a
+  link (query strings are removed), and your IP address is not stored with it.
 
 ## What we do not collect
 
@@ -51,8 +56,9 @@ tabbed code example are stored in your browser's local storage, not sent to us.
 
 Depending on how this deployment is configured, the following providers process data on our
 behalf: the hosting platform (Vercel, Cloudflare, Netlify or our own server), the database
-provider (Turso) and the email provider (Resend) for sign-in links, verification and
-notifications. GitHub or Google only receive data when you choose to sign in with them. When you
+provider (Turso), the email provider (Resend) for sign-in links, verification and
+notifications, and, where enabled, the error monitoring provider (Sentry) for the reports
+described above. GitHub or Google only receive data when you choose to sign in with them. When you
 set or change a password, the first five characters of a hash of it are sent to Have I Been
 Pwned to check whether it appears in a known data breach; the password itself, and nothing that
 identifies you, leaves our server.

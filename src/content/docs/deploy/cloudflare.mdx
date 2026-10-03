@@ -55,6 +55,11 @@ on-demand routes in the workerd runtime.
 }
 ```
 
+[Error monitoring](/docs/guides/monitoring) runs in the browser only on this target: workerd is
+not a Node runtime, so the server-side Sentry SDK is not enabled here. Sentry's
+[Cloudflare guide](https://docs.sentry.io/platforms/javascript/guides/cloudflare/frameworks/astro/)
+describes wrapping the Worker entry with `@sentry/cloudflare` if you want server events.
+
 `nodejs_compat` is required: Better Auth uses `AsyncLocalStorage`, and with a compatibility
 date of 2025-04-01 or later Cloudflare also populates `process.env` from your variables and
 secrets, which is how `src/lib/env.ts` reads configuration. `NODE_ENV=production` turns on the

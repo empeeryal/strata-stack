@@ -4,7 +4,7 @@ description: The Content Security Policy, response headers, CSRF protection, pro
 publishedDate: 2026-09-18
 updatedDate: 2026-09-30
 sidebar:
-  order: 11
+  order: 12
 ---
 
 ## Content Security Policy
@@ -24,6 +24,9 @@ style-src-elem 'self' 'sha256-…'; style-src-attr 'unsafe-inline'
 Two deliberate relaxations:
 
 - `'wasm-unsafe-eval'` allows Pagefind's WebAssembly search index.
+- With [error monitoring](/docs/guides/monitoring) on (`PUBLIC_SENTRY_DSN` set), `connect-src`
+  also names the DSN's origin, so the browser SDK can deliver its reports. The SDK itself is an
+  Astro-processed script and needs no further allowance.
 - `style-src-attr 'unsafe-inline'` allows the `style` attributes Shiki uses for syntax
   highlighting. `<style>` elements remain hash-protected. For a fully strict policy switch
   `markdown.syntaxHighlight` to `'prism'` and remove the attribute source.

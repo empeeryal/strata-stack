@@ -38,6 +38,8 @@ test.describe('security', () => {
     const csp = response.headers()['content-security-policy'];
     expect(csp).toBeDefined();
     expect(csp).toContain("default-src 'self'");
+    // Error monitoring is off in the test build, so nothing but the page's own origin is allowed.
+    expect(csp).toMatch(/connect-src 'self'(;|$)/);
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(csp).toMatch(/'sha256-[A-Za-z0-9+/=]+'/);
