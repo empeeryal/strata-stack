@@ -14,7 +14,8 @@ test.describe('authentication', () => {
     await signUp(page, 'E2E User', email);
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hello, E2E User');
-    await expect(page.getByText(email)).toBeVisible();
+    // The account card; the email card below repeats the address.
+    await expect(page.getByRole('definition').filter({ hasText: email })).toBeVisible();
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/$/);
