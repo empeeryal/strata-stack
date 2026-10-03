@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type APIRequestContext, expect, test, type Page } from '@playwright/test';
 
 import { serverEnv } from '../../playwright.config';
 import { E2E_PASSWORD, fillContactForm, signIn, signUp, submitAccountDeletion } from './helpers';
@@ -28,6 +28,41 @@ function userRow(page: Page, email: string) {
   return page.getByRole('row').filter({ hasText: email });
 }
 
+/**
+ * Puts both fixed accounts back into the state the block starts from: both administrators.
+ * The tests below demote, promote and sign out these accounts; when one of them fails, Playwright
+ * restarts the worker and runs the whole serial block again against the database as the failed
+ * attempt left it. At every point in the block at least one of the two still holds the role, so
+ * that one restores the other through Better Auth's admin endpoints.
+ */
+async function restoreAdminRoles(request: APIRequestContext): Promise<void> {
+  const accounts = [ADMIN_EMAIL, SECOND_ADMIN_EMAIL];
+  for (const email of accounts) {
+    const signedIn = await request.post('/api/auth/sign-in/email', {
+      data: { email, password: E2E_PASSWORD },
+    });
+    if (!signedIn.ok()) continue;
+    const listed = await request.get('/api/auth/admin/list-users', {
+      params: { searchField: 'email', searchOperator: 'contains', searchValue: 'e2e@example.com' },
+    });
+    if (listed.ok()) {
+      const { users } = (await listed.json()) as {
+        users: Array<{ id: string; email: string; role?: string | null }>;
+      };
+      for (const user of users) {
+        if (!accounts.includes(user.email) || /\badmin\b/.test(user.role ?? '')) continue;
+        const promoted = await request.post('/api/auth/admin/set-role', {
+          data: { userId: user.id, role: 'admin' },
+        });
+        expect(promoted.ok()).toBe(true);
+      }
+    }
+    await request.post('/api/auth/sign-out');
+    if (listed.ok()) return;
+  }
+  throw new Error('Neither fixed account holds the admin role; the database needs a reset.');
+}
+
 test.describe('admin area', () => {
   // Unique per run so retries and the parallel contact spec never affect the counts below.
   const sender = `Inbox Tester ${Date.now()}`;
@@ -43,6 +78,7 @@ test.describe('admin area', () => {
       });
       expect([200, 422]).toContain(response.status()); // 422: already exists from a retry
     }
+    await restoreAdminRoles(request);
   });
 
   test('redirects anonymous visitors to the login page', async ({ request, baseURL }) => {

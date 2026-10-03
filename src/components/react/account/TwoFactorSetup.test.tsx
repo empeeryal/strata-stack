@@ -8,10 +8,15 @@ const verifyTotp = vi.fn();
 const generateBackupCodes = vi.fn();
 const disable = vi.fn();
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     twoFactor: {
-      enable: (...a: unknown[]) => enable(...a),
+      enable: (...a: unknown[]) =>
+        connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : enable(...a),
       verifyTotp: (...a: unknown[]) => verifyTotp(...a),
       generateBackupCodes: (...a: unknown[]) => generateBackupCodes(...a),
       disable: (...a: unknown[]) => disable(...a),
@@ -19,6 +24,8 @@ vi.mock('@/lib/auth-client', () => ({
   },
 }));
 vi.mock('qrcode', () => ({ toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,QR') }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import TwoFactorSetup from './TwoFactorSetup';
 
@@ -28,6 +35,7 @@ const totpURI = 'otpauth://totp/Strata:ada%40example.com?secret=JBSWY3DPEHPK3PXP
 describe('<TwoFactorSetup>', () => {
   beforeEach(() => {
     for (const fn of [enable, verifyTotp, generateBackupCodes, disable]) fn.mockReset();
+    connectionLost = false;
     Object.defineProperty(window, 'location', {
       value: { assign: vi.fn() },
       writable: true,
@@ -105,5 +113,17 @@ describe('<TwoFactorSetup>', () => {
     render(<TwoFactorSetup enabled={false} hasPassword={false} />);
     expect(screen.getByText(/needs a password/)).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('explains a dropped connection and keeps the password step open', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<TwoFactorSetup enabled={false} hasPassword />);
+    await user.click(screen.getByRole('button', { name: 'Turn on two-factor authentication' }));
+    await user.type(screen.getByLabelText('Current password'), 'correct-horse-battery');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByLabelText('Current password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 });

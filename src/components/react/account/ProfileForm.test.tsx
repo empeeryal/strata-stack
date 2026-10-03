@@ -3,16 +3,26 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 const updateUser = vi.fn();
 vi.mock('@/lib/auth-client', () => ({
-  authClient: { updateUser: (...a: unknown[]) => updateUser(...a) },
+  authClient: {
+    updateUser: (...a: unknown[]) =>
+      connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : updateUser(...a),
+  },
 }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import ProfileForm from './ProfileForm';
 
 describe('<ProfileForm>', () => {
   beforeEach(() => {
     updateUser.mockReset();
+    connectionLost = false;
     Object.defineProperty(window, 'location', {
       value: { assign: vi.fn() },
       writable: true,
@@ -82,5 +92,15 @@ describe('<ProfileForm>', () => {
     await user.click(screen.getByRole('button', { name: 'Save profile' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('between 2 and 80'));
     expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('explains a dropped connection and stays on the form', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<ProfileForm name="Ada" image={null} />);
+    await user.click(screen.getByRole('button', { name: 'Save profile' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(window.location.assign).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeEnabled();
   });
 });

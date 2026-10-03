@@ -106,7 +106,8 @@ export const NEWSLETTER_LIMITS: {
   perEmail: ThrottleRule;
   site: ThrottleRule;
 } = {
-  perIp: { limit: 5, windowMs: 15 * 60 * 1000 },
+  // Test runs get room for the end-to-end suite's retries, like the contact form's rule.
+  perIp: { limit: process.env.NODE_ENV === 'test' ? 50 : 5, windowMs: 15 * 60 * 1000 },
   perEmail: { limit: 3, windowMs: 60 * 60 * 1000 },
   site: { limit: 120, windowMs: 60 * 60 * 1000 },
 };

@@ -13,13 +13,13 @@ sidebar:
 out the repository and runs the composite action in `.github/actions/setup` (pnpm, Node from
 `.nvmrc`, `pnpm install --frozen-lockfile`) before its own steps:
 
-| Job          | What it runs                                                                    |
-| ------------ | ------------------------------------------------------------------------------- |
-| `quality`    | `pnpm lint`, `pnpm format:check`, `pnpm check`, `pnpm audit --audit-level=high` |
-| `unit`       | `pnpm test:coverage`, failing under the coverage floors, report as an artifact  |
-| `build`      | `pnpm build:<target>` for each of `node`, `vercel`, `netlify` and `cloudflare`  |
-| `e2e`        | `pnpm build:node` then `pnpm test:e2e` with a cached Playwright Chromium        |
-| `lighthouse` | `pnpm lhci` against the Node build: desktop and mobile, three runs, blocking    |
+| Job          | What it runs                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `quality`    | `pnpm lint`, `pnpm format:check`, `pnpm check`, `pnpm audit --audit-level=high`                                            |
+| `unit`       | `pnpm test:coverage`, failing under the coverage floors, report as an artifact                                             |
+| `build`      | `pnpm build:<target>` for each of `node`, `vercel`, `netlify` and `cloudflare`                                             |
+| `e2e`        | `pnpm build:node` then `pnpm test:e2e` with a cached Playwright Chromium; a test that passes only on a retry fails the job |
+| `lighthouse` | `pnpm lhci` against the Node build: desktop and mobile, three runs, blocking                                               |
 
 The matrix is the guarantee behind "deploy anywhere": a dependency that only works on one
 runtime fails the pull request instead of a production deploy.

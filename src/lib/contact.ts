@@ -64,9 +64,13 @@ export class DeliveryInProgressError extends Error {
  */
 export const DELIVERY_LEASE_MS = 2 * 60 * 1000;
 
-/** Per-sender limits; both apply. */
+/**
+ * Per-sender limits; both apply. The end-to-end suite sends every message from one address
+ * (the runner's) and retries a failed block from its first test, so the per-IP rule gets room in
+ * test runs only; the unit tests exercise the mechanism with whatever the limit is.
+ */
 export const CONTACT_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule } = {
-  perIp: { limit: 5, windowMs: 15 * 60 * 1000 },
+  perIp: { limit: process.env.NODE_ENV === 'test' ? 50 : 5, windowMs: 15 * 60 * 1000 },
   perEmail: { limit: 3, windowMs: 60 * 60 * 1000 },
 };
 

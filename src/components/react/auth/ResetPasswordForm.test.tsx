@@ -3,11 +3,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 const resetPassword = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
-  authClient: { resetPassword: (...args: unknown[]) => resetPassword(...args) },
+  authClient: {
+    resetPassword: (...args: unknown[]) =>
+      connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : resetPassword(...args),
+  },
 }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import ResetPasswordForm from './ResetPasswordForm';
 
@@ -18,7 +27,10 @@ async function submit(user: ReturnType<typeof userEvent.setup>, confirm = 'new-p
 }
 
 describe('<ResetPasswordForm>', () => {
-  beforeEach(() => resetPassword.mockReset());
+  beforeEach(() => {
+    resetPassword.mockReset();
+    connectionLost = false;
+  });
 
   it('sets the new password with the token from the link', async () => {
     resetPassword.mockResolvedValue({ data: {}, error: null });
@@ -50,5 +62,15 @@ describe('<ResetPasswordForm>', () => {
     await submit(user);
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid token'));
     expect(screen.getByRole('button', { name: 'Update password' })).toBeEnabled();
+  });
+
+  it('explains a dropped connection and lets the visitor try again', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<ResetPasswordForm token="tok-123" />);
+    await submit(user);
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByRole('button', { name: 'Update password' })).toBeEnabled();
+    expect(screen.queryByText(/Your password has been updated/)).toBeNull();
   });
 });

@@ -5,6 +5,13 @@ import { E2E_PASSWORD, signIn, signUp, submitAccountDeletion, waitForIslands } f
 // Auth requests share one rate-limit bucket (same client IP); run them one at a time.
 test.describe.configure({ mode: 'serial' });
 
+const AVATAR_URL = 'https://github.com/octocat.png';
+/** A 1×1 transparent PNG, enough for an <img> to load. */
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+);
+
 test.describe('account self-service', () => {
   const email = `account-${Date.now()}@example.com`;
 
@@ -133,6 +140,11 @@ test.describe('account self-service', () => {
 
   test('edits the name and avatar from the dashboard', async ({ page }) => {
     const address = `profile-${Date.now()}@example.com`;
+    // The avatar is a link to an image hosted elsewhere; the test answers that request itself so
+    // the suite does not depend on github.com being reachable from the runner.
+    await page.route(AVATAR_URL, (route) =>
+      route.fulfill({ contentType: 'image/png', body: ONE_PIXEL_PNG }),
+    );
     await signUp(page, 'Profile Tester', address);
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hello, Profile Tester');
@@ -141,26 +153,20 @@ test.describe('account self-service', () => {
     await form.scrollIntoViewIfNeeded();
     await waitForIslands(page);
     await form.getByLabel('Name').fill('  Ada   Lovelace ');
-    await form.getByLabel('Avatar image URL').fill('https://github.com/octocat.png');
+    await form.getByLabel('Avatar image URL').fill(AVATAR_URL);
     await form.getByRole('button', { name: 'Save profile' }).click();
 
     await expect(page).toHaveURL(/\/dashboard\?notice=profile-updated$/);
     await expect(page.locator('[data-account-notice]')).toHaveText('Profile updated.');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hello, Ada Lovelace');
-    await expect(page.locator('[data-profile-avatar]')).toHaveAttribute(
-      'src',
-      'https://github.com/octocat.png',
-    );
+    await expect(page.locator('[data-profile-avatar]')).toHaveAttribute('src', AVATAR_URL);
     await expect(page.getByRole('link', { name: 'Ada Lovelace' }).first()).toBeVisible();
 
     // Prerendered pages learn the name and avatar from the session request.
     await page.goto('/about');
     const menu = page.locator('account-menu').first();
     await expect(menu.locator('[data-name]')).toHaveText('Ada Lovelace');
-    await expect(menu.locator('[data-avatar] img')).toHaveAttribute(
-      'src',
-      'https://github.com/octocat.png',
-    );
+    await expect(menu.locator('[data-avatar] img')).toHaveAttribute('src', AVATAR_URL);
 
     // The API enforces the same rules for clients that skip the form.
     const rejected = await page.request.post('/api/auth/update-user', {
@@ -169,10 +175,11 @@ test.describe('account self-service', () => {
     expect(rejected.status()).toBe(400);
     expect((await rejected.json()).message).toContain('https://');
     // A link that no longer loads falls back to the initials.
-    await page.route('https://github.com/octocat.png', (route) => route.abort());
+    await page.unroute(AVATAR_URL);
+    await page.route(AVATAR_URL, (route) => route.abort());
     await page.goto('/dashboard');
     await expect(page.locator('[data-profile-avatar]')).toHaveText('AL');
-    await page.unroute('https://github.com/octocat.png');
+    await page.unroute(AVATAR_URL);
 
     const cleared = await page.request.post('/api/auth/update-user', { data: { image: '' } });
     expect(cleared.status()).toBe(200);

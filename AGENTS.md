@@ -89,7 +89,10 @@ netlify`). Application code must not branch on the platform.
 - **Tests:** keep `tests/e2e` green, including the CSP and axe specs. Coverage floors per file
   group live in `vitest.config.ts`; Lighthouse budgets (desktop and mobile, performance blocking)
   in `lighthouserc.json` and `lighthouserc.mobile.json`. Use `waitForIslands(page)`
-  before interacting with React islands.
+  before interacting with React islands. A test that passes only on a retry fails CI
+  (`failOnFlakyTests`); `admin.spec.ts` is its own Playwright project that runs after the others.
+  In island tests, a mocked request that must fail rejects from a plain function in the
+  `vi.mock()` factory, not from the `vi.fn()` (see the testing guide).
 - **Docs:** update `src/content/docs` and add a changeset (`pnpm changeset`) for user-facing changes.
 
 ## Verification checklist for any change
