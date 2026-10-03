@@ -1,8 +1,8 @@
 ---
 title: Authentication
-description: Better Auth with email and password, GitHub, Google and magic links, verification, password reset, account self-service and how routes are protected.
+description: Better Auth with email and password, passkeys, GitHub, Google and magic links, verification, password reset, email change, account self-service and how routes are protected.
 publishedDate: 2026-09-18
-updatedDate: 2026-10-01
+updatedDate: 2026-10-03
 sidebar:
   order: 3
 ---
@@ -13,26 +13,29 @@ TypeScript auth library. Sessions are stored in your database and exposed to Ast
 
 ## Anatomy
 
-| File                                                      | Role                                                                                              |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `src/lib/auth.ts`                                         | Server instance: providers, plugins, verification, rate limiting                                  |
-| `src/lib/auth-client.ts`                                  | Browser client for React islands (magic link, admin, two-factor)                                  |
-| `src/lib/session.ts`, `profile.ts`, `account.ts`          | Authoritative session lookup, profile validation, own-session revocation                          |
-| `src/lib/email.ts`                                        | Email delivery and its production safety rule                                                     |
-| `src/pages/api/auth/[...all].ts`                          | Catch-all route that mounts the Better Auth handler                                               |
-| `src/middleware.ts`                                       | Verifies production config, resolves the session for on-demand requests                           |
-| `src/db/schema/auth.ts`                                   | Generated Drizzle schema (`pnpm auth:generate`)                                                   |
-| `src/pages/login.astro`, `signup.astro`                   | Sign-in and sign-up pages (server rendered)                                                       |
-| `src/pages/forgot-password.astro`, `reset-password.astro` | Password reset flow                                                                               |
-| `src/pages/dashboard.astro`                               | Protected page with account self-service                                                          |
-| `src/pages/two-factor.astro`                              | Second step of a password sign-in for accounts with a second factor                               |
-| `src/pages/api/account/export.ts`                         | JSON export of the signed-in user's data                                                          |
-| `src/components/react/auth/*`, `react/account/*`          | Forms: sign-in, sign-up, magic link, social, two-factor, reset, verify, profile, sessions, delete |
+| File                                                      | Role                                                                                                                        |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/auth.ts`                                         | Server instance: providers, plugins, verification, rate limiting                                                            |
+| `src/lib/auth-client.ts`                                  | Browser client for React islands (magic link, admin, two-factor, passkeys)                                                  |
+| `src/lib/session.ts`, `profile.ts`, `account.ts`          | Authoritative session lookup, profile validation, own-session revocation                                                    |
+| `src/lib/passkeys.ts`, `email-change.ts`                  | Passkey display items; the claims in an email-change link                                                                   |
+| `src/lib/email.ts`                                        | Email delivery and its production safety rule                                                                               |
+| `src/pages/api/auth/[...all].ts`                          | Catch-all route that mounts the Better Auth handler                                                                         |
+| `src/middleware.ts`                                       | Verifies production config, resolves the session for on-demand requests                                                     |
+| `src/db/schema/auth.ts`                                   | Generated Drizzle schema (`pnpm auth:generate`)                                                                             |
+| `src/pages/login.astro`, `signup.astro`                   | Sign-in and sign-up pages (server rendered)                                                                                 |
+| `src/pages/forgot-password.astro`, `reset-password.astro` | Password reset flow                                                                                                         |
+| `src/pages/dashboard.astro`                               | Protected page with account self-service                                                                                    |
+| `src/pages/two-factor.astro`                              | Second step of a password sign-in for accounts with a second factor                                                         |
+| `src/pages/api/account/export.ts`                         | JSON export of the signed-in user's data                                                                                    |
+| `src/components/react/auth/*`, `react/account/*`          | Forms: sign-in, sign-up, passkey, magic link, social, two-factor, reset, verify, profile, email, passkeys, sessions, delete |
 
 ## Sign-in methods
 
 - **Email and password** is always enabled (12 to 128 characters, checked against known
   breaches, with a show/hide toggle; see [password rules](#password-rules)).
+- **Passkeys** are always enabled. A signed-in user adds one from the dashboard and signs in with
+  it from the login page, with no password and no second step; see [passkeys](#passkeys).
 - **GitHub and Google** are registered automatically when `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`
   or `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` exist. The buttons only render for configured
   providers. Register `https://<your-domain>/api/auth/callback/github` (or `/google`) as the
@@ -130,11 +133,79 @@ What it covers, and what it does not:
 `tests/e2e/two-factor.spec.ts` runs the whole flow with real codes computed from the key the
 setup shows.
 
+## Passkeys
+
+A passkey is a WebAuthn credential: a key pair the device or password manager creates for this
+site alone and unlocks with a fingerprint, face or PIN. Only the public key reaches the server,
+nothing reusable travels over the wire, and a passkey made for `example.com` cannot be used on a
+look-alike domain, so it cannot be phished. Better Auth's
+[passkey plugin](https://better-auth.com/docs/plugins/passkey) (`@better-auth/passkey`) provides
+the endpoints and the `passkey` table; `src/lib/auth.ts` configures it with the site's hostname as
+the relying party (`rpID`), the site name, and the trusted origins as the only origins whose
+assertions are accepted.
+
+- **Adding one.** The **Passkeys** card on the dashboard (`PasskeyList` in
+  `src/components/react/account`, see the [passkey list](/docs/components/passkey-list) page)
+  lists the account's passkeys with the name, the authenticator's maker when it reports one, the
+  date and whether the key is synced, and offers to add, rename and remove them. Adding needs a
+  session younger than a day (Better Auth's `freshSessionMiddleware`); the optional name is
+  applied after the registration, because a name passed to the ceremony would also become the
+  account name the authenticator shows. Adding and removing a passkey are recorded in the audit
+  log (`passkey.add`, `passkey.remove`).
+- **Signing in.** The login page has a **Sign in with a passkey** button (`PasskeyButton` in
+  `src/components/react/auth`), and browsers that support conditional mediation also offer the
+  saved passkeys in the email field's autofill (`autocomplete="email webauthn"`). A passkey is
+  something you have unlocked by something you are or know, so Better Auth treats it as both
+  factors: an account with two-factor authentication is not asked for a code after a passkey. The
+  password, and its second factor, keep working alongside.
+- **Scope.** The relying party is derived from `BETTER_AUTH_URL` (or `SITE_URL`), so passkeys
+  created on the production domain work there and nowhere else. Preview deployments on a
+  different hostname sign in with a password; `localhost` has its own passkeys during
+  development.
+- **Data.** The `passkey` table holds the public key, the credential id, a signature counter,
+  the authenticator's kind and model identifier, the transports and the name; never anything
+  that signs in by itself. The export lists each passkey's name, kind and date, and a deleted
+  account takes its passkeys with it.
+
+`tests/e2e/passkeys.spec.ts` attaches a software authenticator through the Chrome DevTools
+Protocol (`WebAuthn.addVirtualAuthenticator`) and runs the whole flow: add, rename, sign in with
+the passkey alone, refuse a stranger's authenticator, remove.
+
+## Changing the email address
+
+The **Email address** card on the dashboard (`ChangeEmailForm` in
+`src/components/react/account`) submits a new address to Better Auth's `changeEmail` endpoint
+(`user.changeEmail` in `src/lib/auth.ts`). What happens next depends on the deployment and the
+account, and the card says which case applies:
+
+- **Verified address, email delivery configured.** A confirmation link goes to the _current_
+  address first (`sendChangeEmailConfirmation`); opening it sends a verification link to the new
+  address, and opening that one changes the address and marks it verified. A session alone cannot
+  move an account to a mailbox its owner never approved.
+- **Unverified address, email delivery configured.** The verification link goes straight to the
+  new address.
+- **No email delivery.** Nothing can be verified. An unverified account (which is what sign-up
+  produces there) changes its address at once; a verified one is told the change is unavailable.
+
+Two rules apply in every case. A password account confirms the change with its password: Better
+Auth's endpoint does not ask for one, so the form sends it alongside and a `before` hook checks
+it (the endpoint's rate limit of three requests per ten seconds bounds guessing). And the link
+that performs the change only works in a browser that is signed in to the account: Better Auth
+would otherwise create a session for whoever opens it, which is the pattern the
+[verification link](#email-verification) no longer follows. Anyone else is sent to the login
+page and returned to the link afterwards. The first link, to the current address, changes nothing
+and needs no session. A completed change is recorded in the audit log (`account.change_email`,
+with the previous address). The response to the request is the same whether or not the new
+address already belongs to another account, so the form cannot tell; where the change is
+immediate it reads the session afterwards and says when the address could not be used.
+
 ## Account self-service and privacy
 
 The dashboard lets signed-in users:
 
 - turn [two-factor authentication](#two-factor-authentication) on and off;
+- add, rename and remove [passkeys](#passkeys);
+- [change their email address](#changing-the-email-address);
 - edit their name and avatar through the [profile form](/docs/components/profile-form). The
   avatar is a link to an image hosted elsewhere, validated as `https://` on the client and
   again in the `user.update` database hook, and shown in the header, on the dashboard and in
@@ -161,9 +232,9 @@ job.
 
 ## JavaScript is required for the auth forms
 
-Sign-up, sign-in, magic links, the two-factor step and its setup, password reset and change,
-email verification, profile editing and account deletion are React islands that talk to Better
-Auth's client, so they need JavaScript. The
+Sign-up, sign-in, passkeys, magic links, the two-factor step and its setup, password reset and
+change, email verification and change, profile editing and account deletion are React islands
+that talk to Better Auth's client, so they need JavaScript. The
 pages themselves render on the server (title, copy, the links between them), but a visitor
 with scripts disabled cannot submit them. The dashboard's session controls and the admin area
 are forms posting to actions and work without JavaScript; the session list adds an island on
@@ -218,6 +289,8 @@ preserved across the sign-in and sign-up pages.
 import { authClient } from '@/lib/auth-client';
 
 await authClient.signIn.email({ email, password, callbackURL: '/dashboard' });
+await authClient.signIn.passkey();
+await authClient.passkey.addPasskey();
 await authClient.signIn.social({ provider: 'github', callbackURL: '/dashboard' });
 await authClient.signIn.magicLink({ email, callbackURL: '/dashboard' });
 await authClient.requestPasswordReset({ email, redirectTo: '/reset-password' });
@@ -267,8 +340,8 @@ Better Auth additionally checks `trustedOrigins`, which are derived from `BETTER
 
 ## Adding plugins
 
-Better Auth ships plugins for organisations, passkeys, API keys and more (two-factor
-authentication, magic links and the admin plugin are already in). Add the plugin to
+Better Auth ships plugins for organisations, API keys and more (two-factor authentication,
+passkeys, magic links and the admin plugin are already in). Add the plugin to
 `src/lib/auth.ts`, its client counterpart to `src/lib/auth-client.ts`, then
 regenerate and migrate the schema:
 

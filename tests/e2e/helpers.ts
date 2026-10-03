@@ -69,7 +69,7 @@ export async function signIn(page: Page, email: string, password = E2E_PASSWORD)
   await waitForIslands(page);
   await page.getByLabel('Email').first().fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 }
 
 /** Opens and submits the delete-account form on the dashboard; returns the form for assertions. */

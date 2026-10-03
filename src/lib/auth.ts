@@ -1,4 +1,5 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { passkey } from '@better-auth/passkey';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, haveIBeenPwned, magicLink, twoFactor } from 'better-auth/plugins';
@@ -8,8 +9,15 @@ import { db } from '../db/client';
 import * as schema from '../db/schema/index';
 import { siteConfig } from '../site.config';
 
-import { forgetTrustedDevices, LAST_ADMIN_MESSAGE, notLastActiveAdmin, recordAudit } from './admin';
+import {
+  type AuditAction,
+  forgetTrustedDevices,
+  LAST_ADMIN_MESSAGE,
+  notLastActiveAdmin,
+  recordAudit,
+} from './admin';
 import { isEmailConfigured, sendEmail } from './email';
+import { appliesEmailChange, readEmailChangeToken } from './email-change';
 import { getAdminEmails, getEnv, getSiteUrl, getTrustedOrigins } from './env';
 import { normaliseName, ProfileValidationError, validateProfileUpdate } from './profile';
 
@@ -19,12 +27,23 @@ const googleId = getEnv('GOOGLE_CLIENT_ID');
 const googleSecret = getEnv('GOOGLE_CLIENT_SECRET');
 const emailConfigured = isEmailConfigured();
 const adminEmails = getAdminEmails();
+const siteUrl = getSiteUrl();
 
 /** Sends without awaiting so response timing never reveals whether an address exists. */
 function sendInBackground(message: Parameters<typeof sendEmail>[0], what: string): void {
   void sendEmail(message).catch((error: unknown) => {
     console.error(`[auth] could not send ${what}`, error);
   });
+}
+
+/** The password account of a user, if they have one (social-only accounts have none). */
+async function credentialAccount(userId: string) {
+  const [credential] = await db
+    .select({ id: schema.account.id, password: schema.account.password })
+    .from(schema.account)
+    .where(and(eq(schema.account.userId, userId), eq(schema.account.providerId, 'credential')))
+    .limit(1);
+  return credential;
 }
 
 /**
@@ -42,7 +61,7 @@ function sendInBackground(message: Parameters<typeof sendEmail>[0], what: string
  */
 export const auth = betterAuth({
   appName: siteConfig.name,
-  baseURL: getSiteUrl(),
+  baseURL: siteUrl,
   secret: getEnv('BETTER_AUTH_SECRET'),
   trustedOrigins: getTrustedOrigins(),
 
@@ -94,20 +113,68 @@ export const auth = betterAuth({
     // nothing would look wrong. They sign in with the password instead, and if they do not
     // have one the reset flow makes the account theirs and revokes every other session.
     autoSignInAfterVerification: false,
-    sendVerificationEmail: async ({ user, url }) => {
+    sendVerificationEmail: async ({ user, url, token }) => {
+      // The same handler verifies a new account's address and the new address of an existing
+      // account (user.changeEmail below). The second case needs its own words: the recipient
+      // may not have an account here, and the link gives whoever opens it a session on one.
+      const change = readEmailChangeToken(token);
       sendInBackground(
-        {
-          to: user.email,
-          subject: `Verify your email for ${siteConfig.name}`,
-          text: `Confirm your email address by opening this link:\n\n${url}\n\nIf you did not create an account, you can ignore this email.`,
-          html: `<p>Confirm your email address for <strong>${siteConfig.name}</strong>:</p><p><a href="${url}">${url}</a></p><p>If you did not create an account, you can ignore this email.</p>`,
-        },
+        change
+          ? {
+              to: user.email,
+              subject: `Confirm your new email address for ${siteConfig.name}`,
+              text: `The ${siteConfig.name} account registered as ${change.email} asked to use this address instead. Open this link in the browser where you are signed in to confirm the change:\n\n${url}\n\nIf you did not ask for this, ignore this email; nothing changes.`,
+              html: `<p>The <strong>${siteConfig.name}</strong> account registered as ${change.email} asked to use this address instead. Open this link in the browser where you are signed in to confirm the change:</p><p><a href="${url}">${url}</a></p><p>If you did not ask for this, ignore this email; nothing changes.</p>`,
+            }
+          : {
+              to: user.email,
+              subject: `Verify your email for ${siteConfig.name}`,
+              text: `Confirm your email address by opening this link:\n\n${url}\n\nIf you did not create an account, you can ignore this email.`,
+              html: `<p>Confirm your email address for <strong>${siteConfig.name}</strong>:</p><p><a href="${url}">${url}</a></p><p>If you did not create an account, you can ignore this email.</p>`,
+            },
         'verification email',
       );
+    },
+    // The link to the new address is the step that changes it; record that it happened. A plain
+    // verification carries no change claim and is not an account change.
+    afterEmailVerification: async (user, request) => {
+      if (!request) return;
+      const change = readEmailChangeToken(new URL(request.url).searchParams.get('token'));
+      if (!change || !appliesEmailChange(change)) return;
+      if (change.updateTo.toLowerCase() !== user.email.toLowerCase()) return;
+      await recordAudit(db, {
+        actorId: user.id,
+        actorEmail: user.email,
+        action: 'account.change_email',
+        targetType: 'user',
+        targetId: user.id,
+        details: { previousEmail: change.email },
+      });
     },
   },
 
   user: {
+    changeEmail: {
+      enabled: true,
+      // A verified address is changed in two steps: a confirmation link to the current address,
+      // then a verification link to the new one, so a session alone cannot move an account to
+      // a mailbox its owner never approved. Password accounts additionally confirm with the
+      // password (a `before` hook below). Without email delivery nothing can be verified; such a
+      // deployment does not verify sign-ups either, so an unverified account changes its address
+      // directly, and the dashboard tells verified accounts that the change is unavailable.
+      updateEmailWithoutVerification: !emailConfigured,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        sendInBackground(
+          {
+            to: user.email,
+            subject: `Confirm the email change for your ${siteConfig.name} account`,
+            text: `You asked to change the email address of your ${siteConfig.name} account to ${newEmail}. Open this link to confirm; a verification link is then sent to the new address:\n\n${url}\n\nIf you did not ask for this, do not open the link and change your password: someone else may have access to your account.`,
+            html: `<p>You asked to change the email address of your <strong>${siteConfig.name}</strong> account to <strong>${newEmail}</strong>. Open this link to confirm; a verification link is then sent to the new address:</p><p><a href="${url}">${url}</a></p><p>If you did not ask for this, do not open the link and change your password: someone else may have access to your account.</p>`,
+          },
+          'email change confirmation',
+        );
+      },
+    },
     deleteUser: {
       enabled: true,
       // The last administrator cannot delete their own account: the site would be left
@@ -146,48 +213,81 @@ export const auth = betterAuth({
   },
 
   hooks: {
-    // Deleting a password account always needs the password. Better Auth accepts a deletion
-    // without one from any session younger than a day; for an account that has a password
-    // that is a stolen cookie or an unattended browser away from erasing everything.
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== '/delete-user') return;
-      const body = (ctx.body ?? {}) as { password?: unknown; token?: unknown };
-      if (body.password || body.token) return;
-      const session = await getSessionFromCtx(ctx);
-      if (!session) return;
-      const [credential] = await db
-        .select({ id: schema.account.id })
-        .from(schema.account)
-        .where(
-          and(
-            eq(schema.account.userId, session.user.id),
-            eq(schema.account.providerId, 'credential'),
-          ),
-        )
-        .limit(1);
-      if (credential) {
-        throw new APIError('BAD_REQUEST', {
-          message: 'Enter your password to delete the account.',
-        });
+      switch (ctx.path) {
+        case '/delete-user': {
+          // Deleting a password account always needs the password. Better Auth accepts a
+          // deletion without one from any session younger than a day; for an account that has
+          // a password that is a stolen cookie or an unattended browser away from erasing
+          // everything.
+          const body = (ctx.body ?? {}) as { password?: unknown; token?: unknown };
+          if (body.password || body.token) return;
+          const session = await getSessionFromCtx(ctx);
+          if (!session) return;
+          if (await credentialAccount(session.user.id)) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Enter your password to delete the account.',
+            });
+          }
+          return;
+        }
+        case '/change-email': {
+          // The address is where password resets and sign-in links go, so for a password
+          // account the change needs the password, not only a session. Better Auth's own
+          // endpoint does not ask for one; the field travels in the body alongside the request
+          // and is checked here before the endpoint runs. The endpoint's rate limit (three
+          // requests per ten seconds) bounds guessing.
+          const session = await getSessionFromCtx(ctx);
+          if (!session) return;
+          const credential = await credentialAccount(session.user.id);
+          if (!credential?.password) return;
+          const { password } = (ctx.body ?? {}) as { password?: unknown };
+          if (typeof password !== 'string' || !password) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Enter your password to change the email address.',
+            });
+          }
+          const valid = await ctx.context.password.verify({ hash: credential.password, password });
+          if (!valid) throw new APIError('BAD_REQUEST', { message: 'Invalid password' });
+          return;
+        }
+        case '/verify-email': {
+          // The link that completes an email change would sign in whoever opens it. It is
+          // meant for the account's owner, who requested the change a moment ago, so it only
+          // works in a browser that is signed in to that account; anyone else is sent to the
+          // login page and returned to the link afterwards. The first link, to the current
+          // address, changes nothing and needs no session.
+          const { token } = (ctx.query ?? {}) as { token?: unknown };
+          const change = readEmailChangeToken(token);
+          if (!change || !appliesEmailChange(change)) return;
+          if (await getSessionFromCtx(ctx)) return;
+          const target = ctx.request ? new URL(ctx.request.url) : null;
+          const next = target ? `${target.pathname}${target.search}` : '/dashboard';
+          throw ctx.redirect(
+            `/login?error=sign_in_to_change_email&next=${encodeURIComponent(next)}`,
+          );
+        }
+        default:
+          return;
       }
     }),
-    // Two-factor changes are privacy-relevant: record who turned it on (the first code
-    // verified while signed in completes the setup), regenerated the backup codes or turned
-    // it off. Best-effort, like the other Better Auth operations.
+    // Account changes that matter for privacy and recovery are recorded: who turned two-factor
+    // authentication on (the first code verified while signed in completes the setup),
+    // regenerated the backup codes or turned it off, added or removed a passkey, changed the
+    // address. Best-effort, like the other Better Auth operations.
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.context.returned instanceof APIError) return;
       const user = ctx.context.session?.user as
         { id: string; email: string; twoFactorEnabled?: boolean | null } | undefined;
       if (!user) return;
-      const record = (
-        action: 'two_factor.enable' | 'two_factor.disable' | 'two_factor.backup_codes',
-      ) =>
+      const record = (action: AuditAction, details?: unknown) =>
         recordAudit(db, {
           actorId: user.id,
           actorEmail: user.email,
           action,
           targetType: 'user',
           targetId: user.id,
+          details,
         });
       switch (ctx.path) {
         case '/two-factor/verify-totp':
@@ -210,6 +310,34 @@ export const auth = betterAuth({
           // skipping the second factor for thirty days, however often the password changes.
           await forgetTrustedDevices(db, user.id);
           return;
+        case '/passkey/verify-registration':
+          await record('passkey.add');
+          return;
+        case '/passkey/delete-passkey':
+          await record('passkey.remove');
+          return;
+        case '/change-email': {
+          // Without email delivery an unverified account changes its address right away; the
+          // verified flows are recorded when the link to the new address is opened
+          // (afterEmailVerification above). The response is the same either way, so the row
+          // tells which happened.
+          const [row] = await db
+            .select({ email: schema.user.email })
+            .from(schema.user)
+            .where(eq(schema.user.id, user.id))
+            .limit(1);
+          if (row && row.email !== user.email) {
+            await recordAudit(db, {
+              actorId: user.id,
+              actorEmail: row.email,
+              action: 'account.change_email',
+              targetType: 'user',
+              targetId: user.id,
+              details: { previousEmail: user.email },
+            });
+          }
+          return;
+        }
         default:
           return;
       }
@@ -278,6 +406,15 @@ export const auth = betterAuth({
       },
     }),
     admin(),
+    // Passkeys (WebAuthn). The relying party is the site's hostname, so a passkey created on the
+    // production domain works there and nowhere else (preview deployments sign in with a
+    // password). Verification accepts the trusted origins only, not whatever Origin header the
+    // request carries.
+    passkey({
+      rpID: new URL(siteUrl).hostname,
+      rpName: siteConfig.name,
+      origin: getTrustedOrigins(),
+    }),
     // Refuses a new password that appears in Have I Been Pwned's breach corpus, at sign-up,
     // password change and reset. Only the first five characters of the password's SHA-1 hash
     // leave the server (k-anonymity range query). The check fails closed: if the service cannot

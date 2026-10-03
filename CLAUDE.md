@@ -36,7 +36,10 @@ netlify`). Application code must not branch on the platform.
   come from folder names and `src/lib/docs.ts`.
 - Auth: `src/lib/auth.ts` (Better Auth, `better-auth/minimal` + Drizzle adapter), session in
   `Astro.locals` via `src/middleware.ts`. Protect pages inside the page, not by pathname in
-  middleware.
+  middleware. Passkeys come from `@better-auth/passkey` (pinned to the `better-auth` version;
+  `rpID` is the site hostname). Email change uses Better Auth's `changeEmail`; the `before` hook
+  requires the password for credential accounts and a signed-in browser for the link that
+  applies the change (`src/lib/email-change.ts` reads the token's claim).
 - DB: `src/db/client.ts` (libSQL + Drizzle) connects with `getDatabaseConfig()` from
   `src/lib/env.ts`, which reads `DATABASE_URL`/`DATABASE_AUTH_TOKEN` or the `TURSO_*` names.
   `src/db/schema/auth.ts` is generated; edit `src/db/schema/app.ts` for your own tables, then

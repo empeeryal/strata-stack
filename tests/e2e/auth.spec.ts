@@ -14,7 +14,8 @@ test.describe('authentication', () => {
     await signUp(page, 'E2E User', email);
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hello, E2E User');
-    await expect(page.getByText(email)).toBeVisible();
+    // The account card; the email card below repeats the address.
+    await expect(page.getByRole('definition').filter({ hasText: email })).toBeVisible();
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/$/);
@@ -25,7 +26,7 @@ test.describe('authentication', () => {
     await waitForIslands(page);
     await page.getByLabel('Email').first().fill(email);
     await page.getByLabel('Password', { exact: true }).fill(E2E_PASSWORD);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
@@ -34,7 +35,7 @@ test.describe('authentication', () => {
     await waitForIslands(page);
     await page.getByLabel('Email').first().fill('nobody@example.com');
     await page.getByLabel('Password', { exact: true }).fill('definitely-wrong');
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(/invalid email or password/i);
     await expect(page).toHaveURL(/\/login$/);
   });

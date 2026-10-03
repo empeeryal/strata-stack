@@ -22,23 +22,26 @@ Every event the site can send is declared once, in `src/lib/analytics.ts`, as a 
 from the event name to the properties it carries. The dashboard therefore shows a fixed, readable
 set of names instead of near-duplicates, and a typo in a component is a compile error.
 
-| Event                    | Properties                       | Sent when                                                         |
-| ------------------------ | -------------------------------- | ----------------------------------------------------------------- |
-| `Newsletter subscribed`  | `source` (footer, blog, page, …) | The newsletter form was accepted (every outcome looks the same)   |
-| `Contact message sent`   |                                  | The contact form stored a message                                 |
-| `Signed up`              | `method`                         | An account was created with a password                            |
-| `Signed in`              | `method`, `twoFactor`            | A password sign-in completed, with or without the second factor   |
-| `Magic link requested`   |                                  | A sign-in link was emailed                                        |
-| `Social sign-in started` | `provider`                       | The browser left for GitHub or Google                             |
-| `Signed out`             |                                  | The sign-out button ended the session                             |
-| `Two-factor enabled`     |                                  | The first authenticator code was confirmed                        |
-| `Two-factor disabled`    |                                  | The factor was turned off from the dashboard                      |
-| `Account deleted`        |                                  | A visitor deleted their own account                               |
-| `Palette item selected`  | `kind`, `target`                 | A page, search result or action was chosen in the command palette |
-| `Code copied`            |                                  | A code block's copy button was used                               |
-| `Theme changed`          | `theme`                          | The theme toggle switched to light or dark                        |
-| `Deploy target viewed`   | `target`                         | A tab of the deploy-target widget on the home page was opened     |
-| `Repository opened`      |                                  | The repository link in the header was followed                    |
+| Event                    | Properties                       | Sent when                                                                        |
+| ------------------------ | -------------------------------- | -------------------------------------------------------------------------------- |
+| `Newsletter subscribed`  | `source` (footer, blog, page, …) | The newsletter form was accepted (every outcome looks the same)                  |
+| `Contact message sent`   |                                  | The contact form stored a message                                                |
+| `Signed up`              | `method`                         | An account was created with a password                                           |
+| `Signed in`              | `method`, `twoFactor`            | A sign-in completed: a password (with or without the second factor) or a passkey |
+| `Magic link requested`   |                                  | A sign-in link was emailed                                                       |
+| `Social sign-in started` | `provider`                       | The browser left for GitHub or Google                                            |
+| `Signed out`             |                                  | The sign-out button ended the session                                            |
+| `Two-factor enabled`     |                                  | The first authenticator code was confirmed                                       |
+| `Two-factor disabled`    |                                  | The factor was turned off from the dashboard                                     |
+| `Passkey added`          |                                  | A passkey was created from the dashboard                                         |
+| `Passkey removed`        |                                  | A passkey was removed from the dashboard                                         |
+| `Email change requested` |                                  | A new address was submitted (the change may still wait for a link)               |
+| `Account deleted`        |                                  | A visitor deleted their own account                                              |
+| `Palette item selected`  | `kind`, `target`                 | A page, search result or action was chosen in the command palette                |
+| `Code copied`            |                                  | A code block's copy button was used                                              |
+| `Theme changed`          | `theme`                          | The theme toggle switched to light or dark                                       |
+| `Deploy target viewed`   | `target`                         | A tab of the deploy-target widget on the home page was opened                    |
+| `Repository opened`      |                                  | The repository link in the header was followed                                   |
 
 Events are recorded on the success path of an interaction, after the server has answered, so a
 refused form or a failed sign-in is not counted. None of the properties identifies a person: they
@@ -78,10 +81,12 @@ pass an email address, a name, an id or free text a visitor typed.
 ## Where the calls live
 
 - `NewsletterForm.tsx`, `ContactForm.tsx`: after the action answers without an error.
-- `AuthForm.tsx`, `MagicLinkForm.tsx`, `SocialButtons.tsx`, `SignOutButton.tsx`,
-  `TwoFactorForm.tsx`: the sign-up, sign-in and sign-out paths. A password sign-in that needs the
-  second factor is counted when `TwoFactorForm` completes it, not when the password is accepted.
-- `TwoFactorSetup.tsx`, `DeleteAccountForm.tsx`: the dashboard's account actions.
+- `AuthForm.tsx`, `PasskeyButton.tsx`, `MagicLinkForm.tsx`, `SocialButtons.tsx`,
+  `SignOutButton.tsx`, `TwoFactorForm.tsx`: the sign-up, sign-in and sign-out paths. A password
+  sign-in that needs the second factor is counted when `TwoFactorForm` completes it, not when the
+  password is accepted.
+- `TwoFactorSetup.tsx`, `PasskeyList.tsx`, `ChangeEmailForm.tsx`, `DeleteAccountForm.tsx`: the
+  dashboard's account actions.
 - `CommandPalette.tsx`, `DeployTargets.tsx`: the interactive islands on every page and the home
   page.
 - `ThemeToggle.astro`, `GitHubLink.astro`, `copy-code.ts`: the processed scripts behind the

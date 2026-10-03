@@ -3,8 +3,10 @@ import { actions } from 'astro:actions';
 import { Icon } from 'astro-icon/components';
 import { and, desc, eq, gt } from 'drizzle-orm';
 
+import ChangeEmailForm, { type EmailChangeMode } from '@/components/react/account/ChangeEmailForm';
 import ChangePasswordForm from '@/components/react/account/ChangePasswordForm';
 import DeleteAccountForm from '@/components/react/account/DeleteAccountForm';
+import PasskeyList from '@/components/react/account/PasskeyList';
 import ProfileForm from '@/components/react/account/ProfileForm';
 import SessionList, { type SessionItem } from '@/components/react/account/SessionList';
 import TwoFactorSetup from '@/components/react/account/TwoFactorSetup';
@@ -23,6 +25,7 @@ import { accountNoticeMessage } from '@/lib/account-page';
 import { isAdmin } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { isEmailConfigured } from '@/lib/email';
+import { toPasskeyItem } from '@/lib/passkeys';
 import { getAuthoritativeSession } from '@/lib/session';
 import { formatDate, toISODate } from '@/lib/utils';
 
@@ -58,10 +61,15 @@ if (completed) {
   return Astro.redirect(`/dashboard${data?.notice ? `?notice=${data.notice}` : ''}`);
 }
 const actionError = results.find((result) => result?.error)?.error?.message ?? null;
-const notice = accountNoticeMessage(Astro.url.searchParams.get('notice'));
+// An email-change link that failed lands here with Better Auth's error code.
+const linkError = Astro.url.searchParams.get('error')
+  ? 'That link is invalid or has expired. Request the change again below.'
+  : null;
+const notice = linkError ? null : accountNoticeMessage(Astro.url.searchParams.get('notice'));
 
-const [accounts, sessions] = await Promise.all([
+const [accounts, passkeyRows, sessions] = await Promise.all([
   auth.api.listUserAccounts({ headers: Astro.request.headers }),
+  auth.api.listPasskeys({ headers: Astro.request.headers }),
   // Better Auth deletes an expired session only when its own cookie comes back, so the table
   // keeps rows that can no longer sign anyone in; the list shows the live ones.
   db
@@ -71,6 +79,7 @@ const [accounts, sessions] = await Promise.all([
     .orderBy(desc(sessionTable.updatedAt)),
 ]);
 const hasPassword = accounts.some((account) => account.providerId === 'credential');
+const passkeys = passkeyRows.map(toPasskeyItem);
 const sessionItems: SessionItem[] = sessions.map((entry) => ({
   id: entry.id,
   label: describeUserAgent(entry.userAgent),
@@ -82,9 +91,21 @@ const sessionItems: SessionItem[] = sessions.map((entry) => ({
   current: entry.id === session.id,
 }));
 const signInMethods =
-  accounts.map((account) => PROVIDER_LABELS[account.providerId] ?? account.providerId).join(', ') ||
-  'Magic link';
+  [
+    ...accounts.map((account) => PROVIDER_LABELS[account.providerId] ?? account.providerId),
+    ...(passkeys.length > 0 ? ['Passkey'] : []),
+  ].join(', ') || 'Magic link';
 const emailConfigured = isEmailConfigured();
+// How an email change takes effect here (see ChangeEmailForm): with email delivery a verified
+// address confirms from the old inbox and verifies the new one; without it nothing can be
+// verified, so an unverified account changes directly and a verified one cannot change at all.
+const emailChangeMode: EmailChangeMode = emailConfigured
+  ? user.emailVerified
+    ? 'confirm'
+    : 'verify'
+  : user.emailVerified
+    ? 'unavailable'
+    : 'immediate';
 ---
 
 <BaseLayout
@@ -119,9 +140,9 @@ const emailConfigured = isEmailConfigured();
       {notice}
     </Alert>
   )}
-  {actionError && (
+  {(actionError || linkError) && (
     <Alert class="mt-6" data-account-notice>
-      {actionError}
+      {actionError ?? linkError}
     </Alert>
   )}
 
@@ -212,6 +233,22 @@ const emailConfigured = isEmailConfigured();
     <ProfileForm client:visible name={user.name} image={user.image ?? null} />
   </Card>
 
+  <Card class="mt-6">
+    <h2 class="flex items-center gap-2 font-semibold">
+      <Icon name="lucide:mail" class="size-4 text-primary" aria-hidden="true" />
+      Email address
+    </h2>
+    <p class="mt-2 mb-4 text-sm text-pretty text-muted-foreground">
+      Sign-in links, password resets and notifications go to <strong>{user.email}</strong>.
+    </p>
+    <ChangeEmailForm
+      client:visible
+      email={user.email}
+      hasPassword={hasPassword}
+      mode={emailChangeMode}
+    />
+  </Card>
+
   {hasPassword && (
     <Card class="mt-6">
       <h2 class="flex items-center gap-2 font-semibold">
@@ -224,6 +261,19 @@ const emailConfigured = isEmailConfigured();
       <ChangePasswordForm client:visible />
     </Card>
   )}
+
+  <Card class="mt-6">
+    <h2 class="flex items-center gap-2 font-semibold">
+      <Icon name="lucide:fingerprint" class="size-4 text-primary" aria-hidden="true" />
+      Passkeys
+    </h2>
+    <p class="mt-2 mb-4 text-sm text-pretty text-muted-foreground">
+      Sign in with your fingerprint, face or device PIN instead of a password. A passkey only works
+      on this site, so it cannot be phished, and it counts as both factors: no code is asked after
+      it.
+    </p>
+    <PasskeyList client:visible passkeys={passkeys} />
+  </Card>
 
   <Card class="mt-6">
     <h2 class="flex items-center gap-2 font-semibold">
