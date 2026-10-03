@@ -3,14 +3,23 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 const deleteUser = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
-  authClient: { deleteUser: (...args: unknown[]) => deleteUser(...args) },
+  authClient: {
+    deleteUser: (...args: unknown[]) =>
+      connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : deleteUser(...args),
+  },
 }));
 
 const trackEvent = vi.fn();
 vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import DeleteAccountForm from './DeleteAccountForm';
 
@@ -18,6 +27,7 @@ describe('<DeleteAccountForm>', () => {
   beforeEach(() => {
     deleteUser.mockReset();
     trackEvent.mockReset();
+    connectionLost = false;
     vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
   });
 
@@ -83,5 +93,19 @@ describe('<DeleteAccountForm>', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Session is not fresh'),
     );
     expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('explains a dropped connection and keeps the account', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<DeleteAccountForm hasPassword />);
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }));
+    await user.type(screen.getByLabelText('Current password'), 'my-passphrase-2026');
+    await user.type(screen.getByLabelText('Type DELETE to confirm'), 'DELETE');
+    await user.click(screen.getByRole('button', { name: 'Permanently delete account' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(window.location.assign).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Permanently delete account' })).toBeEnabled();
   });
 });

@@ -5,12 +5,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const subscribe = vi.fn();
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 vi.mock('astro:actions', () => ({
   actions: {
     newsletter: {
-      subscribe: Object.assign((...args: unknown[]) => subscribe(...args), {
-        queryString: '?_action=newsletter.subscribe',
-      }),
+      subscribe: Object.assign(
+        (...args: unknown[]) =>
+          connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : subscribe(...args),
+        {
+          queryString: '?_action=newsletter.subscribe',
+        },
+      ),
     },
   },
   isInputError: (error: unknown) =>
@@ -19,6 +27,8 @@ vi.mock('astro:actions', () => ({
 
 const trackEvent = vi.fn();
 vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
+import { UNEXPECTED_ERROR } from './primitives';
 
 import NewsletterForm, { SUBSCRIBED_MESSAGE } from './NewsletterForm';
 
@@ -32,6 +42,7 @@ describe('<NewsletterForm>', () => {
   beforeEach(() => {
     subscribe.mockReset();
     trackEvent.mockReset();
+    connectionLost = false;
   });
 
   it('posts to the newsletter page without JavaScript and carries the source', () => {
@@ -79,5 +90,14 @@ describe('<NewsletterForm>', () => {
     await submit();
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Too many requests'));
     expect(screen.getByRole('button', { name: 'Subscribe' })).toBeEnabled();
+  });
+
+  it('explains a dropped connection and keeps the form', async () => {
+    connectionLost = true;
+    render(<NewsletterForm />);
+    await submit();
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByRole('form', { name: 'Subscribe to the newsletter' })).toBeInTheDocument();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });

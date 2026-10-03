@@ -6,18 +6,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const revokeSession = vi.fn();
 const revokeOtherSessions = vi.fn();
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 vi.mock('astro:actions', () => ({
   actions: {
     account: {
-      revokeSession: Object.assign((...args: unknown[]) => revokeSession(...args), {
-        queryString: '?_action=account.revokeSession',
-      }),
+      revokeSession: Object.assign(
+        (...args: unknown[]) =>
+          connectionLost
+            ? Promise.reject(new TypeError('Failed to fetch'))
+            : revokeSession(...args),
+        {
+          queryString: '?_action=account.revokeSession',
+        },
+      ),
       revokeOtherSessions: Object.assign((...args: unknown[]) => revokeOtherSessions(...args), {
         queryString: '?_action=account.revokeOtherSessions',
       }),
     },
   },
 }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import SessionList, { type SessionItem } from './SessionList';
 
@@ -36,6 +48,7 @@ describe('<SessionList>', () => {
   beforeEach(() => {
     revokeSession.mockReset();
     revokeOtherSessions.mockReset();
+    connectionLost = false;
   });
 
   it('renders the sessions as forms that post to the actions without JavaScript', () => {
@@ -90,5 +103,15 @@ describe('<SessionList>', () => {
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('no longer exists'));
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('explains a dropped connection and keeps every row', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<SessionList sessions={[session('me', true), session('a')]} />);
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled();
   });
 });

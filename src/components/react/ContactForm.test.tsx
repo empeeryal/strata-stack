@@ -5,14 +5,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const contact = vi.fn();
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 vi.mock('astro:actions', () => ({
-  actions: { contact: (...args: unknown[]) => contact(...args) },
+  actions: {
+    contact: (...args: unknown[]) =>
+      connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : contact(...args),
+  },
   isInputError: (error: unknown) =>
     Boolean(error && typeof error === 'object' && 'fields' in error),
 }));
 
 const trackEvent = vi.fn();
 vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
+import { UNEXPECTED_ERROR } from './primitives';
 
 import ContactForm from './ContactForm';
 
@@ -28,6 +37,7 @@ describe('<ContactForm>', () => {
   beforeEach(() => {
     contact.mockReset();
     trackEvent.mockReset();
+    connectionLost = false;
   });
 
   it('shows a success message after submitting', async () => {
@@ -50,5 +60,15 @@ describe('<ContactForm>', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     expect(screen.getByText('Please enter a valid email address.')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('explains a dropped connection and keeps the message in the form', async () => {
+    connectionLost = true;
+    render(<ContactForm />);
+    await fillAndSubmit();
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByLabelText('Message')).toHaveValue('Hello there, this is a message.');
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@
 title: Testing
 description: Unit and component tests with Vitest, end-to-end tests with Playwright, accessibility checks with axe and Lighthouse budgets.
 publishedDate: 2026-09-18
-updatedDate: 2026-10-01
+updatedDate: 2026-10-03
 sidebar:
   order: 12
 ---
@@ -46,6 +46,24 @@ Three styles are used in the template:
   `// @vitest-environment happy-dom`. Virtual modules such as `astro:actions` and the auth client
   are mocked with `vi.mock()`.
 
+Every island that talks to the server has a test for the answer it gives when the request itself
+fails (a dropped connection, not an error response): the generic message, the form kept as it
+was, no analytics event. The mock for that case rejects from a plain function inside the
+`vi.mock()` factory, switched by a flag the test sets:
+
+```ts
+let connectionLost = false;
+vi.mock('@/lib/auth-client', () => ({
+  authClient: {
+    signOut: (...args: unknown[]) =>
+      connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : signOut(...args),
+  },
+}));
+```
+
+A rejection produced by the `vi.fn()` itself (`mockRejectedValue`) can be reported by Vitest as an
+error of the test even though the component catches it; a plain function keeps the two apart.
+
 ## End-to-end tests (Playwright)
 
 The e2e suite runs against the production build of the Node target with an isolated SQLite
@@ -69,6 +87,32 @@ output, the design-system components, security headers, CSP violations and acces
   Interactive React islands hydrate asynchronously. Use the `waitForIslands(page)` helper before
   clicking into a `client:visible` or `client:load` component to avoid flaky tests.
 </Callout>
+
+### Keeping the suite trustworthy
+
+- **A flaky test fails the run.** CI retries a failed test twice, for the trace the first retry
+  records, but `failOnFlakyTests` turns a test that passes only on a retry into a failed run.
+  Flakiness is fixed where it starts rather than averaged away; locally there are no retries.
+- **Serial blocks survive a retry.** Specs that build on earlier steps (two-factor setup,
+  passkeys, the email change, the admin area) run as serial blocks. Playwright restarts the worker
+  after a failure and runs the whole block again, so module-level addresses built from
+  `Date.now()` are fresh on every attempt. The admin spec, whose two accounts come from
+  `ADMIN_EMAILS` and are demoted, promoted and signed out by its tests, restores both roles at the
+  start of the block through Better Auth's admin endpoints, from whichever of the two still holds
+  the role.
+- **The admin spec runs last.** It makes one account the last administrator, which demotes every
+  other administrator, including the one the accessibility suite signs in with. It is its own
+  Playwright project (`admin`) that depends on the `chromium` project, so it starts once the other
+  specs have finished and never runs alongside them.
+- **No third-party hosts.** The avatar test serves the image it needs itself (`page.route()`), so
+  a runner without access to github.com still passes. The one exception is the breach check: the
+  sign-up test that expects a known password to be refused talks to Have I Been Pwned, and
+  `PASSWORD_BREACH_CHECK=false` skips it.
+- **Room for retries in the throttles.** The contact and newsletter forms allow five submissions
+  per address in fifteen minutes. Every request in the suite comes from the runner's address and a
+  retried block submits again, so with `NODE_ENV=test` (the end-to-end server and Vitest) the
+  per-IP rule allows fifty; the per-address rules and the site-wide cap stay as in production, and
+  the unit tests exercise the mechanism with whatever the limit is.
 
 Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to use a preinstalled browser instead of the one Playwright
 downloads. `E2E_PORT` moves the test server off 4321, and `E2E_BASE_URL` points the suite at a

@@ -3,14 +3,25 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 const social = vi.fn();
 
 vi.mock('@/lib/auth-client', () => ({
-  authClient: { signIn: { social: (...args: unknown[]) => social(...args) } },
+  authClient: {
+    signIn: {
+      social: (...args: unknown[]) =>
+        connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : social(...args),
+    },
+  },
 }));
 
 const trackEvent = vi.fn();
 vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import SocialButtons from './SocialButtons';
 
@@ -18,6 +29,7 @@ describe('<SocialButtons>', () => {
   beforeEach(() => {
     social.mockReset();
     trackEvent.mockReset();
+    connectionLost = false;
   });
 
   it('renders nothing without configured providers', () => {
@@ -53,5 +65,15 @@ describe('<SocialButtons>', () => {
     );
     expect(social).toHaveBeenCalledWith({ provider: 'google', callbackURL: '/dashboard' });
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeEnabled();
+  });
+
+  it('explains a dropped connection and releases the button', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<SocialButtons providers={['github']} />);
+    await user.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByRole('button', { name: 'Continue with GitHub' })).toBeEnabled();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });

@@ -48,7 +48,11 @@ export default defineConfig({
   globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
+  // Retries exist for the trace they capture, not to paper over a flaky test: a test that passes
+  // only on a retry fails the CI run, so flakiness is fixed where it starts instead of eroding
+  // the suite. Locally there is no retry; a failure is a failure.
   retries: process.env.CI ? 2 : 0,
+  failOnFlakyTests: Boolean(process.env.CI),
   ...(process.env.CI ? { workers: 2 } : {}),
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   timeout: 30_000,
@@ -73,11 +77,20 @@ export default defineConfig({
         },
       }),
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /admin\.spec\.ts/ },
     {
       name: 'mobile',
       use: { ...devices['Pixel 7'] },
       testMatch: /(home|docs|blog)\.spec\.ts/,
+    },
+    // The admin spec changes global state (it makes one account the last administrator), which
+    // would demote the administrator the accessibility suite signs in with. It runs after every
+    // other spec has finished instead of alongside them.
+    {
+      name: 'admin',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /admin\.spec\.ts/,
+      dependencies: ['chromium'],
     },
   ],
 });

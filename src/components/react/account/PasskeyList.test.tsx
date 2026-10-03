@@ -6,10 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const addPasskey = vi.fn();
 const updatePasskey = vi.fn();
 const deletePasskey = vi.fn();
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     passkey: {
-      addPasskey: (...args: unknown[]) => addPasskey(...args),
+      addPasskey: (...args: unknown[]) =>
+        connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : addPasskey(...args),
       updatePasskey: (...args: unknown[]) => updatePasskey(...args),
       deletePasskey: (...args: unknown[]) => deletePasskey(...args),
     },
@@ -19,6 +24,8 @@ const trackEvent = vi.fn();
 vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
 
 import type { PasskeyItem } from '@/lib/passkeys';
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import PasskeyList from './PasskeyList';
 
@@ -44,6 +51,7 @@ const passkeys: PasskeyItem[] = [
 describe('<PasskeyList>', () => {
   beforeEach(() => {
     for (const fn of [addPasskey, updatePasskey, deletePasskey, trackEvent]) fn.mockReset();
+    connectionLost = false;
     Object.defineProperty(window, 'PublicKeyCredential', {
       value: {},
       writable: true,
@@ -151,5 +159,16 @@ describe('<PasskeyList>', () => {
     await waitFor(() => expect(screen.getByText(/does not support passkeys/)).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Add a passkey' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Remove Work laptop' })).toBeInTheDocument();
+  });
+
+  it('explains a dropped connection and keeps the add form open', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<PasskeyList passkeys={[]} />);
+    await user.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    await user.click(screen.getByRole('button', { name: 'Create passkey' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByRole('button', { name: 'Create passkey' })).toBeEnabled();
+    expect(window.location.assign).not.toHaveBeenCalled();
   });
 });

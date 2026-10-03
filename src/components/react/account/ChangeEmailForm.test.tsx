@@ -5,14 +5,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fetchAuth = vi.fn();
 const getSession = vi.fn();
+// Set to make the mocked client fail the way a dropped connection does: the promise rejects from
+// a plain function rather than from the vi.fn, which Vitest can otherwise count as a test error
+// even though the component catches it.
+let connectionLost = false;
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
-    $fetch: (...args: unknown[]) => fetchAuth(...args),
+    $fetch: (...args: unknown[]) =>
+      connectionLost ? Promise.reject(new TypeError('Failed to fetch')) : fetchAuth(...args),
     getSession: (...args: unknown[]) => getSession(...args),
   },
 }));
 const trackEvent = vi.fn();
 vi.mock('@/lib/analytics', () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
+import { UNEXPECTED_ERROR } from '../primitives';
 
 import ChangeEmailForm from './ChangeEmailForm';
 
@@ -21,6 +28,7 @@ describe('<ChangeEmailForm>', () => {
     fetchAuth.mockReset();
     getSession.mockReset();
     trackEvent.mockReset();
+    connectionLost = false;
     vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
   });
 
@@ -113,5 +121,16 @@ describe('<ChangeEmailForm>', () => {
     render(<ChangeEmailForm email="ada@example.com" hasPassword mode="unavailable" />);
     expect(screen.getByText(/needs email delivery/)).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('explains a dropped connection and keeps the form', async () => {
+    connectionLost = true;
+    const user = userEvent.setup();
+    render(<ChangeEmailForm email="ada@example.com" hasPassword={false} mode="verify" />);
+    await user.type(screen.getByLabelText('New email address'), 'new@example.com');
+    await user.click(screen.getByRole('button', { name: 'Change email address' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(UNEXPECTED_ERROR));
+    expect(screen.getByRole('button', { name: 'Change email address' })).toBeEnabled();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });
