@@ -66,6 +66,11 @@ netlify`). Application code must not branch on the platform.
   data. New events go into the `AnalyticsEvents` interface and the analytics guide.
 - Security: `security.csp` in `astro.config.ts` (hash-based), `config/security-headers.ts`
   (mirrored in `public/_headers`, verified by a unit test).
+- Monitoring: Sentry through `@sentry/astro`, registered in `astro.config.ts` only when
+  `PUBLIC_SENTRY_DSN` is set (browser everywhere, server on Node/Vercel/Netlify, not Cloudflare).
+  `sentry.client.config.ts`/`sentry.server.config.ts` at the root initialise it with
+  `dataCollection` off and the scrubbers from `src/lib/monitoring.ts`; `config/monitoring.ts`
+  derives the `connect-src` origin. Never import Sentry from application code.
 
 ## Rules that prevent regressions
 

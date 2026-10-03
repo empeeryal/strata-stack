@@ -1,0 +1,102 @@
+---
+title: Error monitoring
+description: Optional Sentry error monitoring behind one public variable, on in the browser everywhere and on the server for the Node runtimes, with the Content Security Policy, the privacy rules and the source-map upload that go with it.
+publishedDate: 2026-10-03
+sidebar:
+  order: 10
+  badge: new
+---
+
+The template can report unhandled errors to [Sentry](https://sentry.io). Like analytics, it is off
+until you turn it on, and when it is on it never sends personal data: the report says what broke
+and on which page, not who was there.
+
+## Turning it on
+
+Set one build-time variable and rebuild:
+
+```bash
+PUBLIC_SENTRY_DSN=https://<key>@o<org>.ingest.us.sentry.io/<project>
+```
+
+The DSN is a public value (it identifies your project and can only send events to it), which is
+why the variable has the `PUBLIC_` prefix and is read through `astro:env/client`. With it set,
+`astro.config.ts` registers Sentry's Astro integration
+([`@sentry/astro`](https://docs.sentry.io/platforms/javascript/guides/astro/)):
+
+- **In the browser**, on every page, the SDK is bundled like any other Astro-processed script,
+  so the hash-based [Content Security Policy](/docs/guides/security#content-security-policy)
+  allows it without any `'unsafe-inline'`, and `connect-src` gains the DSN's origin (and nothing
+  else) so the reports can leave the page. It captures uncaught exceptions and unhandled promise
+  rejections. Performance tracing and session replay are off: they would add weight to every page
+  and record what people see.
+- **On the server**, for the Node runtimes (Node, Vercel, Netlify), the integration adds a
+  middleware that reports errors thrown by pages, endpoints and actions. Cloudflare's workerd is
+  not a Node runtime, so on that target only the browser side is on; Sentry's
+  [Cloudflare guide](https://docs.sentry.io/platforms/javascript/guides/cloudflare/frameworks/astro/)
+  describes wrapping the Worker entry with `@sentry/cloudflare` (the package is installed because
+  the integration requires it on that target) if you want server events there too.
+
+Without the variable nothing of Sentry is in the build: no script, no middleware, no change to the
+policy. The CI pipeline builds without it, so the Lighthouse budgets describe the site as it is
+without monitoring; with it the browser SDK adds roughly 25 KB (compressed) to every page.
+
+Two more public variables label the reports: `PUBLIC_SENTRY_ENVIRONMENT` (default: Vercel's
+`VERCEL_ENV` or Netlify's `CONTEXT`, else `production`) and `PUBLIC_SENTRY_RELEASE` (default:
+the package name and version, `strata-stack@0.26.1`).
+
+## What a report contains, and what it never does
+
+Both SDKs are initialised from the two files at the repository root, `sentry.client.config.ts`
+and `sentry.server.config.ts`, with the same rules:
+
+- `dataCollection` turns off everything Sentry would collect about the person: user and IP
+  address (`userInfo`), cookies, HTTP headers, request bodies and query strings.
+- `beforeSend` and `beforeBreadcrumb` run `scrubEvent()` and `scrubBreadcrumb()` from
+  `src/lib/monitoring.ts` on every event: the user is removed, cookies, bodies and all headers
+  but `User-Agent`, `Referer`, `Host` and `Accept-Language` are dropped, and every URL (the
+  page's, and those in navigation and fetch breadcrumbs) loses its query string, because this
+  site's links carry sign-in, verification and unsubscribe tokens there.
+- `tracesSampleRate` is 0 and the client registers no tracing or replay integration.
+
+What remains is the error with its stack trace, the page path, the browser and operating system,
+the release and environment, and the breadcrumbs of recent navigations and requests (paths only).
+The [privacy policy](/legal/privacy) describes this under "Error reports"; keep that paragraph if
+you turn monitoring on and remove it if you do not.
+
+Sentry itself can be told to scrub further on arrival (server-side data scrubbing in the project
+settings) and to keep events for a shorter time. Both are worth setting on a new project.
+
+## Source maps
+
+Stack traces show minified code unless the build's source maps reach Sentry. The integration
+uploads them, and deletes them from the build output afterwards, when the three variables Sentry's
+tooling reads are present at build time:
+
+```bash
+SENTRY_AUTH_TOKEN=sntrys_…   # an organisation auth token with project:releases scope
+SENTRY_ORG=your-org
+SENTRY_PROJECT=your-project
+```
+
+Without `SENTRY_AUTH_TOKEN` the upload is disabled (`sourcemaps.disable`) and the build neither
+generates nor ships source maps, as before. Telemetry from the build tooling to Sentry is off
+(`telemetry: false`).
+
+## Ad blockers and tunnelling
+
+Some content blockers refuse requests to `*.ingest.sentry.io`, so a share of browser errors never
+arrives. Sentry's answer is a `tunnel` option that posts events to a path on your own origin,
+which a server route forwards. The template does not ship the route: it would be an open endpoint
+that relays arbitrary payloads to Sentry under your project's quota and would need its own rate
+limit and body-size cap. If you add one, keep `connect-src` as it is (the tunnel is same-origin)
+and point `tunnel` at the route in `sentry.client.config.ts`.
+
+## Tests
+
+- `config/monitoring.test.ts` covers the DSN resolution, the ingest origin for the policy and the
+  environment name.
+- `src/lib/monitoring.test.ts` covers the scrubbing: user, cookies, bodies, headers and query
+  strings on the event and in breadcrumbs, and events without a request passing through.
+- `tests/e2e/security.spec.ts` asserts that the default build's `connect-src` is `'self'` alone.
+  The suite runs without a DSN; the Sentry client is not part of the pages it tests.

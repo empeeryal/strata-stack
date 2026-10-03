@@ -4,7 +4,7 @@ description: Every variable the template reads, where to set it on each platform
 publishedDate: 2026-09-18
 updatedDate: 2026-09-30
 sidebar:
-  order: 15
+  order: 16
 ---
 
 ## Two access patterns
@@ -46,6 +46,9 @@ client, and Cloudflare exposes secrets through `process.env` when `nodejs_compat
 | `E2E_PORT`, `E2E_BASE_URL`                                                        | tests          | Port of the Playwright test server (default 4321), or the address of a server that is already running. See [testing](/docs/guides/testing#end-to-end-tests).                |
 | `PASSWORD_BREACH_CHECK` (tests)                                                   | tests          | `false` runs the end-to-end suite without the Have I Been Pwned call.                                                                                                       |
 | `PUBLIC_ANALYTICS`                                                                | build, public  | `none` or `vercel`. With `vercel`, page views and the [custom events](/docs/guides/analytics) are sent.                                                                     |
+| `PUBLIC_SENTRY_DSN`                                                               | build, public  | Turns on [error monitoring](/docs/guides/monitoring) with Sentry. Unset: nothing of Sentry is in the build.                                                                 |
+| `PUBLIC_SENTRY_ENVIRONMENT`, `PUBLIC_SENTRY_RELEASE`                              | build, public  | Labels on the reports. Defaults: the platform's deployment context (else `production`) and the package name and version.                                                    |
+| `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`                               | build          | Uploads the build's source maps to Sentry and deletes them from the output. Without the token no source maps are generated or uploaded.                                     |
 
 Build-time variables must be present during `astro build`; runtime variables must be present
 where the server code runs.

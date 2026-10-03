@@ -32,18 +32,18 @@ which is built from this exact code.
 
 ## Features
 
-| Area          | What you get                                                                                                                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                                                     |
-| **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts, i18n-ready routing and UI strings                              |
-| **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                                               |
-| **Auth**      | [Better Auth](https://better-auth.com): email/password, passkeys, GitHub, Google, magic links, two-factor authentication, breached-password check, verification, password reset, protected routes, rate limiting |
-| **Accounts**  | Profile editing, data export, account deletion, change password and email; admin area with a contact inbox, newsletter subscribers, user management (roles, bans, sessions) and an audit log                     |
-| **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                                                                                      |
-| **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, command palette with Pagefind search                                                                        |
-| **Security**  | Hash-based Content Security Policy, hardened response headers, CSRF origin checks, open-redirect protection, `security.txt`                                                                                      |
-| **Quality**   | TypeScript strict, ESLint 10, Prettier, Vitest (unit + Container API + React Testing Library), Playwright + axe, Lighthouse CI (desktop and mobile)                                                              |
-| **Delivery**  | One `DEPLOY_TARGET` switch for Vercel, Cloudflare Workers, Netlify and Node; Dockerfile; CI matrix that builds every target; Dependabot; Changesets                                                              |
+| Area          | What you get                                                                                                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                                                                        |
+| **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts, i18n-ready routing and UI strings                                                 |
+| **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                                                                  |
+| **Auth**      | [Better Auth](https://better-auth.com): email/password, passkeys, GitHub, Google, magic links, two-factor authentication, breached-password check, verification, password reset, protected routes, rate limiting                    |
+| **Accounts**  | Profile editing, data export, account deletion, change password and email; admin area with a contact inbox, newsletter subscribers, user management (roles, bans, sessions) and an audit log                                        |
+| **Data**      | Drizzle ORM + libSQL: a file database locally, [Turso](https://turso.tech) over HTTP in production, migrations, seed script                                                                                                         |
+| **SEO**       | Canonical URLs, generated Open Graph images, JSON-LD, sitemap, robots.txt, web manifest, `llms.txt`, command palette with Pagefind search                                                                                           |
+| **Security**  | Hash-based Content Security Policy, hardened response headers, CSRF origin checks, open-redirect protection, `security.txt`                                                                                                         |
+| **Quality**   | TypeScript strict, ESLint 10, Prettier, Vitest (unit + Container API + React Testing Library), Playwright + axe, Lighthouse CI (desktop and mobile)                                                                                 |
+| **Delivery**  | One `DEPLOY_TARGET` switch for Vercel, Cloudflare Workers, Netlify and Node; Dockerfile; CI matrix that builds every target; Dependabot; Changesets; optional Sentry error monitoring and Vercel analytics behind one variable each |
 
 ## Quick start
 
@@ -109,6 +109,7 @@ command can stay `astro build`. See the [deploy guides](https://stratastack.dev/
 | `ADMIN_EMAILS`                                     | no         | Addresses that get the `admin` role on sign-up (or `pnpm admin:promote`)                     |
 | `HEALTH_TOKEN`                                     | no         | Bearer token that unlocks the detailed `/api/health` response for monitors                   |
 | `PUBLIC_ANALYTICS`                                 | no         | `none` (default) or `vercel`                                                                 |
+| `PUBLIC_SENTRY_DSN`                                | no         | Turns on Sentry error monitoring (browser everywhere, server on the Node runtimes)           |
 
 The full list with platform notes lives in [`.env.example`](.env.example) and the
 [environment variables guide](https://stratastack.dev/docs/guides/environment-variables).

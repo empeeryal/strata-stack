@@ -3,19 +3,37 @@ import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import icon from 'astro-icon';
+import sentry from '@sentry/astro';
 import pagefind from 'astro-pagefind';
 import { defineConfig, envField, fontProviders } from 'astro/config';
 
 import { resolveAdapter, resolveDeployTarget } from './config/adapter';
 import { resolveCacheProvider } from './config/cache';
+import {
+  resolveSentryDsn,
+  resolveSentryEnvironment,
+  sentryIngestOrigin,
+} from './config/monitoring';
 import { resolveSiteUrl } from './config/site-url';
 import { trustedHosts } from './config/trusted-hosts';
 import { securityHeaders } from './integrations/security-headers';
 import { themeScript } from './integrations/theme-script';
 import { defaultLocale, locales } from './src/i18n/config';
 import { siteConfig } from './src/site.config';
+import pkg from './package.json' with { type: 'json' };
 
 const deployTarget = resolveDeployTarget();
+
+// Error monitoring (Sentry) exists in a build only when PUBLIC_SENTRY_DSN is set: the browser SDK
+// on every page and, on the Node runtimes, the server SDK with a middleware. Cloudflare's workerd
+// is not a Node runtime, so there the browser side alone is on (docs/guides/monitoring).
+const sentryDsn = resolveSentryDsn(process.env);
+const sentryServer = deployTarget !== 'cloudflare';
+if (sentryDsn) {
+  console.info(
+    `[monitoring] Sentry on (browser${sentryServer ? ' and server' : ''}, reports to ${sentryIngestOrigin(sentryDsn)})`,
+  );
+}
 
 /**
  * Canonical site URL: `SITE_URL`, else the production URL Vercel/Netlify inject, else
@@ -94,6 +112,17 @@ export default defineConfig({
     pagefind(),
     themeScript(),
     securityHeaders({ target: deployTarget }),
+    ...(sentryDsn
+      ? [
+          sentry({
+            enabled: { client: true, server: sentryServer },
+            // Source maps are uploaded (and then deleted from the build) only when a token for
+            // the Sentry project is present; without one the build stays as it is.
+            sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+            telemetry: false,
+          }),
+        ]
+      : []),
   ],
 
   vite: {
@@ -190,7 +219,8 @@ export default defineConfig({
         "default-src 'self'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
-        "connect-src 'self'",
+        // The browser SDK reports to the DSN's origin; nothing else leaves the page.
+        `connect-src 'self'${sentryDsn ? ` ${sentryIngestOrigin(sentryDsn)}` : ''}`,
         "media-src 'self'",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
@@ -224,6 +254,19 @@ export default defineConfig({
         access: 'public',
         values: ['none', 'vercel'],
         default: 'none',
+      }),
+      // Error monitoring (docs/guides/monitoring). The DSN is a public value; setting it turns the
+      // Sentry integration on. Environment and release label the reports.
+      PUBLIC_SENTRY_DSN: envField.string({ context: 'client', access: 'public', optional: true }),
+      PUBLIC_SENTRY_ENVIRONMENT: envField.string({
+        context: 'client',
+        access: 'public',
+        default: resolveSentryEnvironment(process.env),
+      }),
+      PUBLIC_SENTRY_RELEASE: envField.string({
+        context: 'client',
+        access: 'public',
+        default: `${pkg.name}@${pkg.version}`,
       }),
     },
   },
