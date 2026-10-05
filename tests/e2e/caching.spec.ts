@@ -33,6 +33,9 @@ test.describe('route caching', () => {
     const signedIn = await page.request.get(path);
     expect(signedIn.status()).toBe(200);
     expect(signedIn.headers()['x-astro-cache']).toBeUndefined();
+    // The route's own `public, max-age` is replaced too: a shared cache in front of the server
+    // must not keep a personal response either.
+    expect(signedIn.headers()['cache-control']).toBe('private, no-store');
 
     // Nothing was stored: the anonymous request that follows renders it...
     const anonymous = await request.get(path);

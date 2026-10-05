@@ -121,7 +121,8 @@ async function retryAudienceSyncs(
       });
       audienceSynced += 1;
     } catch (error) {
-      console.error(`[prune] audience sync for ${email} failed again`, error);
+      // The id, not the address: this line ends up in the workflow log.
+      console.error(`[prune] audience sync for subscriber ${id} failed again`, error);
       await client.execute({
         sql: 'UPDATE newsletter_subscriber SET audience_error = ? WHERE id = ?',
         args: [error instanceof Error ? error.message : String(error), id],

@@ -5,6 +5,9 @@ import {
   type InputHTMLAttributes,
   type LabelHTMLAttributes,
   type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -163,4 +166,24 @@ export function useWebAuthnSupport(): boolean {
     () => typeof window.PublicKeyCredential !== 'undefined',
     () => true,
   );
+}
+
+/**
+ * Moves keyboard focus when one control is swapped for another (a button for the form it opens,
+ * the form for the button again): the element that had focus leaves the document, and without
+ * this the focus falls back to the page. Whenever `state` changes after mount, the element inside
+ * `container` marked `data-focus`, else its first field or button, receives focus.
+ */
+export function useFocusOnChange(container: RefObject<HTMLElement | null>, state: string): void {
+  const previous = useRef(state);
+  useEffect(() => {
+    if (previous.current === state) return;
+    previous.current = state;
+    const root = container.current;
+    if (!root) return;
+    const target =
+      root.querySelector<HTMLElement>('[data-focus]') ??
+      root.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, select, button');
+    target?.focus();
+  }, [container, state]);
 }

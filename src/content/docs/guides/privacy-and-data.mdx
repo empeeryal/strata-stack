@@ -74,7 +74,8 @@ The same job deletes newsletter addresses that were never confirmed or that unsu
 than `NEWSLETTER_RETENTION_DAYS` (default 7) ago. Confirmed subscribers are kept until they
 unsubscribe or an administrator removes them.
 
-The audit log records message status changes and deletions together with the change (one
+The audit log records message actions, role changes, bans, user deletions, two-factor resets,
+subscriber removals and self-service session revocation together with the change (one
 transaction); entries for everything else are best-effort. See the
 [admin area](/docs/guides/admin#audit-log) before promising more than that in your policy.
 

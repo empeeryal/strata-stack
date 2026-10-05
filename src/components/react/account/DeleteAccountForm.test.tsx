@@ -108,4 +108,13 @@ describe('<DeleteAccountForm>', () => {
     expect(trackEvent).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Permanently delete account' })).toBeEnabled();
   });
+
+  it('moves the focus into the form and back to the button on cancel', async () => {
+    const user = userEvent.setup();
+    render(<DeleteAccountForm hasPassword />);
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }));
+    expect(screen.getByLabelText('Current password')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete my account' })).toHaveFocus();
+  });
 });

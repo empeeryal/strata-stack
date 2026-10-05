@@ -1,4 +1,5 @@
-import { type APIRequestContext, expect, test, type Page } from '@playwright/test';
+import { createClient } from '@libsql/client';
+import { expect, test, type Page } from '@playwright/test';
 
 import { serverEnv } from '../../playwright.config';
 import { E2E_PASSWORD, fillContactForm, signIn, signUp, submitAccountDeletion } from './helpers';
@@ -32,35 +33,22 @@ function userRow(page: Page, email: string) {
  * Puts both fixed accounts back into the state the block starts from: both administrators.
  * The tests below demote, promote and sign out these accounts; when one of them fails, Playwright
  * restarts the worker and runs the whole serial block again against the database as the failed
- * attempt left it. At every point in the block at least one of the two still holds the role, so
- * that one restores the other through Better Auth's admin endpoints.
+ * attempt left it. Better Auth's admin endpoints are not reachable over HTTP (src/lib/auth.ts),
+ * so the roles are written back in the test database. Against an external server
+ * (`E2E_BASE_URL`) the database is out of reach; a failed run there may need a reset before the
+ * retry.
  */
-async function restoreAdminRoles(request: APIRequestContext): Promise<void> {
-  const accounts = [ADMIN_EMAIL, SECOND_ADMIN_EMAIL];
-  for (const email of accounts) {
-    const signedIn = await request.post('/api/auth/sign-in/email', {
-      data: { email, password: E2E_PASSWORD },
+async function restoreAdminRoles(): Promise<void> {
+  if (process.env.E2E_BASE_URL) return;
+  const client = createClient({ url: serverEnv.DATABASE_URL });
+  try {
+    await client.execute({
+      sql: "UPDATE user SET role = 'admin' WHERE email IN (?, ?)",
+      args: [ADMIN_EMAIL, SECOND_ADMIN_EMAIL],
     });
-    if (!signedIn.ok()) continue;
-    const listed = await request.get('/api/auth/admin/list-users', {
-      params: { searchField: 'email', searchOperator: 'contains', searchValue: 'e2e@example.com' },
-    });
-    if (listed.ok()) {
-      const { users } = (await listed.json()) as {
-        users: Array<{ id: string; email: string; role?: string | null }>;
-      };
-      for (const user of users) {
-        if (!accounts.includes(user.email) || /\badmin\b/.test(user.role ?? '')) continue;
-        const promoted = await request.post('/api/auth/admin/set-role', {
-          data: { userId: user.id, role: 'admin' },
-        });
-        expect(promoted.ok()).toBe(true);
-      }
-    }
-    await request.post('/api/auth/sign-out');
-    if (listed.ok()) return;
+  } finally {
+    client.close();
   }
-  throw new Error('Neither fixed account holds the admin role; the database needs a reset.');
 }
 
 test.describe('admin area', () => {
@@ -78,7 +66,7 @@ test.describe('admin area', () => {
       });
       expect([200, 422]).toContain(response.status()); // 422: already exists from a retry
     }
-    await restoreAdminRoles(request);
+    await restoreAdminRoles();
   });
 
   test('redirects anonymous visitors to the login page', async ({ request, baseURL }) => {
@@ -216,6 +204,24 @@ test.describe('admin area', () => {
       headers: { Authorization: 'Bearer nope' },
     });
     expect((await wrongToken.json()).checks).toBeUndefined();
+  });
+
+  test("Better Auth's admin endpoints are closed over HTTP, for administrators too", async ({
+    request,
+  }) => {
+    // The admin area works through the Astro actions, which add the last-admin rule, the audit
+    // entry and the trusted-device cleanup; the plugin's own endpoints would bypass all three.
+    const signedIn = await request.post('/api/auth/sign-in/email', {
+      data: { email: ADMIN_EMAIL, password: E2E_PASSWORD },
+    });
+    expect(signedIn.ok()).toBe(true);
+    const listed = await request.get('/api/auth/admin/list-users');
+    expect(listed.status()).toBe(404);
+    const demoted = await request.post('/api/auth/admin/set-role', {
+      data: { userId: 'anyone', role: 'user' },
+    });
+    expect(demoted.status()).toBe(404);
+    await request.post('/api/auth/sign-out');
   });
 
   test('hides the admin area from regular users', async ({ page }) => {

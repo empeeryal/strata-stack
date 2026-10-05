@@ -1,8 +1,12 @@
-import { type SubmitEvent, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 
 import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 import type { PasskeyItem } from '@/lib/passkeys';
+
+// The cap src/lib/auth.ts enforces for the plugin's endpoints, repeated here because that module
+// pulls in the server side of the passkey plugin.
+const PASSKEY_NAME_MAX_LENGTH = 64;
 
 import {
   Alert,
@@ -12,6 +16,7 @@ import {
   Input,
   Label,
   UNEXPECTED_ERROR,
+  useFocusOnChange,
   useWebAuthnSupport,
 } from '../primitives';
 
@@ -54,6 +59,14 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const supported = useWebAuthnSupport();
+  // Opening a form removes the button that opened it, closing it removes the form: the focus
+  // follows into the form, and back to the button the person came from (`returnTo`).
+  const container = useRef<HTMLDivElement>(null);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  useFocusOnChange(
+    container,
+    step.kind === 'idle' ? 'idle' : `${step.kind}:${'id' in step ? step.id : ''}`,
+  );
 
   async function run(work: () => Promise<void>) {
     setError(null);
@@ -98,6 +111,7 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
       setPasskeys((list) =>
         list.map((passkey) => (passkey.id === id ? { ...passkey, name, label: name } : passkey)),
       );
+      setReturnTo(id);
       setStep({ kind: 'idle' });
       setStatus('Passkey renamed.');
     });
@@ -119,7 +133,10 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
     <Button
       type="button"
       variant="ghost"
-      onClick={() => setStep({ kind: 'idle' })}
+      onClick={() => {
+        setReturnTo(step.kind === 'add' ? 'add' : 'id' in step ? step.id : null);
+        setStep({ kind: 'idle' });
+      }}
       disabled={loading}
     >
       Cancel
@@ -127,12 +144,12 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
   );
 
   return (
-    <div className="space-y-4" data-passkey-step={step.kind}>
+    <div className="space-y-4" data-passkey-step={step.kind} ref={container}>
       {error && <Alert>{error}</Alert>}
       {status && (
-        <p role="status" className="text-sm text-muted-foreground" data-passkeys-status>
+        <Alert variant="success" data-passkeys-status>
           {status}
-        </p>
+        </Alert>
       )}
 
       {passkeys.length > 0 ? (
@@ -159,6 +176,7 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
                       size="sm"
                       onClick={() => setStep({ kind: 'rename', id: passkey.id })}
                       aria-label={`Rename ${passkey.label}`}
+                      data-focus={returnTo === passkey.id || undefined}
                     >
                       Rename
                     </Button>
@@ -190,7 +208,7 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
                       defaultValue={passkey.name ?? ''}
                       placeholder={passkey.label}
                       required
-                      maxLength={64}
+                      maxLength={PASSKEY_NAME_MAX_LENGTH}
                     />
                   </Field>
                   <Button type="submit" variant="outline" loading={loading}>
@@ -238,7 +256,12 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
       )}
 
       {supported && step.kind === 'idle' && (
-        <Button type="button" variant="outline" onClick={() => setStep({ kind: 'add' })}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setStep({ kind: 'add' })}
+          data-focus={returnTo === 'add' || undefined}
+        >
           Add a passkey
         </Button>
       )}
@@ -254,7 +277,7 @@ export default function PasskeyList({ passkeys: initial }: PasskeyListProps) {
             <Input
               id="new-passkey-name"
               name="name"
-              maxLength={64}
+              maxLength={PASSKEY_NAME_MAX_LENGTH}
               placeholder="Work laptop"
               autoComplete="off"
             />

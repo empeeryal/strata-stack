@@ -49,7 +49,9 @@ netlify`). Application code must not branch on the platform.
 - Contact flow: `src/lib/contact.ts` (honeypot, throttle, store-then-notify) behind the action in
   `src/actions/index.ts`. Admin area: `src/pages/admin/*` guarded by `guardAdminPage()`, actions
   under `server.admin` guarded by `await requireAdmin()`. Both read the session from the database
-  via `getAuthoritativeSession()` (`src/lib/session.ts`), never from the cookie cache. Audit
+  via `getAuthoritativeSession()` (`src/lib/session.ts`), never from the cookie cache. Better
+  Auth's own `/admin/*` endpoints answer 404 over HTTP (`hooks.before` in `src/lib/auth.ts`); server
+  code reaches them through `auth.api.*`. Audit
   entries: `writeAudit()` inside a transaction for DB-only changes (message actions; role, ban
   and delete via `changeUserRole()`, `banUserAccount()`, `deleteUserAccount()` in
   `src/lib/admin.ts`, whose SQL also enforces the last-admin rule; `resetUserTwoFactor()`;

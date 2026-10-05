@@ -111,6 +111,26 @@ test.describe('interactive states', { tag: '@a11y' }, () => {
     await expect(page.getByRole('alert')).toContainText(/invalid email or password/i);
     await expectNoViolations(page);
   });
+
+  test('the newsletter form refusing an address', async ({ page }) => {
+    await page.goto('/newsletter');
+    await waitForIslands(page);
+    const form = page.getByRole('form', { name: 'Subscribe to the newsletter' }).first();
+    // Bypass native validation so the island renders its own error.
+    await form.evaluate((element) => element.setAttribute('novalidate', ''));
+    await form.getByLabel('Email address').fill('not-an-address');
+    await form.getByRole('button', { name: 'Subscribe' }).click();
+    await expect(form.getByRole('alert')).toContainText('valid email address');
+    await expectNoViolations(page);
+  });
+
+  test('the documentation menu open at phone width', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/docs/getting-started/installation');
+    await page.getByText('Documentation menu').click();
+    await expect(page.getByRole('link', { name: 'Introduction' }).first()).toBeVisible();
+    await expectNoViolations(page);
+  });
 });
 
 test.describe('signed-in pages', { tag: '@a11y' }, () => {
@@ -189,6 +209,41 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
   test('the inbox at phone width', async ({ browser }) => {
     await asAdmin(browser, '/admin/messages', async (page) => {
       await page.setViewportSize({ width: 390, height: 844 });
+      await expectNoViolations(page);
+    });
+  });
+
+  test('the two-factor setup showing the QR code, then refusing a code', async ({ browser }) => {
+    await asAdmin(browser, '/dashboard', async (page) => {
+      const card = page.getByRole('heading', { name: 'Two-factor authentication' }).locator('..');
+      await card.scrollIntoViewIfNeeded();
+      await waitForIslands(page);
+      await card.getByRole('button', { name: 'Turn on two-factor authentication' }).click();
+      await card.getByLabel('Current password').fill(E2E_PASSWORD);
+      await card.getByRole('button', { name: 'Continue' }).click();
+      await expect(card.getByLabel('Code from the app')).toBeVisible();
+      await expectNoViolations(page);
+
+      // Nothing is verified, so the account's two-factor state does not change.
+      await card.getByLabel('Code from the app').fill('000000');
+      await card.getByRole('button', { name: 'Confirm' }).click();
+      await expect(card.getByRole('alert')).toContainText('did not match');
+      await expectNoViolations(page);
+    });
+  });
+
+  test('the passkey form and the email form showing an error', async ({ browser }) => {
+    await asAdmin(browser, '/dashboard', async (page) => {
+      const emailForm = page.getByRole('form', { name: 'Change email address' });
+      await emailForm.scrollIntoViewIfNeeded();
+      await waitForIslands(page);
+      await emailForm.getByLabel('New email address').fill('another@example.com');
+      await emailForm.getByLabel('Current password').fill('not-the-password-at-all');
+      await emailForm.getByRole('button', { name: 'Change email address' }).click();
+      await expect(emailForm.getByRole('alert')).toContainText('Invalid password');
+
+      await page.getByRole('button', { name: 'Add a passkey' }).click();
+      await expect(page.getByRole('form', { name: 'Add a passkey' })).toBeVisible();
       await expectNoViolations(page);
     });
   });

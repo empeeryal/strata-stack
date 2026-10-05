@@ -126,7 +126,7 @@ export function isTokenShape(value: string): boolean {
   return /^[A-Za-z0-9_-]{43}$/.test(value);
 }
 
-export function confirmUrl(siteUrl: string, token: string): string {
+function confirmUrl(siteUrl: string, token: string): string {
   return `${siteUrl}/newsletter/confirm?token=${encodeURIComponent(token)}`;
 }
 
@@ -216,15 +216,25 @@ export async function subscribeToNewsletter(
     audienceSyncedAt: null,
     audienceError: null,
   };
+  // Both writes refuse to touch a confirmed row: the owner may have opened the confirmation
+  // link between the select above and this statement, and a new pending token would retire a
+  // live subscription (the provider would keep sending to an address this site calls pending).
+  let stored: { status: string } | undefined;
   if (existing) {
-    await deps.db
+    [stored] = await deps.db
       .update(newsletterSubscribers)
       .set(pending)
-      .where(eq(newsletterSubscribers.id, existing.id));
+      .where(
+        and(
+          eq(newsletterSubscribers.id, existing.id),
+          ne(newsletterSubscribers.status, 'confirmed'),
+        ),
+      )
+      .returning({ status: newsletterSubscribers.status });
   } else {
     // Two first-time requests for one address can race past the select above; the second
     // then lands on the unique index and takes the pending row over instead of failing.
-    const [stored] = await deps.db
+    [stored] = await deps.db
       .insert(newsletterSubscribers)
       .values({
         id: crypto.randomUUID(),
@@ -239,17 +249,17 @@ export async function subscribeToNewsletter(
         setWhere: ne(newsletterSubscribers.status, 'confirmed'),
       })
       .returning({ status: newsletterSubscribers.status });
-    if (!stored) {
-      // The address was confirmed in between: behave like the confirmed branch above.
-      const [confirmed] = await deps.db
-        .select({ token: newsletterSubscribers.token })
-        .from(newsletterSubscribers)
-        .where(eq(newsletterSubscribers.email, email))
-        .limit(1);
-      if (confirmed) {
-        await send(alreadySubscribedEmail(email, confirmed.token, deps));
-        return 'already-subscribed';
-      }
+  }
+  if (!stored) {
+    // The address was confirmed in between: behave like the confirmed branch above.
+    const [confirmed] = await deps.db
+      .select({ token: newsletterSubscribers.token })
+      .from(newsletterSubscribers)
+      .where(eq(newsletterSubscribers.email, email))
+      .limit(1);
+    if (confirmed) {
+      await send(alreadySubscribedEmail(email, confirmed.token, deps));
+      return 'already-subscribed';
     }
   }
 
@@ -349,7 +359,7 @@ export async function unsubscribeFromNewsletter(
  * are recorded, not thrown: the database is the source of truth, and the admin subscribers
  * page shows which addresses the provider has not received yet.
  */
-export async function syncAudience(
+async function syncAudience(
   id: string,
   email: string,
   change: 'add' | 'remove',
@@ -470,9 +480,11 @@ export type RemoveSubscriberOutcome = 'removed' | 'removed-unsynced';
 /**
  * Deletes a subscriber for an administrator. An address the provider may still be sending to
  * (confirmed, or unsubscribed with the opt-out not yet delivered) is marked unsubscribed there
- * first (best effort; a failure is reported, not hidden), then the row and its audit entry are
- * written in one transaction. Two admins removing the same row see one success and one "not
- * found".
+ * first, then the row and its audit entry are written in one transaction. When the provider
+ * refuses, the row is not deleted but kept as an opt-out with the error on it: deleting it would
+ * leave nothing that says which contact still needs to go, while a kept row is shown on the
+ * subscribers page and retried by the retention job, which deletes it once the provider has
+ * taken the opt-out. Two admins removing the same row see one success and one "not found".
  */
 export async function removeSubscriber(
   id: string,
@@ -487,6 +499,7 @@ export async function removeSubscriber(
   if (!row) throw new SubscriberNotFoundError();
 
   let provider: 'removed' | 'failed' | 'skipped' = 'skipped';
+  let providerError: string | null = null;
   const providerMaySend =
     row.status === 'confirmed' || (row.status === 'unsubscribed' && row.audienceError !== null);
   if (providerMaySend && deps.audience) {
@@ -496,22 +509,40 @@ export async function removeSubscriber(
     } catch (error) {
       console.error('[newsletter] audience remove failed', error);
       provider = 'failed';
+      providerError = describeError(error);
     }
   }
 
+  const now = deps.now ?? (() => new Date());
   await deps.db.transaction(async (tx) => {
-    const deleted = await tx
-      .delete(newsletterSubscribers)
-      .where(eq(newsletterSubscribers.id, id))
-      .returning({ id: newsletterSubscribers.id });
-    if (deleted.length === 0) throw new SubscriberNotFoundError();
+    const changed =
+      provider === 'failed'
+        ? await tx
+            .update(newsletterSubscribers)
+            .set({
+              status: 'unsubscribed',
+              unsubscribedAt: row.unsubscribedAt ?? now(),
+              updatedAt: now(),
+              audienceSyncedAt: null,
+              audienceError: providerError,
+            })
+            .where(eq(newsletterSubscribers.id, id))
+            .returning({ id: newsletterSubscribers.id })
+        : await tx
+            .delete(newsletterSubscribers)
+            .where(eq(newsletterSubscribers.id, id))
+            .returning({ id: newsletterSubscribers.id });
+    if (changed.length === 0) throw new SubscriberNotFoundError();
     await writeAudit(tx, {
       actorId: actor.id,
       actorEmail: actor.email,
       action: 'subscriber.delete',
       targetType: 'subscriber',
       targetId: id,
-      details: { status: row.status, provider },
+      details:
+        provider === 'failed'
+          ? { status: row.status, provider, kept: true }
+          : { status: row.status, provider },
     });
   });
   return provider === 'failed' ? 'removed-unsynced' : 'removed';

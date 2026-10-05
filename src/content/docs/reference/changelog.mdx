@@ -24,7 +24,7 @@ release.
 ## Cutting a release
 
 The release workflow (`.github/workflows/release.yml`) runs on pushes to `main`. When changesets
-are present it opens a "Version Packages" pull request that:
+are present it opens a "chore: version packages" pull request that:
 
 - bumps `version` in `package.json`,
 - prepends the new release to `CHANGELOG.md`,

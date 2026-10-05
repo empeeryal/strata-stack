@@ -85,6 +85,7 @@ const tags = locale === defaultLocale ? collectTags(posts) : [];
       next={page.url.next}
       labels={[t('blog.newer'), t('blog.older')]}
       label={t('pagination.label')}
+      pageLabel={t('pagination.page', { current: page.currentPage, total: page.lastPage })}
       class="mt-12"
     />
 

@@ -28,8 +28,8 @@ why the variable has the `PUBLIC_` prefix and is read through `astro:env/client`
   so the hash-based [Content Security Policy](/docs/guides/security#content-security-policy)
   allows it without any `'unsafe-inline'`, and `connect-src` gains the DSN's origin (and nothing
   else) so the reports can leave the page. It captures uncaught exceptions and unhandled promise
-  rejections. Performance tracing and session replay are off: they would add weight to every page
-  and record what people see.
+  rejections. Performance tracing, session replay and Release Health sessions are off: they would
+  add weight to every page, record what people see or send a beacon on every page view.
 - **On the server**, for the Node runtimes (Node, Vercel, Netlify), the integration adds a
   middleware that reports errors thrown by pages, endpoints and actions. Cloudflare's workerd is
   not a Node runtime, so on that target only the browser side is on; Sentry's
@@ -39,11 +39,13 @@ why the variable has the `PUBLIC_` prefix and is read through `astro:env/client`
 
 Without the variable nothing of Sentry is in the build: no script, no middleware, no change to the
 policy. The CI pipeline builds without it, so the Lighthouse budgets describe the site as it is
-without monitoring; with it the browser SDK adds roughly 25 KB (compressed) to every page.
+without monitoring; with it the browser SDK (errors only, without the tracing code) is added to
+every page.
 
 Two more public variables label the reports: `PUBLIC_SENTRY_ENVIRONMENT` (default: Vercel's
 `VERCEL_ENV` or Netlify's `CONTEXT`, else `production`) and `PUBLIC_SENTRY_RELEASE` (default:
-the package name and version, `strata-stack@0.26.1`).
+the package name and version from `package.json`). The source maps a build uploads are filed
+under the same release name, so Sentry can match them to the events.
 
 ## What a report contains, and what it never does
 
@@ -53,11 +55,16 @@ and `sentry.server.config.ts`, with the same rules:
 - `dataCollection` turns off everything Sentry would collect about the person: user and IP
   address (`userInfo`), cookies, HTTP headers, request bodies and query strings.
 - `beforeSend` and `beforeBreadcrumb` run `scrubEvent()` and `scrubBreadcrumb()` from
-  `src/lib/monitoring.ts` on every event: the user is removed, cookies, bodies and all headers
-  but `User-Agent`, `Referer`, `Host` and `Accept-Language` are dropped, and every URL (the
-  page's, and those in navigation and fetch breadcrumbs) loses its query string, because this
-  site's links carry sign-in, verification and unsubscribe tokens there.
-- `tracesSampleRate` is 0 and the client registers no tracing or replay integration.
+  `src/lib/monitoring.ts` on every event as a second line of defence: the user is removed,
+  cookies, bodies and headers are dropped (were headers ever collected, only `User-Agent`,
+  `Referer`, `Host` and `Accept-Language` would pass, the Referer without its query string),
+  console breadcrumbs are dropped (outside production the email module prints the messages it
+  would send, links included), and every URL (the page's, and those in navigation and fetch
+  breadcrumbs) loses its query string, because this site's links carry sign-in, verification and
+  unsubscribe tokens there.
+- `tracesSampleRate` is 0, the client registers neither the tracing nor the session integration
+  (and the build leaves the tracing code out of the bundle), so nothing leaves the page until an
+  error happens.
 
 What remains is the error with its stack trace, the page path, the browser and operating system,
 the release and environment, and the breadcrumbs of recent navigations and requests (paths only).

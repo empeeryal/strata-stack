@@ -64,7 +64,8 @@ and covered by `src/lib/contact.test.ts`:
    simple bots skip). The schema accepts up to 200 characters so a filled field reaches the
    handler, which answers with the normal success response without storing anything.
 2. **Throttling** per sender: 3 messages per hour per email address and 5 per 15 minutes per
-   IP, counted in the `throttle` table (`src/lib/throttle.ts`) so limits hold across serverless
+   IP, plus a site-wide ceiling of 60 messages an hour for when a proxy lets visitors choose
+   their own `X-Forwarded-For`, counted in the `throttle` table (`src/lib/throttle.ts`) so limits hold across serverless
    instances. Keys are HMAC-SHA256 hashes keyed with `BETTER_AUTH_SECRET`, never raw
    addresses. Exceeding a limit returns
    `TOO_MANY_REQUESTS`.

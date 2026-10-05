@@ -30,7 +30,11 @@ export interface MonitoredBreadcrumb {
   data?: Record<string, unknown> | undefined;
 }
 
-/** Headers that say which page or site made the request without identifying anyone. */
+/**
+ * Headers that say which page or site made the request without identifying anyone. The SDKs are
+ * initialised with `httpHeaders: false`, so normally no header reaches this point at all; the
+ * list is what survives if that is ever relaxed (the Referer without its query string).
+ */
 const KEPT_HEADERS = new Set(['user-agent', 'referer', 'host', 'accept-language']);
 
 /** A URL without its query string and fragment; a value that is not a URL comes back as it is. */
@@ -39,8 +43,13 @@ export function stripQuery(url: string): string {
   return cut === -1 ? url : url.slice(0, cut);
 }
 
-/** Breadcrumb data whose values look like URLs lose their query strings. */
-export function scrubBreadcrumb<T extends MonitoredBreadcrumb>(breadcrumb: T): T {
+/**
+ * Console breadcrumbs are dropped (whatever the app or a library logged before the error, which
+ * outside production includes the emails with their links); in the others, data values that look
+ * like URLs lose their query strings.
+ */
+export function scrubBreadcrumb<T extends MonitoredBreadcrumb>(breadcrumb: T): T | null {
+  if (breadcrumb.category === 'console') return null;
   if (!breadcrumb.data) return breadcrumb;
   const data: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(breadcrumb.data)) {
@@ -62,9 +71,11 @@ export function scrubEvent<T extends MonitoredEvent>(event: T): T {
     const { cookies: _cookies, data: _data, query_string: _query, ...rest } = event.request;
     const headers = event.request.headers
       ? Object.fromEntries(
-          Object.entries(event.request.headers).filter(([name]) =>
-            KEPT_HEADERS.has(name.toLowerCase()),
-          ),
+          Object.entries(event.request.headers)
+            .filter(([name]) => KEPT_HEADERS.has(name.toLowerCase()))
+            .map(([name, value]) =>
+              name.toLowerCase() === 'referer' ? [name, stripQuery(value)] : [name, value],
+            ),
         )
       : undefined;
     scrubbed.request = {
@@ -74,7 +85,9 @@ export function scrubEvent<T extends MonitoredEvent>(event: T): T {
     };
   }
   if (event.breadcrumbs) {
-    scrubbed.breadcrumbs = event.breadcrumbs.map((breadcrumb) => scrubBreadcrumb(breadcrumb));
+    scrubbed.breadcrumbs = event.breadcrumbs
+      .map((breadcrumb) => scrubBreadcrumb(breadcrumb))
+      .filter((breadcrumb) => breadcrumb !== null);
   }
   return scrubbed as T;
 }

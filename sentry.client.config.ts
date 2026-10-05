@@ -18,6 +18,15 @@ Sentry.init({
   environment: PUBLIC_SENTRY_ENVIRONMENT,
   release: PUBLIC_SENTRY_RELEASE,
   tracesSampleRate: 0,
+  // Errors only. Two of the SDK's defaults report more than errors: BrowserSession posts a
+  // "session" (release, environment, user agent) on every page view for Release Health, and
+  // BrowserTracing instruments page loads and requests. Neither is wanted here; the build also
+  // leaves the tracing code out of the bundle (`bundleSizeOptimizations` in astro.config.ts).
+  integrations: (defaults) =>
+    defaults.filter(
+      (integration) =>
+        integration.name !== 'BrowserSession' && integration.name !== 'BrowserTracing',
+    ),
   // Nothing that identifies a person: no user, cookies, headers, request bodies or query strings.
   dataCollection: {
     userInfo: false,

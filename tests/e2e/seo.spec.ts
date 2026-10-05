@@ -7,29 +7,31 @@ test.describe('SEO and discovery endpoints', () => {
     request,
   }) => {
     const robots = await request.get('/robots.txt');
-    expect(robots.ok()).toBeTruthy();
+    expect(robots.status()).toBe(200);
     expect(await robots.text()).toContain('Sitemap:');
 
     const sitemap = await request.get('/sitemap-index.xml');
-    expect(sitemap.ok()).toBeTruthy();
+    expect(sitemap.status()).toBe(200);
     expect(await sitemap.text()).toContain('<sitemapindex');
 
     const rss = await request.get('/rss.xml');
-    expect(rss.ok()).toBeTruthy();
+    expect(rss.status()).toBe(200);
     expect(await rss.text()).toContain('<rss');
 
     const manifest = await request.get('/manifest.webmanifest');
-    expect(manifest.ok()).toBeTruthy();
+    expect(manifest.status()).toBe(200);
     expect((await manifest.json()).name).toBe(siteConfig.name);
 
     const llms = await request.get('/llms.txt');
+    expect(llms.status()).toBe(200);
     expect(await llms.text()).toContain(`# ${siteConfig.name}`);
 
     const og = await request.get('/og/default.png');
-    expect(og.ok()).toBeTruthy();
+    expect(og.status()).toBe(200);
     expect(og.headers()['content-type']).toContain('image/png');
 
     const securityTxt = await request.get('/.well-known/security.txt');
+    expect(securityTxt.status()).toBe(200);
     expect(await securityTxt.text()).toContain('Contact:');
   });
 

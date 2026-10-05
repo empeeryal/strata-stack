@@ -89,6 +89,10 @@ turns the cache off when any of these hold:
 - the path belongs to the account, admin, auth, actions, health or newsletter-token routes listed
   in `PRIVATE_ROUTE_PREFIXES`.
 
+On such a response the middleware also replaces a route's own `Cache-Control` with
+`private, no-store` unless it already says `private` or `no-store`, so a shared cache in front of
+the server (a CDN that honours `max-age`, a caching proxy) cannot keep a personal response either.
+
 The providers add their own guard: on Node a response that sets a cookie is never stored, and
 the CDNs skip `Set-Cookie` responses as well. Note the direction of the guarantee: a signed-in
 visitor's response is never _stored_, but a copy stored for an anonymous visitor _is served_ to

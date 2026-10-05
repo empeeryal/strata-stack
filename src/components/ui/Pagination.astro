@@ -14,6 +14,8 @@ interface Props {
   labels?: [string, string];
   /** Accessible name of the navigation landmark. */
   label?: string;
+  /** The position text; translated callers pass `t('pagination.page', { current, total })`. */
+  pageLabel?: string;
   class?: string;
 }
 
@@ -24,6 +26,7 @@ const {
   next,
   labels = ['Previous', 'Next'],
   label = 'Pagination',
+  pageLabel = `Page ${current} of ${total}`,
   class: className,
 } = Astro.props;
 ---
@@ -38,9 +41,7 @@ const {
     ) : (
       <span aria-hidden="true" />
     )}
-    <p class="text-sm text-muted-foreground">
-      Page {current} of {total}
-    </p>
+    <p class="text-sm text-muted-foreground">{pageLabel}</p>
     {next ? (
       <a href={next} rel="next" class={buttonVariants({ variant: 'outline', size: 'sm' })}>
         {labels[1]}

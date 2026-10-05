@@ -153,7 +153,12 @@ const crumbs = [
       <Toc headings={headings} label={t('toc')} class="rounded-lg border p-4" />
     </div>
 
-    <Prose as="div" class="mt-10">
+    <Prose
+      as="div"
+      class="mt-10"
+      anchorLabel={t('prose.anchor')}
+      copyLabels={{ copy: t('code.copy'), copied: t('code.copied'), failed: t('code.copyFailed') }}
+    >
       <slot />
     </Prose>
 

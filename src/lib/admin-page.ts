@@ -50,7 +50,7 @@ export const ADMIN_NOTICES = {
   'user-deleted': 'User deleted.',
   'subscriber-removed': 'Subscriber removed.',
   'subscriber-removed-unsynced':
-    'Subscriber removed here, but the provider could not be updated. Remove the contact in Resend as well.',
+    'The provider could not be updated, so the address stays listed as unsubscribed, with the error, until the retention job has removed it there. Removing it again retries now.',
   'two-factor-reset':
     'Two-factor authentication was reset. The user signs in with their password until they set it up again.',
 } as const;

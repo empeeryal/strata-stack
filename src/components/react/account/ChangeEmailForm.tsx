@@ -37,6 +37,8 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // Which field the error is about, so assistive technology reads it with that field.
+  const [invalidField, setInvalidField] = useState<'email' | 'password' | null>(null);
 
   if (mode === 'unavailable') {
     return (
@@ -50,6 +52,7 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setInvalidField(null);
     setDone(null);
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -58,6 +61,7 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
       .toLowerCase();
     const password = String(data.get('password') ?? '');
     if (newEmail === email.toLowerCase()) {
+      setInvalidField('email');
       setError('That is already the address on your account.');
       return;
     }
@@ -75,7 +79,11 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
         },
       });
       if (result.error) {
-        setError(result.error.message ?? UNEXPECTED_ERROR);
+        const message = result.error.message ?? UNEXPECTED_ERROR;
+        setInvalidField(
+          /password/i.test(message) ? 'password' : /email|address/i.test(message) ? 'email' : null,
+        );
+        setError(message);
         return;
       }
       trackEvent('Email change requested');
@@ -87,6 +95,7 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
           window.location.assign('/dashboard?notice=email-updated');
           return;
         }
+        setInvalidField('email');
         setError('That address cannot be used for this account.');
         return;
       }
@@ -117,8 +126,8 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
           autoComplete="email"
           required
           placeholder="you@example.com"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'change-email-error' : undefined}
+          aria-invalid={invalidField === 'email' || undefined}
+          aria-describedby={invalidField === 'email' ? 'change-email-error' : undefined}
         />
       </Field>
       {hasPassword && (
@@ -129,6 +138,8 @@ export default function ChangeEmailForm({ email, hasPassword, mode }: ChangeEmai
             name="password"
             autoComplete="current-password"
             required
+            aria-invalid={invalidField === 'password' || undefined}
+            aria-describedby={invalidField === 'password' ? 'change-email-error' : undefined}
           />
         </Field>
       )}

@@ -115,6 +115,9 @@ describe('<ChangeEmailForm>', () => {
     await user.click(screen.getByRole('button', { name: 'Change email address' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Invalid password'));
     expect(trackEvent).not.toHaveBeenCalled();
+    // The error is read with the field it is about.
+    expect(screen.getByLabelText('Current password')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('New email address')).not.toHaveAttribute('aria-invalid');
   });
 
   it('explains when the change is unavailable', () => {
