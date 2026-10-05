@@ -4,10 +4,6 @@ import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 import type { PasskeyItem } from '@/lib/passkeys';
 
-// The cap src/lib/auth.ts enforces for the plugin's endpoints, repeated here because that module
-// pulls in the server side of the passkey plugin.
-const PASSKEY_NAME_MAX_LENGTH = 64;
-
 import {
   Alert,
   Badge,
@@ -19,6 +15,10 @@ import {
   useFocusOnChange,
   useWebAuthnSupport,
 } from '../primitives';
+
+// The cap src/lib/auth.ts enforces for the plugin's endpoints, repeated here because that module
+// pulls in the server side of the passkey plugin.
+const PASSKEY_NAME_MAX_LENGTH = 64;
 
 export interface PasskeyListProps {
   passkeys: PasskeyItem[];

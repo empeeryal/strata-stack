@@ -89,7 +89,7 @@ test.describe('authentication', () => {
     // middleware reads the database and the response must carry the refreshed cache cookie, or
     // every later request would read the database again.
     const bare = await playwright.request.newContext({
-      baseURL,
+      ...(baseURL ? { baseURL } : {}),
       storageState: { cookies: [token!], origins: [] },
     });
     try {

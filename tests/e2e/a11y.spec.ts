@@ -237,12 +237,18 @@ test.describe('signed-in pages', { tag: '@a11y' }, () => {
       const emailForm = page.getByRole('form', { name: 'Change email address' });
       await emailForm.scrollIntoViewIfNeeded();
       await waitForIslands(page);
-      await emailForm.getByLabel('New email address').fill('another@example.com');
-      await emailForm.getByLabel('Current password').fill('not-the-password-at-all');
+      // The island refuses the current address itself, so no auth request is made: the
+      // change-email endpoint allows three per ten seconds, and the email-change spec may be
+      // using them in another worker at the same time.
+      await emailForm.getByLabel('New email address').fill(ADMIN_EMAIL);
+      await emailForm.getByLabel('Current password').fill(E2E_PASSWORD);
       await emailForm.getByRole('button', { name: 'Change email address' }).click();
-      await expect(emailForm.getByRole('alert')).toContainText('Invalid password');
+      await expect(emailForm.getByRole('alert')).toContainText('already the address');
 
-      await page.getByRole('button', { name: 'Add a passkey' }).click();
+      const addPasskey = page.getByRole('button', { name: 'Add a passkey' });
+      await addPasskey.scrollIntoViewIfNeeded();
+      await waitForIslands(page);
+      await addPasskey.click();
       await expect(page.getByRole('form', { name: 'Add a passkey' })).toBeVisible();
       await expectNoViolations(page);
     });
