@@ -133,8 +133,9 @@ export default defineConfig({
                 './.vercel/output/**/*.map',
               ],
             },
-            // Errors only: the tracing code is not bundled (see sentry.client.config.ts).
-            bundleSizeOptimizations: { excludeTracing: true },
+            // Errors only: the tracing code is not bundled (see sentry.client.config.ts and the
+            // `__SENTRY_*` defines below, which cover builds without a token as well).
+            bundleSizeOptimizations: { excludeTracing: true, excludeDebugStatements: true },
             telemetry: false,
           }),
         ]
@@ -148,6 +149,11 @@ export default defineConfig({
       // Inlined so the analytics client is left out of the bundle when analytics is off (an
       // `astro:env/client` value is a module import and is not folded away).
       __ANALYTICS_ENABLED__: JSON.stringify(process.env.PUBLIC_ANALYTICS === 'vercel'),
+      // Sentry's SDK branches on these: false leaves the tracing code and the debug logging out
+      // of the bundles. The integration's `bundleSizeOptimizations` sets them as well, but only
+      // in a build that uploads source maps (it is the upload plugin that applies them).
+      __SENTRY_TRACING__: 'false',
+      __SENTRY_DEBUG__: 'false',
     },
     build: {
       rollupOptions: {
