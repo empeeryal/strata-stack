@@ -2,6 +2,9 @@ import { getAuthenticatorName } from '@better-auth/passkey';
 
 import { formatDate, toISODate } from './utils';
 
+/** Longest name a passkey can be given; the dashboard's inputs use the same cap. */
+export const PASSKEY_NAME_MAX_LENGTH = 64;
+
 /** A passkey as a page or the export shows it: never the public key or the credential id. */
 export interface PasskeyItem {
   id: string;

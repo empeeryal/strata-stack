@@ -15,9 +15,18 @@ interface Props {
   title?: string;
   wrap?: boolean;
   class?: string;
+  /** Labels of the copy button; translated pages pass the `code.*` strings. */
+  copyLabels?: { copy: string; copied: string; failed: string };
 }
 
-const { code, lang = 'text', title, wrap = false, class: className } = Astro.props;
+const {
+  code,
+  lang = 'text',
+  title,
+  wrap = false,
+  class: className,
+  copyLabels = { copy: 'Copy', copied: 'Copied', failed: 'Copy failed' },
+} = Astro.props;
 ---
 
 <figure
@@ -33,10 +42,12 @@ const { code, lang = 'text', title, wrap = false, class: className } = Astro.pro
         type="button"
         hidden
         data-copy-code
+        data-copied-label={copyLabels.copied}
+        data-copy-failed-label={copyLabels.failed}
         aria-live="polite"
         class="rounded-md border bg-background/80 px-2 py-1 font-sans text-xs text-muted-foreground hover:text-foreground"
       >
-        Copy
+        {copyLabels.copy}
       </button>
     </figcaption>
   ) : (
@@ -44,10 +55,12 @@ const { code, lang = 'text', title, wrap = false, class: className } = Astro.pro
       type="button"
       hidden
       data-copy-code
+      data-copied-label={copyLabels.copied}
+      data-copy-failed-label={copyLabels.failed}
       aria-live="polite"
       class="absolute top-2 right-2 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground"
     >
-      Copy
+      {copyLabels.copy}
     </button>
   )}
   <Code
@@ -60,13 +73,14 @@ const { code, lang = 'text', title, wrap = false, class: className } = Astro.pro
 </figure>
 
 <script>
-  import { bindCopyButton } from './copy-code';
+  import { bindCopyButton, copyLabelsOf } from './copy-code';
 
   document.querySelectorAll<HTMLElement>('figure.code-block').forEach((figure) => {
     const button = figure.querySelector<HTMLButtonElement>('[data-copy-code]');
     const pre = figure.querySelector('pre');
     if (!button || !pre) return;
     button.hidden = false;
-    bindCopyButton(button, pre);
+    // The visible text is the "copy" label; the other two come from the data attributes.
+    bindCopyButton(button, pre, { ...copyLabelsOf(button), copy: button.textContent ?? 'Copy' });
   });
 </script>

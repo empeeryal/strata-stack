@@ -109,7 +109,7 @@ output, the design-system components, security headers, CSP violations and acces
   sign-up test that expects a known password to be refused talks to Have I Been Pwned, and
   `PASSWORD_BREACH_CHECK=false` skips it.
 - **Room for retries in the throttles.** The contact and newsletter forms allow five submissions
-  per address in fifteen minutes. Every request in the suite comes from the runner's address and a
+  per IP address in fifteen minutes (and three per email address an hour). Every request in the suite comes from the runner's address and a
   retried block submits again, so with `NODE_ENV=test` (the end-to-end server and Vitest) the
   per-IP rule allows fifty; the per-address rules and the site-wide cap stay as in production, and
   the unit tests exercise the mechanism with whatever the limit is.

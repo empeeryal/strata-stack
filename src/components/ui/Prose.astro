@@ -10,21 +10,38 @@ interface Props {
   as?: 'div' | 'article' | 'section';
   class?: string;
   anchors?: boolean;
+  /** Accessible name of the heading anchors; translated pages pass `t('prose.anchor')`. */
+  anchorLabel?: string;
+  /** Labels of the copy buttons on code blocks; translated pages pass the `code.*` strings. */
+  copyLabels?: { copy: string; copied: string; failed: string };
 }
 
-const { as: Tag = 'div', class: className, anchors = true } = Astro.props;
+const {
+  as: Tag = 'div',
+  class: className,
+  anchors = true,
+  anchorLabel = 'Link to this section',
+  copyLabels = { copy: 'Copy', copied: 'Copied', failed: 'Copy failed' },
+} = Astro.props;
 
 let html = await Astro.slots.render('default');
 if (anchors) {
   html = html.replace(
     /<h([2-4])([^>]*?)\sid="([^"]+)"([^>]*)>([\s\S]*?)<\/h\1>/g,
     (_match, level, before, id, after, inner) =>
-      `<h${level}${before} id="${id}"${after}>${inner}<a class="heading-anchor" href="#${id}" aria-label="Link to this section">#</a></h${level}>`,
+      `<h${level}${before} id="${id}"${after}>${inner}<a class="heading-anchor" href="#${id}" aria-label="${anchorLabel}">#</a></h${level}>`,
   );
 }
 ---
 
-<Tag class={cn('prose', className)} data-prose set:html={html} />
+<Tag
+  class={cn('prose', className)}
+  data-prose
+  data-copy-label={copyLabels.copy}
+  data-copied-label={copyLabels.copied}
+  data-copy-failed-label={copyLabels.failed}
+  set:html={html}
+/>
 
 <script>
   import { enhanceCodeBlocks } from './copy-code';

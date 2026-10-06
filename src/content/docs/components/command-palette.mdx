@@ -9,9 +9,8 @@ sidebar:
 Press <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd> (<Kbd>⌘</Kbd>+<Kbd>K</Kbd> on a Mac) anywhere on this site, or
 use the search button in the header. With nothing typed, the palette lists the main pages, the
 first docs section and a few actions; as you type it filters every page and documentation entry
-and, from two characters on, adds full-text results from the Pagefind index. Arrow keys move,
-
-<Kbd>Enter</Kbd> opens, <Kbd>Esc</Kbd> closes.
+and, from two characters on, adds full-text results from the Pagefind index. Arrow keys move
+through the list, <Kbd>Enter</Kbd> opens the selected entry and <Kbd>Esc</Kbd> closes the palette.
 
 <Callout type="tip" title="Try it">
   <a href="/search" data-palette-trigger>
@@ -81,7 +80,7 @@ Groups carry `aria-label`s, the empty state is a live region, and the axe scan i
 
 `src/components/react/CommandPalette.test.tsx` covers the shortcut, filtering, keyboard
 selection, injected search results and the theme action. `tests/e2e/search.spec.ts` opens the
-palette in the built site, checks the docs entries and live Pagefind results, presses
+palette in the built site, checks the docs entries and live Pagefind results, closes it with
 
 <Kbd>Esc</Kbd>, navigates with <Kbd>Enter</Kbd> and confirms the link fallback with JavaScript
 disabled.

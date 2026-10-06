@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 /** Disc sizes shared by `Avatar.astro` and the React `Avatar` so both render identical markup. */
-export const avatarSizes = {
+const avatarSizes = {
   sm: 'size-6 text-[10px]',
   md: 'size-9 text-xs',
   lg: 'size-16 text-lg',

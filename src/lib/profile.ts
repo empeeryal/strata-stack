@@ -7,7 +7,7 @@
 
 export const NAME_MIN_LENGTH = 2;
 export const NAME_MAX_LENGTH = 80;
-export const IMAGE_URL_MAX_LENGTH = 2048;
+const IMAGE_URL_MAX_LENGTH = 2048;
 
 export class ProfileValidationError extends Error {
   constructor(message: string) {

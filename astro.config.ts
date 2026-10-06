@@ -29,6 +29,9 @@ const deployTarget = resolveDeployTarget();
 // is not a Node runtime, so there the browser side alone is on (docs/guides/monitoring).
 const sentryDsn = resolveSentryDsn(process.env);
 const sentryServer = deployTarget !== 'cloudflare';
+// One release name for the events (sentry.*.config.ts read PUBLIC_SENTRY_RELEASE) and for the
+// uploaded source maps, or the two never meet in Sentry's release view.
+const sentryRelease = process.env.PUBLIC_SENTRY_RELEASE?.trim() || `${pkg.name}@${pkg.version}`;
 if (sentryDsn) {
   console.info(
     `[monitoring] Sentry on (browser${sentryServer ? ' and server' : ''}, reports to ${sentryIngestOrigin(sentryDsn)})`,
@@ -116,9 +119,23 @@ export default defineConfig({
       ? [
           sentry({
             enabled: { client: true, server: sentryServer },
+            release: { name: sentryRelease },
             // Source maps are uploaded (and then deleted from the build) only when a token for
-            // the Sentry project is present; without one the build stays as it is.
-            sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+            // the Sentry project is present; without one the build stays as it is. The deletion
+            // globs are spelled out because the integration's defaults know the Node layout
+            // (dist/client, dist/server) only: Netlify writes the browser bundle to the root of
+            // dist and the server to .netlify, and a map left there is served to everyone.
+            sourcemaps: {
+              disable: !process.env.SENTRY_AUTH_TOKEN,
+              filesToDeleteAfterUpload: [
+                './dist/**/*.map',
+                './.netlify/**/*.map',
+                './.vercel/output/**/*.map',
+              ],
+            },
+            // Errors only: the tracing code is not bundled (see sentry.client.config.ts and the
+            // `__SENTRY_*` defines below, which cover builds without a token as well).
+            bundleSizeOptimizations: { excludeTracing: true, excludeDebugStatements: true },
             telemetry: false,
           }),
         ]
@@ -129,6 +146,14 @@ export default defineConfig({
     plugins: [tailwindcss()],
     define: {
       __DEPLOY_TARGET__: JSON.stringify(deployTarget),
+      // Inlined so the analytics client is left out of the bundle when analytics is off (an
+      // `astro:env/client` value is a module import and is not folded away).
+      __ANALYTICS_ENABLED__: JSON.stringify(process.env.PUBLIC_ANALYTICS === 'vercel'),
+      // Sentry's SDK branches on these: false leaves the tracing code and the debug logging out
+      // of the bundles. The integration's `bundleSizeOptimizations` sets them as well, but only
+      // in a build that uploads source maps (it is the upload plugin that applies them).
+      __SENTRY_TRACING__: 'false',
+      __SENTRY_DEBUG__: 'false',
     },
     build: {
       rollupOptions: {
@@ -266,7 +291,7 @@ export default defineConfig({
       PUBLIC_SENTRY_RELEASE: envField.string({
         context: 'client',
         access: 'public',
-        default: `${pkg.name}@${pkg.version}`,
+        default: sentryRelease,
       }),
     },
   },

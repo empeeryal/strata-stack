@@ -24,10 +24,21 @@ describe('scrubBreadcrumb', () => {
       category: 'fetch',
       data: { url: '/api/auth/magic-link/verify', method: 'GET', status_code: 200 },
     });
-    expect(scrubBreadcrumb({ category: 'console', message: 'hello' })).toEqual({
-      category: 'console',
-      message: 'hello',
+    expect(scrubBreadcrumb({ category: 'ui.click', message: 'button' })).toEqual({
+      category: 'ui.click',
+      message: 'button',
     });
+  });
+
+  it('drops console breadcrumbs, whatever they say', () => {
+    // Outside production the email module prints the messages it would send, links included.
+    expect(
+      scrubBreadcrumb({
+        category: 'console',
+        message: 'Open https://example.com/api/auth/magic-link/verify?token=secret',
+        data: { arguments: ['Open https://example.com/api/auth/magic-link/verify?token=secret'] },
+      }),
+    ).toBeNull();
   });
 });
 
@@ -46,12 +57,13 @@ describe('scrubEvent', () => {
           Cookie: 'better-auth.session_token=x',
           Authorization: 'Bearer y',
           'User-Agent': 'Mozilla/5.0',
-          Referer: 'https://example.com/login',
+          Referer: 'https://example.com/newsletter/confirm?token=abc',
           'X-Forwarded-For': '203.0.113.7',
         },
       },
       breadcrumbs: [
         { category: 'navigation', data: { from: '/login?next=%2Fadmin', to: '/admin' } },
+        { category: 'console', message: 'to: ada@example.com' },
       ],
     };
     const scrubbed = scrubEvent(event);
@@ -60,7 +72,10 @@ describe('scrubEvent', () => {
       request: {
         url: 'https://example.com/reset-password',
         method: 'GET',
-        headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://example.com/login' },
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          Referer: 'https://example.com/newsletter/confirm',
+        },
       },
       breadcrumbs: [{ category: 'navigation', data: { from: '/login', to: '/admin' } }],
     });

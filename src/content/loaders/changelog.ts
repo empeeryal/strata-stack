@@ -48,12 +48,19 @@ export function changelogLoader({ file = 'CHANGELOG.md' }: ChangelogLoaderOption
           const version = heading.replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, '').trim();
           const id = version.replace(/[^a-zA-Z0-9.-]+/g, '-');
 
+          // Every release body has the same headings ("Minor Changes", "Patch Changes"); on the
+          // changelog page they all render together, so their ids are scoped to the release or
+          // the page would carry one duplicate id per release.
+          const rendered = await renderMarkdown(body);
           store.set({
             id,
             data: { version, order, ...(dateMatch ? { date: dateMatch[1] } : {}) },
             body,
             filePath: file,
-            rendered: await renderMarkdown(body),
+            rendered: {
+              ...rendered,
+              html: rendered.html.replace(/(<h[1-6]\b[^>]*\sid=")([^"]+)(")/g, `$1${id}-$2$3`),
+            },
           });
         }
         logger.info(

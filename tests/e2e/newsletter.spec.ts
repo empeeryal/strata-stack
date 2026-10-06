@@ -37,6 +37,27 @@ function signedHeaders(body: string, id = `msg_${Date.now()}`) {
 }
 
 test.describe('newsletter', () => {
+  test('the subscribe action answers the same whatever happened to the address', async ({
+    request,
+    baseURL,
+  }) => {
+    // The form shows one message for every outcome; the response body has to match, or a direct
+    // POST would still tell whether an address is subscribed.
+    const email = `probe-${Date.now()}@example.com`;
+    const post = () =>
+      request.post('/_actions/newsletter.subscribe', {
+        form: { email },
+        headers: { Origin: baseURL ?? '' },
+      });
+    const first = await post();
+    const second = await post();
+    expect(first.status()).toBe(200);
+    expect(second.status()).toBe(200);
+    const body = await first.text();
+    expect(body).toBe(await second.text());
+    expect(body).not.toMatch(/confirmation-sent|already-subscribed|ignored/);
+  });
+
   test('subscribes from the footer and confirms, then unsubscribes, through the emailed links', async ({
     page,
   }) => {

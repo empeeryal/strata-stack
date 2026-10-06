@@ -140,7 +140,7 @@ const dayDetail = new Intl.DateTimeFormat('en-US', {
 });
 
 /** UTC calendar day (YYYY-MM-DD) of a timestamp. */
-export function utcDay(date: Date): string {
+function utcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 

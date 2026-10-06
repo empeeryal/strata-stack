@@ -69,9 +69,13 @@ export const DELIVERY_LEASE_MS = 2 * 60 * 1000;
  * (the runner's) and retries a failed block from its first test, so the per-IP rule gets room in
  * test runs only; the unit tests exercise the mechanism with whatever the limit is.
  */
-export const CONTACT_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule } = {
+export const CONTACT_LIMITS: { perIp: ThrottleRule; perEmail: ThrottleRule; site: ThrottleRule } = {
   perIp: { limit: process.env.NODE_ENV === 'test' ? 50 : 5, windowMs: 15 * 60 * 1000 },
   perEmail: { limit: 3, windowMs: 60 * 60 * 1000 },
+  // Site-wide ceiling for when the per-IP rule is defeated (a proxy that appends the visitor's
+  // own `X-Forwarded-For`, see the Node deployment guide): bounds the stored messages and the
+  // owner notifications an hour can bring. Well above what a site this size receives.
+  site: { limit: 60, windowMs: 60 * 60 * 1000 },
 };
 
 /**
@@ -103,6 +107,7 @@ export async function submitContactMessage(
     checks.push([`contact:ip:${await hashThrottleKey(context.ip)}`, CONTACT_LIMITS.perIp]);
   }
   checks.push([`contact:email:${await hashThrottleKey(email)}`, CONTACT_LIMITS.perEmail]);
+  checks.push(['contact:site', CONTACT_LIMITS.site]);
   for (const [key, rule] of checks) {
     const result = await consumeThrottle(deps.db, key, rule, now());
     if (!result.allowed) throw new ContactThrottledError(result.resetAt);

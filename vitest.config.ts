@@ -39,7 +39,7 @@ export default getViteConfig(
         // Floors, not targets: a pull request that drops a group below its floor fails the
         // unit job. Raise a floor when the group's coverage has settled above it.
         thresholds: {
-          'src/lib/**/*.ts': { lines: 85, branches: 80, functions: 85, statements: 85 },
+          'src/lib/**/*.{ts,tsx}': { lines: 85, branches: 80, functions: 85, statements: 85 },
           'config/**/*.ts': { lines: 80, branches: 80, functions: 70, statements: 75 },
           'src/components/react/**/*.tsx': {
             lines: 80,

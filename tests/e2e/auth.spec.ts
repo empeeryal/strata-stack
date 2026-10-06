@@ -67,4 +67,43 @@ test.describe('authentication', () => {
     expect(dashboard.status()).toBe(302);
     expect(dashboard.headers()['location']).toContain('/login');
   });
+
+  test('server-rendered pages carry the refreshed session cookies', async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const signedUp = await request.post('/api/auth/sign-up/email', {
+      data: {
+        name: 'Cookie Tester',
+        email: `cookies-${Date.now()}@example.com`,
+        password: E2E_PASSWORD,
+      },
+    });
+    expect(signedUp.ok()).toBe(true);
+    const { cookies } = await request.storageState();
+    const token = cookies.find((cookie) => cookie.name.endsWith('session_token'));
+    expect(token).toBeDefined();
+
+    // Only the session token, as a browser whose cookie cache has expired sends it: the
+    // middleware reads the database and the response must carry the refreshed cache cookie, or
+    // every later request would read the database again.
+    const bare = await playwright.request.newContext({
+      ...(baseURL ? { baseURL } : {}),
+      storageState: { cookies: [token!], origins: [] },
+    });
+    try {
+      const dashboard = await bare.get('/dashboard', { maxRedirects: 0 });
+      expect(dashboard.status()).toBe(200);
+      const setCookies = dashboard
+        .headersArray()
+        .filter((header) => header.name.toLowerCase() === 'set-cookie')
+        .map((header) => header.value);
+      expect(setCookies.some((value) => value.includes('session_data='))).toBe(true);
+      // Personal responses are never stored by a cache in front of the server.
+      expect(dashboard.headers()['cache-control']).toBe('private, no-store');
+    } finally {
+      await bare.dispose();
+    }
+  });
 });

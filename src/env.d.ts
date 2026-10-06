@@ -1,7 +1,9 @@
 /// <reference path="../.astro/types.d.ts" />
 
-/** Compile-time constant injected from astro.config.ts (see `vite.define`). */
+/** Compile-time constants injected from astro.config.ts (see `vite.define`). */
 declare const __DEPLOY_TARGET__: 'node' | 'vercel' | 'cloudflare' | 'netlify';
+/** `PUBLIC_ANALYTICS === 'vercel'` at build time; decides whether the analytics client is bundled. */
+declare const __ANALYTICS_ENABLED__: boolean;
 
 declare namespace App {
   type AuthSession = typeof import('./lib/auth').auth.$Infer.Session;

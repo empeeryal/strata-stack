@@ -91,8 +91,9 @@ The template stores subscribers; it does not send newsletters. Two ways to do th
   addresses the provider has not received yet, for example because the API was unavailable,
   and the overview counts them. They are retried when the address changes again, by the
   weekly prune job (give it `RESEND_API_KEY` and `RESEND_AUDIENCE_ID` too) and when an
-  administrator removes the row; an opt-out the provider has not been told about is never
-  pruned while it waits, so a broadcast cannot keep going to someone who unsubscribed here.
+  administrator removes the row (if the provider refuses at that moment, the row stays as an
+  opt-out with the error until a retry gets through); an opt-out the provider has not been told
+  about is never pruned while it waits, so a broadcast cannot keep going to someone who unsubscribed here.
 
   To make Resend's unsubscribe link count here as well, add a webhook in Resend
   (**Webhooks → Add**) with the URL `https://<your site>/api/newsletter/webhook` and the

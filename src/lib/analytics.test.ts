@@ -12,11 +12,15 @@ vi.mock('@vercel/analytics', () => ({
   },
 }));
 
-async function load(setting: string) {
+/** Loads the module as a build with `PUBLIC_ANALYTICS` set to `setting` would (astro.config.ts). */
+async function load(setting: 'vercel' | 'none') {
   vi.resetModules();
-  vi.doMock('astro:env/client', () => ({ PUBLIC_ANALYTICS: setting }));
+  vi.stubGlobal('__ANALYTICS_ENABLED__', setting === 'vercel');
   return import('./analytics');
 }
+
+/** The client is imported on demand; events are sent once that import has settled. */
+const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('trackEvent', () => {
   beforeEach(() => {
@@ -29,14 +33,16 @@ describe('trackEvent', () => {
     expect(analyticsEnabled).toBe(true);
     trackEvent('Newsletter subscribed', { source: 'footer' });
     trackEvent('Signed out');
+    await vi.waitFor(() => expect(track).toHaveBeenCalledTimes(2));
     expect(track).toHaveBeenCalledWith('Newsletter subscribed', { source: 'footer' });
     expect(track).toHaveBeenCalledWith('Signed out', undefined);
   });
 
-  it('sends nothing when analytics is off', async () => {
+  it('sends nothing, and loads no client, when analytics is off', async () => {
     const { analyticsEnabled, trackEvent } = await load('none');
     expect(analyticsEnabled).toBe(false);
     trackEvent('Theme changed', { theme: 'dark' });
+    await settled();
     expect(track).not.toHaveBeenCalled();
   });
 
@@ -44,6 +50,7 @@ describe('trackEvent', () => {
     const { trackEvent } = await load('vercel');
     clientBroken = true;
     expect(() => trackEvent('Code copied')).not.toThrow();
+    await settled();
     expect(track).not.toHaveBeenCalled();
   });
 });

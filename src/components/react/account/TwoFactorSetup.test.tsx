@@ -88,6 +88,31 @@ describe('<TwoFactorSetup>', () => {
     expect(screen.getByLabelText('Code from the app')).toBeInTheDocument();
   });
 
+  it('tells a rate-limited retry apart from a wrong code', async () => {
+    enable.mockResolvedValue({
+      data: { method: 'totp', totpURI, backupCodes: codes },
+      error: null,
+    });
+    verifyTotp.mockResolvedValue({ data: null, error: { status: 429, message: 'Too many' } });
+    const user = userEvent.setup();
+    render(<TwoFactorSetup enabled={false} hasPassword />);
+    await user.click(screen.getByRole('button', { name: 'Turn on two-factor authentication' }));
+    await user.type(screen.getByLabelText('Current password'), 'pw');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.type(await screen.findByLabelText('Code from the app'), '000000');
+    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Too many attempts'));
+  });
+
+  it('moves the focus into each step and back to the button on cancel', async () => {
+    const user = userEvent.setup();
+    render(<TwoFactorSetup enabled={false} hasPassword />);
+    await user.click(screen.getByRole('button', { name: 'Turn on two-factor authentication' }));
+    expect(screen.getByLabelText('Current password')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Turn on two-factor authentication' })).toHaveFocus();
+  });
+
   it('regenerates backup codes and turns two-factor off with the password', async () => {
     generateBackupCodes.mockResolvedValue({ data: { backupCodes: ['new-1'] }, error: null });
     disable.mockResolvedValue({ data: { status: true }, error: null });

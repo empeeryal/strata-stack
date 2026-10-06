@@ -3,7 +3,7 @@
  * key, the page redirects with `?notice=<key>` (POST → redirect → GET) and renders the text.
  * Only keys listed here are ever rendered, so the query parameter cannot inject content.
  */
-export const ACCOUNT_NOTICES = {
+const ACCOUNT_NOTICES = {
   'session-revoked': 'That session was signed out.',
   'sessions-revoked': 'Every other session was signed out.',
   'profile-updated': 'Profile updated.',

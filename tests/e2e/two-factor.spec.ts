@@ -112,7 +112,7 @@ test.describe('two-factor authentication', () => {
 
     // Signed out, the same backup code is spent.
     await page.getByRole('button', { name: 'Sign out' }).first().click();
-    await expect(page).toHaveURL(/\/(login)?$/);
+    await expect(page).toHaveURL(/\/$/);
     await signIn(page, email);
     await expect(page).toHaveURL(/\/two-factor$/);
     await page.getByRole('button', { name: 'Use a backup code instead' }).click();

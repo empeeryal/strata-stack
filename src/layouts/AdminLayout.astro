@@ -69,27 +69,58 @@ const isActive = (href: string) =>
 </BaseLayout>
 
 <script>
-  // Confirmation prompts for destructive forms, and free-text prompts whose answer goes into
-  // the form's `[data-prompt-field]` input (the ban reason). Cancelling either aborts the
-  // submission. Inline `onsubmit` handlers are blocked by the CSP, so the behaviour is
-  // attached here from a processed script.
-  document
-    .querySelectorAll<HTMLFormElement>('form[data-confirm], form[data-prompt]')
-    .forEach((form) => {
-      form.addEventListener('submit', (event) => {
-        if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+  // Confirmation prompts for destructive forms, free-text prompts whose answer goes into the
+  // form's `[data-prompt-field]` input (the ban reason), and one submission per form: the second
+  // POST of a double click would act on a row the first one already changed and come back as an
+  // error. Cancelling a prompt aborts the submission. Inline `onsubmit` handlers are blocked by
+  // the CSP, so the behaviour is attached here from a processed script.
+  const forms = document.querySelectorAll<HTMLFormElement>('form');
+
+  function submitButtons(form: HTMLFormElement) {
+    return form.querySelectorAll<HTMLButtonElement>('button:not([type]), button[type="submit"]');
+  }
+
+  forms.forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      if (form.dataset.submitting) {
+        event.preventDefault();
+        return;
+      }
+      if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+        event.preventDefault();
+        return;
+      }
+      if (form.dataset.prompt) {
+        const answer = window.prompt(form.dataset.prompt, '');
+        if (answer === null) {
           event.preventDefault();
           return;
         }
-        if (form.dataset.prompt) {
-          const answer = window.prompt(form.dataset.prompt, '');
-          if (answer === null) {
-            event.preventDefault();
-            return;
-          }
-          const field = form.querySelector<HTMLInputElement>('[data-prompt-field]');
-          if (field) field.value = answer.trim();
-        }
+        const field = form.querySelector<HTMLInputElement>('[data-prompt-field]');
+        if (field) field.value = answer.trim();
+      }
+      form.dataset.submitting = 'true';
+      // Disabled on the next tick, so the clicked button's own name and value still travel
+      // with the request.
+      setTimeout(() => {
+        submitButtons(form).forEach((button) => {
+          button.disabled = true;
+          button.setAttribute('aria-busy', 'true');
+        });
       });
     });
+  });
+
+  // A page restored from the back/forward cache keeps the DOM of the submission; make the forms
+  // usable again.
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    forms.forEach((form) => {
+      delete form.dataset.submitting;
+      submitButtons(form).forEach((button) => {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+      });
+    });
+  });
 </script>

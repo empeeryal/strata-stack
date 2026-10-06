@@ -177,11 +177,6 @@ export async function deleteUserAccount(
 }
 
 /**
- * Removes a user's second factor (their authenticator entry and backup codes) so they can sign
- * in with the password alone and set it up again. The recovery path for someone who lost both
- * the authenticator and the codes; administrators use it after checking who they talk to.
- */
-/**
  * Forgets every browser the user marked as trusted. Better Auth keeps one `verification` row
  * per trusted device (identifier `trust-device-…`, value = user id) and only checks that a row
  * exists at sign-in, so turning the factor off, resetting it or re-enabling it must clear them
@@ -198,6 +193,11 @@ export async function forgetTrustedDevices(db: DbExecutor, userId: string): Prom
     );
 }
 
+/**
+ * Removes a user's second factor (their authenticator entry and backup codes) so they can sign
+ * in with the password alone and set it up again. The recovery path for someone who lost both
+ * the authenticator and the codes; administrators use it after checking who they talk to.
+ */
 export async function resetUserTwoFactor(
   db: Database,
   actor: { id: string; email: string },

@@ -37,8 +37,7 @@ export default function MagicLinkForm({ redirectTo = '/dashboard' }: MagicLinkFo
   if (status === 'sent') {
     return (
       <Alert variant="success">
-        Check your inbox: if an account exists for that address, a sign-in link is on its way. The
-        link expires in 5 minutes.
+        Check your inbox: a sign-in link is on its way. The link expires in 5 minutes.
       </Alert>
     );
   }

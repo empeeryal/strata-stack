@@ -35,6 +35,8 @@ export async function getAuthoritativeSession(
 function expireCookies(responseHeaders: Headers, cookies: AstroCookies): void {
   for (const header of responseHeaders.getSetCookie()) {
     const name = header.slice(0, header.indexOf('=')).trim();
-    if (name) cookies.delete(name, { path: '/' });
+    // Behind https Better Auth prefixes its cookies with `__Secure-`; browsers only accept a
+    // Set-Cookie for such a name, the deleting one included, when it carries the Secure attribute.
+    if (name) cookies.delete(name, { path: '/', secure: /^__(Secure|Host)-/.test(name) });
   }
 }

@@ -6,7 +6,7 @@
  */
 
 /** How far a delivery's timestamp may be from the server clock. */
-export const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
+const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 export interface SignedRequestHeaders {
   id: string | null;

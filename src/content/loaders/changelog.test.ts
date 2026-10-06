@@ -35,7 +35,11 @@ async function runLoader(contents?: string) {
   const logs: string[] = [];
   const context = {
     store,
-    renderMarkdown: async (md: string) => ({ html: `<p>${md}</p>` }),
+    renderMarkdown: async (md: string) => ({
+      html: md.replace(/^### (.+)$/m, (_m, text: string) => {
+        return `<h3 id="${text.toLowerCase().replace(/\s+/g, '-')}">${text}</h3>`;
+      }),
+    }),
     logger: { info: (m: string) => logs.push(m), warn: (m: string) => logs.push(m) },
     config: { root: pathToFileURL(`${dir}/`) },
     watcher: undefined,
@@ -56,7 +60,14 @@ describe('changelogLoader', () => {
     expect(entries[1]).toMatchObject({ id: '1.0.0', data: { version: '1.0.0', order: 1 } });
     expect((entries[1]!.data as { date?: string }).date).toBeUndefined();
     expect(entries[0]!.body).toContain('Added search.');
-    expect((entries[0]!.rendered as { html: string }).html).toContain('<p>');
+    expect((entries[0]!.rendered as { html: string }).html).toContain('Added search.');
+  });
+
+  it('scopes the heading ids to the release, so the page has no duplicates', async () => {
+    const { entries } = await runLoader(sample);
+    const html = (version: number) => (entries[version]!.rendered as { html: string }).html;
+    expect(html(0)).toContain('<h3 id="1.1.0-minor-changes">Minor Changes</h3>');
+    expect(html(1)).toContain('<h3 id="1.0.0-major-changes">Major Changes</h3>');
   });
 
   it('loads nothing from an empty file', async () => {

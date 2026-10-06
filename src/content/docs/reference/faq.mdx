@@ -10,12 +10,14 @@ sidebar:
 ## Can I remove authentication?
 
 Yes, but the admin area, the dashboard and the account routes depend on it, so remove those
-together: `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/lib/session.ts`, `src/lib/admin*.ts`,
+together: `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/lib/session.ts`, `src/lib/account.ts`,
+`src/lib/account-page.ts`, `src/lib/admin*.ts`, `src/lib/passkeys.ts`, `src/lib/email-change.ts`,
+`src/lib/profile.ts`,
 `src/pages/api/auth`, `src/pages/api/account`, `src/pages/api/health.ts`, the `login`, `signup`,
-`forgot-password`, `reset-password`, `dashboard`, `account-deleted` and `admin` pages,
+`forgot-password`, `reset-password`, `two-factor`, `dashboard`, `account-deleted` and `admin` pages,
 `src/components/react/auth` and `react/account`, `src/components/site/AccountMenu.astro`, the
 `admin` actions, the session lookup in `src/middleware.ts` and the `App.Locals` types in
-`src/env.d.ts`. Drop `better-auth` and `@better-auth/drizzle-adapter` from `package.json` and
+`src/env.d.ts`. Drop `better-auth`, `@better-auth/drizzle-adapter` and `@better-auth/passkey` from `package.json` and
 regenerate the migrations. If you also remove the contact action, the site becomes fully static and
 no adapter is needed.
 

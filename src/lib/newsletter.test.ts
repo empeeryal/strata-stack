@@ -453,15 +453,28 @@ describe('removeSubscriber', () => {
     });
   });
 
-  it('still removes the row when the audience refuses, and says so', async () => {
+  it('keeps the row as an opt-out with the error when the audience refuses, and says so', async () => {
     await subscribeAndConfirm('reader@example.com');
     const [row] = await rows();
     audience.remove.mockRejectedValueOnce(new Error('Resend is down'));
 
     expect(await removeSubscriber(row?.id ?? '', actor, deps())).toBe('removed-unsynced');
-    expect(await rows()).toHaveLength(0);
+    // Deleting it would leave nothing that says which contact the provider still sends to; the
+    // retention job retries from this state and deletes the row once the provider has taken it.
+    const [kept] = await rows();
+    expect(kept).toMatchObject({
+      email: 'reader@example.com',
+      status: 'unsubscribed',
+      audienceError: 'Resend is down',
+      audienceSyncedAt: null,
+    });
+    expect(kept?.unsubscribedAt).not.toBeNull();
     const [entry] = await auditEntries();
-    expect(entry?.details).toBe('{"status":"confirmed","provider":"failed"}');
+    expect(entry?.details).toBe('{"status":"confirmed","provider":"failed","kept":true}');
+
+    // Removing it again retries the provider; when that works the row goes.
+    expect(await removeSubscriber(row?.id ?? '', actor, deps())).toBe('removed');
+    expect(await rows()).toHaveLength(0);
   });
 
   it('tells the provider about an opt-out it never received before deleting the row', async () => {

@@ -20,16 +20,16 @@ pnpm build:node        # DEPLOY_TARGET=node astro build (default)
 
 ## Feature matrix
 
-| Capability                                  | Vercel                            | Cloudflare                      | Netlify                        | Node                      |
-| ------------------------------------------- | --------------------------------- | ------------------------------- | ------------------------------ | ------------------------- |
-| Static pages                                | CDN                               | Workers static assets           | CDN                            | Served by the Node server |
-| On-demand routes (auth, dashboard, actions) | Vercel Functions                  | workerd Worker                  | Netlify Functions              | Same process              |
-| Runtime                                     | Node 24                           | workerd + `nodejs_compat`       | Node 24                        | Node 24                   |
-| Image optimisation                          | Vercel Image Optimization         | Cloudflare Images binding       | Netlify Image CDN              | Sharp at build time       |
-| CSP for prerendered pages                   | Header                            | `<meta>` element                | Header                         | Header                    |
-| Extra security headers                      | Build Output config (integration) | `public/_headers` + middleware  | `public/_headers` + middleware | Middleware (SSR)          |
-| Database                                    | Turso over HTTP                   | Turso over HTTP                 | Turso over HTTP                | File or Turso             |
-| Local dev runtime                           | Node                              | workerd (`pnpm dev:cloudflare`) | Node with Netlify emulation    | Node                      |
+| Capability                                  | Vercel                            | Cloudflare                      | Netlify                        | Node                         |
+| ------------------------------------------- | --------------------------------- | ------------------------------- | ------------------------------ | ---------------------------- |
+| Static pages                                | CDN                               | Workers static assets           | CDN                            | Served by the Node server    |
+| On-demand routes (auth, dashboard, actions) | Vercel Functions                  | workerd Worker                  | Netlify Functions              | Same process                 |
+| Runtime                                     | Node 24                           | workerd + `nodejs_compat`       | Node 24                        | Node 24                      |
+| Image optimisation                          | Vercel Image Optimization         | Cloudflare Images binding       | Netlify Image CDN              | Sharp at build time          |
+| CSP for prerendered pages                   | Header                            | `<meta>` element                | Header                         | Header                       |
+| Extra security headers                      | Build Output config (integration) | `public/_headers` + middleware  | `public/_headers` + middleware | `_headers.json` + middleware |
+| Database                                    | Turso over HTTP                   | Turso over HTTP                 | Turso over HTTP                | File or Turso                |
+| Local dev runtime                           | Node                              | workerd (`pnpm dev:cloudflare`) | Node with Netlify emulation    | Node                         |
 
 The production tables are created the same way on every target: the **Migrate database**
 workflow in GitHub Actions applies the migrations in `drizzle/` to the Turso database (see the

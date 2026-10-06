@@ -26,6 +26,9 @@ FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
+# tini is PID 1 and forwards SIGTERM to Node. Node itself as PID 1 ignores the signal, so
+# `docker stop` would wait for the kill timeout and cut the requests in flight.
+RUN apt-get update && apt-get install -y --no-install-recommends tini && rm -rf /var/lib/apt/lists/*
 # Production dependencies only. `--ignore-scripts` skips the husky `prepare` hook (a dev
 # dependency); sharp, libsql and resvg ship prebuilt binaries as optional dependencies.
 COPY package.json pnpm-lock.yaml ./
@@ -40,4 +43,5 @@ USER node
 EXPOSE 4321
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "./dist/server/entry.mjs"]

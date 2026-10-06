@@ -1,6 +1,6 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { passkey } from '@better-auth/passkey';
-import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, haveIBeenPwned, magicLink, twoFactor } from 'better-auth/plugins';
 import { and, eq } from 'drizzle-orm';
@@ -19,6 +19,7 @@ import {
 import { isEmailConfigured, sendEmail } from './email';
 import { appliesEmailChange, readEmailChangeToken } from './email-change';
 import { getAdminEmails, getEnv, getSiteUrl, getTrustedOrigins } from './env';
+import { PASSKEY_NAME_MAX_LENGTH } from './passkeys';
 import { normaliseName, ProfileValidationError, validateProfileUpdate } from './profile';
 
 const githubId = getEnv('GITHUB_CLIENT_ID');
@@ -28,6 +29,15 @@ const googleSecret = getEnv('GOOGLE_CLIENT_SECRET');
 const emailConfigured = isEmailConfigured();
 const adminEmails = getAdminEmails();
 const siteUrl = getSiteUrl();
+
+/**
+ * The stored form of a name. A magic link creates an account from the address alone, so an
+ * empty name falls back to the part before the @ (the dashboard greets people by name and the
+ * profile form lets them change it).
+ */
+function defaultName(name: string, email: string): string {
+  return normaliseName(name) || normaliseName(email.split('@')[0] ?? '') || 'New user';
+}
 
 /** Sends without awaiting so response timing never reveals whether an address exists. */
 function sendInBackground(message: Parameters<typeof sendEmail>[0], what: string): void {
@@ -93,9 +103,14 @@ export const auth = betterAuth({
     },
     // With verification enabled the sign-up response is synthetic for existing addresses
     // (enumeration protection); it must carry the admin plugin's fields to be
-    // indistinguishable from a real user.
+    // indistinguishable from a real user, and its name must go through the same normalisation
+    // the create hook below applies to a stored one, or the raw spacing would tell them apart.
     customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
       ...coreFields,
+      name: defaultName(
+        typeof coreFields.name === 'string' ? coreFields.name : '',
+        coreFields.email,
+      ),
       role: 'user',
       banned: false,
       banReason: null,
@@ -214,7 +229,25 @@ export const auth = betterAuth({
 
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      // Better Auth's admin endpoints are not exposed over HTTP. The admin area works through
+      // the Astro actions (src/actions/index.ts), which add what the endpoints lack: the
+      // last-admin rule, the audit entry and the trusted-device cleanup. Server code still
+      // reaches them through `auth.api.*`, which carries no request.
+      if (ctx.request && ctx.path.startsWith('/admin/')) {
+        throw new APIError('NOT_FOUND', { message: 'Not found.' });
+      }
       switch (ctx.path) {
+        case '/passkey/verify-registration':
+        case '/passkey/update-passkey': {
+          // The plugin stores a name of any length; the dashboard and the export render it.
+          const { name } = (ctx.body ?? {}) as { name?: unknown };
+          if (typeof name === 'string' && name.length > PASSKEY_NAME_MAX_LENGTH) {
+            throw new APIError('BAD_REQUEST', {
+              message: `Keep the passkey name under ${PASSKEY_NAME_MAX_LENGTH} characters.`,
+            });
+          }
+          return;
+        }
         case '/delete-user': {
           // Deleting a password account always needs the password. Better Auth accepts a
           // deletion without one from any session younger than a day; for an account that has
@@ -276,7 +309,7 @@ export const auth = betterAuth({
     // regenerated the backup codes or turned it off, added or removed a passkey, changed the
     // address. Best-effort, like the other Better Auth operations.
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.context.returned instanceof APIError) return;
+      if (isAPIError(ctx.context.returned)) return;
       const user = ctx.context.session?.user as
         { id: string; email: string; twoFactorEnabled?: boolean | null } | undefined;
       if (!user) return;
@@ -352,7 +385,7 @@ export const auth = betterAuth({
         // and social providers supply names of their own.
         before: async (user) => {
           const data = { ...user };
-          if (typeof user.name === 'string') data.name = normaliseName(user.name);
+          data.name = defaultName(typeof user.name === 'string' ? user.name : '', user.email);
           if (adminEmails.includes(user.email.toLowerCase())) data.role = 'admin';
           return { data };
         },
@@ -442,18 +475,22 @@ export const auth = betterAuth({
     storage: 'database',
     window: 60,
     max: 100,
-    // The end-to-end suite creates several accounts from one address in parallel and walks
-    // through the two-factor flow in seconds, which the built-in sign-up/sign-in and
-    // two-factor rules (3 per 10 s) would reject. Test runs only.
-    ...(getEnv('NODE_ENV') === 'test'
-      ? {
-          customRules: {
+    customRules: {
+      // Deleting a password account takes the password (hooks.before), which makes the endpoint
+      // a password oracle for whoever holds a stolen cookie; the same 3 per 10 s as sign-in.
+      '/delete-user': { window: 10, max: 3 },
+      // The end-to-end suite creates several accounts from one address in parallel and walks
+      // through the two-factor flow in seconds, which the built-in sign-up/sign-in and
+      // two-factor rules (3 per 10 s) would reject. Test runs only.
+      ...(getEnv('NODE_ENV') === 'test'
+        ? {
             '/sign-up/email': { window: 10, max: 50 },
             '/sign-in/email': { window: 10, max: 50 },
             '/two-factor/*': { window: 10, max: 50 },
-          },
-        }
-      : {}),
+            '/delete-user': { window: 10, max: 50 },
+          }
+        : {}),
+    },
   },
 
   advanced: {

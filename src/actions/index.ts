@@ -1,4 +1,5 @@
 import { ActionError, defineAction, type ActionAPIContext } from 'astro:actions';
+import { isAPIError } from 'better-auth/api';
 import { z } from 'astro/zod';
 import { eq } from 'drizzle-orm';
 
@@ -84,14 +85,24 @@ function toAdminError(error: unknown, fallback: string): ActionError {
   return toActionError(error, fallback);
 }
 
-/** Turns Better Auth API errors into action errors with their original message. */
+/**
+ * Turns a Better Auth API error into an action error with its message (those are written for
+ * the person). Anything else is unexpected: it is logged and answered with the fallback, so a
+ * driver or provider message never reaches a client.
+ */
 function toActionError(error: unknown, fallback: string): ActionError {
   if (error instanceof ActionError) return error;
-  const message =
-    error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
-      ? error.message
-      : fallback;
-  return new ActionError({ code: 'BAD_REQUEST', message });
+  if (isAPIError(error)) {
+    return new ActionError({ code: 'BAD_REQUEST', message: error.message || fallback });
+  }
+  return internalError(error, fallback);
+}
+
+/** Logs an unexpected error and answers with a generic message in its place. */
+function internalError(error: unknown, message: string): ActionError {
+  if (error instanceof ActionError) return error;
+  console.error('[actions] unexpected error', error);
+  return new ActionError({ code: 'INTERNAL_SERVER_ERROR', message });
 }
 
 const userId = z.string().min(1);
@@ -133,7 +144,10 @@ export const server = {
     }),
     handler: async (input, context) => {
       try {
-        return await submitContactMessage(input, { ip: clientAddress(context) }, contactDeps());
+        // The outcome (stored, honeypot, notification sent or not) stays on the server: the
+        // response is the same for every submission that was accepted.
+        await submitContactMessage(input, { ip: clientAddress(context) }, contactDeps());
+        return { ok: true as const };
       } catch (error) {
         if (error instanceof ContactThrottledError) {
           throw new ActionError({
@@ -152,8 +166,9 @@ export const server = {
 
   /**
    * Newsletter with double opt-in. See src/lib/newsletter.ts for the behaviour and its tests.
-   * `subscribe` always answers with the same success so it cannot be used to check whether an
-   * address is subscribed; the difference is in the email the address receives.
+   * `subscribe` always answers with the same success (the outcome never leaves the server) so it
+   * cannot be used to check whether an address is subscribed; the difference is in the email the
+   * address receives.
    */
   newsletter: {
     subscribe: defineAction({
@@ -171,12 +186,8 @@ export const server = {
           throw new ActionError({ code: 'NOT_FOUND', message: 'The newsletter is not available.' });
         }
         try {
-          const outcome = await subscribeToNewsletter(
-            input,
-            { ip: clientAddress(context) },
-            newsletterDeps(),
-          );
-          return { ok: true as const, outcome };
+          await subscribeToNewsletter(input, { ip: clientAddress(context) }, newsletterDeps());
+          return { ok: true as const };
         } catch (error) {
           if (error instanceof NewsletterThrottledError) {
             throw new ActionError({
@@ -207,7 +218,12 @@ export const server = {
       accept: 'form',
       input: z.object({ token: newsletterToken }),
       handler: async ({ token }) => {
-        const outcome = await confirmSubscription(token, newsletterDeps());
+        let outcome: Awaited<ReturnType<typeof confirmSubscription>>;
+        try {
+          outcome = await confirmSubscription(token, newsletterDeps());
+        } catch (error) {
+          throw internalError(error, 'Something went wrong. Please try again in a moment.');
+        }
         if (outcome === 'invalid') {
           throw new ActionError({ code: 'NOT_FOUND', message: 'This link is not valid.' });
         }
@@ -220,7 +236,12 @@ export const server = {
       accept: 'form',
       input: z.object({ token: newsletterToken }),
       handler: async ({ token }) => {
-        const outcome = await unsubscribeFromNewsletter(token, newsletterDeps());
+        let outcome: Awaited<ReturnType<typeof unsubscribeFromNewsletter>>;
+        try {
+          outcome = await unsubscribeFromNewsletter(token, newsletterDeps());
+        } catch (error) {
+          throw internalError(error, 'Something went wrong. Please try again in a moment.');
+        }
         if (outcome === 'invalid') {
           throw new ActionError({ code: 'NOT_FOUND', message: 'This link is not valid.' });
         }
@@ -254,7 +275,7 @@ export const server = {
           if (error instanceof SessionRevokeError) {
             throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
           }
-          throw error;
+          throw internalError(error, 'Could not sign out that session.');
         }
         return { notice: 'session-revoked' as AccountNotice };
       },
@@ -357,7 +378,7 @@ export const server = {
           if (error instanceof DeliveryInProgressError) {
             throw new ActionError({ code: 'CONFLICT', message: error.message });
           }
-          throw error;
+          throw internalError(error, 'Could not send the notification.');
         }
         if (!delivery) {
           throw new ActionError({ code: 'NOT_FOUND', message: 'Message not found.' });
@@ -395,7 +416,7 @@ export const server = {
           if (error instanceof SubscriberNotFoundError) {
             throw new ActionError({ code: 'NOT_FOUND', message: error.message });
           }
-          throw error;
+          throw internalError(error, 'Could not remove the subscriber.');
         }
       },
     }),

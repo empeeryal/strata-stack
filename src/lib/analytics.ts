@@ -1,5 +1,4 @@
-import { PUBLIC_ANALYTICS } from 'astro:env/client';
-import { track } from '@vercel/analytics';
+import type { track } from '@vercel/analytics';
 
 /**
  * Custom events for Vercel Web Analytics, one catalogue for the whole site so the dashboard
@@ -48,8 +47,14 @@ type EventArgs<E extends AnalyticsEventName> = AnalyticsEvents[E] extends undefi
   ? []
   : [properties: AnalyticsEvents[E]];
 
-/** Whether events leave the browser at all; mirrors the `<Analytics />` render in BaseLayout. */
-export const analyticsEnabled = PUBLIC_ANALYTICS === 'vercel';
+/**
+ * Whether events leave the browser at all; mirrors the `<Analytics />` render in BaseLayout. A
+ * build-time constant (astro.config.ts), so with analytics off the client below is never
+ * imported and nothing of it is in the bundle.
+ */
+export const analyticsEnabled: boolean = __ANALYTICS_ENABLED__;
+
+let client: Promise<{ track: typeof track }> | undefined;
 
 /**
  * Records a custom event. Call it on the success path of an interaction, after the server has
@@ -57,9 +62,12 @@ export const analyticsEnabled = PUBLIC_ANALYTICS === 'vercel';
  */
 export function trackEvent<E extends AnalyticsEventName>(name: E, ...args: EventArgs<E>): void {
   if (!analyticsEnabled) return;
-  try {
-    track(name, args[0] as Record<string, string | number | boolean | null> | undefined);
-  } catch {
-    // The analytics client only throws outside a browser or in development; a page must not care.
-  }
+  client ??= import('@vercel/analytics');
+  void client
+    .then(({ track }) =>
+      track(name, args[0] as Record<string, string | number | boolean | null> | undefined),
+    )
+    .catch(() => {
+      // The analytics client only throws outside a browser or in development; a page must not care.
+    });
 }

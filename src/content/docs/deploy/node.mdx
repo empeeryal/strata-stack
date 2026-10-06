@@ -29,7 +29,8 @@ build time) through your platform.
 
 The multi-stage `Dockerfile` installs dependencies with pnpm, builds the site, then copies the
 build output, the migrations and the production dependencies into a `node:24-slim` image running
-as the unprivileged `node` user, with a health check against `/api/health`.
+as the unprivileged `node` user, with a health check against `/api/health`. `tini` runs as PID 1
+and forwards signals, so `docker stop` ends the server at once instead of after the kill timeout.
 
 ```bash
 docker build --build-arg SITE_URL=https://example.com -t strata-stack .
@@ -58,7 +59,10 @@ and compression is what keeps the mobile Lighthouse scores where the CI budgets 
 (Caddy does it by default; nginx needs `gzip on`). The server sends the security headers itself,
 for server-rendered responses through the middleware and for prerendered pages through the
 header map the build writes (`integrations/security-headers.ts`); the proxy only needs to pass
-them through. Make sure the proxy forwards the original
+them through. The Node adapter applies that map to pages only: static assets (`/_astro/*`, the
+icons, `robots.txt`, the feeds) leave the Node server without the extra headers, so add the same
+set at the proxy for everything that is not a page (Caddy's `header` directive, nginx
+`add_header`). Make sure the proxy forwards the original
 `Host`, plus `X-Forwarded-For` and `X-Forwarded-Proto`: Astro only trusts those headers when
 `Host` is the site's own hostname (`security.allowedDomains`, filled in from the site URL by
 `config/trusted-hosts.ts`), and without them every visitor would share the proxy's address for

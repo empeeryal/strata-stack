@@ -171,4 +171,18 @@ describe('<PasskeyList>', () => {
     expect(screen.getByRole('button', { name: 'Create passkey' })).toBeEnabled();
     expect(window.location.assign).not.toHaveBeenCalled();
   });
+
+  it('keeps the focus with the control that replaced the one just used', async () => {
+    const user = userEvent.setup();
+    render(<PasskeyList passkeys={passkeys} />);
+    await user.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    expect(screen.getByLabelText('Name (optional)')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add a passkey' })).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: 'Rename Work laptop' }));
+    expect(screen.getByLabelText('New name')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Rename Work laptop' })).toHaveFocus();
+  });
 });

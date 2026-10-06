@@ -33,7 +33,9 @@ folder. Create it and apply migrations with:
 pnpm db:migrate
 ```
 
-`pnpm db:seed` creates `demo@example.com` and `admin@example.com` (password `password123`),
+`pnpm db:seed` creates `demo@example.com` and `admin@example.com` (password `password123`) in a
+`file:` database only; a remote `DATABASE_URL` needs `--allow-remote` and a `SEED_PASSWORD`, so the
+documented password never reaches production by accident. `pnpm db:seed` is for local work,
 and `pnpm db:reset` deletes the local file and re-applies every migration. The
 [scripts reference](/docs/reference/scripts#database-and-auth) lists the rest.
 

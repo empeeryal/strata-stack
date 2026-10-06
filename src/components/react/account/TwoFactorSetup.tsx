@@ -1,4 +1,4 @@
-import { type SubmitEvent, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 
 import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
@@ -12,6 +12,7 @@ import {
   Label,
   PasswordInput,
   UNEXPECTED_ERROR,
+  useFocusOnChange,
 } from '../primitives';
 
 export interface TwoFactorSetupProps {
@@ -46,6 +47,9 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
   const [qr, setQr] = useState<string | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  // Each step replaces the controls of the one before; the focus moves into the new step.
+  const container = useRef<HTMLDivElement>(null);
+  useFocusOnChange(container, step);
 
   if (!hasPassword) {
     return (
@@ -99,7 +103,13 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
     await run(async () => {
       const result = await authClient.twoFactor.verifyTotp({ code });
       if (result.error) {
-        setError('That code did not match. Codes change every 30 seconds; try the current one.');
+        // The two-factor endpoints allow three requests per ten seconds; a retry straight after
+        // two typos is refused for that reason, not because the code was wrong.
+        setError(
+          result.error.status === 429
+            ? 'Too many attempts. Wait a few seconds, then enter the code the app shows now.'
+            : 'That code did not match. Codes change every 30 seconds; try the current one.',
+        );
         return;
       }
       trackEvent('Two-factor enabled');
@@ -161,7 +171,7 @@ export default function TwoFactorSetup({ enabled, hasPassword }: TwoFactorSetupP
   );
 
   return (
-    <div className="space-y-4" data-two-factor-step={step}>
+    <div className="space-y-4" data-two-factor-step={step} ref={container}>
       {error && <Alert>{error}</Alert>}
 
       {step === 'idle' && (

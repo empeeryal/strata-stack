@@ -41,7 +41,9 @@ TypeScript auth library. Sessions are stored in your database and exposed to Ast
   providers. Register `https://<your-domain>/api/auth/callback/github` (or `/google`) as the
   callback URL with the provider.
 - **Magic links** use the `magicLink` plugin. The form only renders when email delivery is
-  configured (see below). Signing in through a link marks the address as verified.
+  configured (see below). Signing in through a link marks the address as verified; an address
+  without an account gets one when its first link is opened, named after the part before the `@`
+  until the person changes it on the dashboard.
 
 `enabledAuthMethods()` in `src/lib/auth.ts` tells pages which of these are active, so the
 login copy and the "Forgot password?" link only mention what actually works.
@@ -333,7 +335,9 @@ const { user } = await getAuthoritativeSession(Astro.request.headers);
 Rate limiting is enabled with database storage so it works on serverless platforms. The global
 limit is 100 requests per minute per IP; Better Auth additionally applies its built-in stricter
 rules to sign-in, sign-up, magic link, password and verification endpoints (3 requests per 10
-or 60 seconds). The auth route forwards the client address resolved by the adapter as
+or 60 seconds), and `src/lib/auth.ts` gives `/delete-user` the same 3 per 10 seconds: it takes
+the password of a password account, which would otherwise be guessable at the global rate from a
+stolen cookie. The auth route forwards the client address resolved by the adapter as
 `x-forwarded-for`. Astro's `security.checkOrigin` rejects cross-origin `POST` requests, and
 Better Auth additionally checks `trustedOrigins`, which are derived from `BETTER_AUTH_URL`,
 `BETTER_AUTH_TRUSTED_ORIGINS` and the preview URLs each platform injects (see `src/lib/env.ts`).

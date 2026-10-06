@@ -1,9 +1,18 @@
-import { type SubmitEvent, useState } from 'react';
+import { type SubmitEvent, useRef, useState } from 'react';
 
 import { trackEvent } from '@/lib/analytics';
 import { authClient } from '@/lib/auth-client';
 
-import { Alert, Button, Field, Input, Label, PasswordInput, UNEXPECTED_ERROR } from '../primitives';
+import {
+  Alert,
+  Button,
+  Field,
+  Input,
+  Label,
+  PasswordInput,
+  UNEXPECTED_ERROR,
+  useFocusOnChange,
+} from '../primitives';
 
 interface DeleteAccountFormProps {
   /** Whether the account has a password (credential account). */
@@ -21,6 +30,9 @@ export default function DeleteAccountForm({ hasPassword }: DeleteAccountFormProp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmInvalid, setConfirmInvalid] = useState(false);
+  // The button is replaced by the form and the form by the button: keep the focus with them.
+  const container = useRef<HTMLDivElement>(null);
+  useFocusOnChange(container, open ? 'form' : 'button');
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,51 +65,51 @@ export default function DeleteAccountForm({ hasPassword }: DeleteAccountFormProp
     }
   }
 
-  if (!open) {
-    return (
-      <Button type="button" variant="danger" onClick={() => setOpen(true)}>
-        Delete my account
-      </Button>
-    );
-  }
-
   return (
-    <form onSubmit={onSubmit} className="space-y-4" aria-label="Delete account">
-      <Alert variant="info">
-        This removes your account, sessions, connected sign-in methods and, if your email is
-        verified, contact messages sent from it. It cannot be undone.
-      </Alert>
-      {error && <Alert id="delete-account-error">{error}</Alert>}
-      {hasPassword && (
-        <Field>
-          <Label htmlFor="delete-password">Current password</Label>
-          <PasswordInput
-            id="delete-password"
-            name="password"
-            autoComplete="current-password"
-            required
-          />
-        </Field>
+    <div ref={container}>
+      {!open ? (
+        <Button type="button" variant="danger" onClick={() => setOpen(true)} data-focus>
+          Delete my account
+        </Button>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-4" aria-label="Delete account">
+          <Alert variant="info">
+            This removes your account, sessions, connected sign-in methods and, if your email is
+            verified, contact messages sent from it. It cannot be undone.
+          </Alert>
+          {error && <Alert id="delete-account-error">{error}</Alert>}
+          {hasPassword && (
+            <Field>
+              <Label htmlFor="delete-password">Current password</Label>
+              <PasswordInput
+                id="delete-password"
+                name="password"
+                autoComplete="current-password"
+                required
+              />
+            </Field>
+          )}
+          <Field>
+            <Label htmlFor="delete-confirm">Type {CONFIRMATION} to confirm</Label>
+            <Input
+              id="delete-confirm"
+              name="confirm"
+              autoComplete="off"
+              required
+              aria-invalid={confirmInvalid || undefined}
+              aria-describedby={confirmInvalid ? 'delete-account-error' : undefined}
+            />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="danger" loading={loading}>
+              Permanently delete account
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       )}
-      <Field>
-        <Label htmlFor="delete-confirm">Type {CONFIRMATION} to confirm</Label>
-        <Input
-          id="delete-confirm"
-          name="confirm"
-          autoComplete="off"
-          required
-          aria-invalid={confirmInvalid || undefined}
-          aria-describedby={confirmInvalid ? 'delete-account-error' : undefined}
-        />
-      </Field>
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="danger" loading={loading}>
-          Permanently delete account
-        </Button>
-        <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={loading}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }
