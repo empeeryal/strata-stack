@@ -1,5 +1,11 @@
 # strata-stack
 
+## 0.28.1
+
+### Patch Changes
+
+- 92438d3: Dependency updates: `@sentry/cloudflare` moves to 11.4.0 so both Sentry packages share one version again (the lockfile had resolved `@sentry/astro` to 11.4.0 while the Cloudflare package stayed pinned at 11.3.0, which bundled two copies of `@sentry/core`), and ESLint moves to 10.12.0.
+
 ## 0.28.0
 
 ### Minor Changes
