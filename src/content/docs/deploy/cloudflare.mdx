@@ -2,7 +2,7 @@
 title: Deploy to Cloudflare
 description: Running on Cloudflare Workers with static assets, workerd for on-demand routes and Node compatibility for Better Auth.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-07
 sidebar:
   order: 3
 ---
@@ -64,8 +64,10 @@ describes wrapping the Worker entry with `@sentry/cloudflare` if you want server
 date of 2025-04-01 or later Cloudflare also populates `process.env` from your variables and
 secrets, which is how `src/lib/env.ts` reads configuration. `NODE_ENV=production` turns on the
 production safety rules (see [security](/docs/guides/security#production-configuration-checks));
-`.dev.vars` overrides it locally. The adapter generates the remaining settings (entrypoint,
-assets directory) itself.
+`.dev.vars` overrides it locally. `assets.html_handling` is `drop-trailing-slash` so a request
+for `/about/` is answered with a redirect to `/about`, the page's one address (see
+[SEO](/docs/guides/seo#one-address-per-page)). The adapter generates the remaining settings
+(entrypoint, assets directory) itself.
 
 ## What the adapter configures
 

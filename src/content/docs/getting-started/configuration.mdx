@@ -2,7 +2,7 @@
 title: Configuration
 description: The three places you configure the template - site config, Astro config and environment variables.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-07
 sidebar:
   order: 4
 ---
@@ -30,17 +30,18 @@ Open Graph tags, JSON-LD and the web manifest in one go. Every field is listed i
 
 The Astro configuration is annotated inline. The parts you are most likely to touch:
 
-| Key                    | Purpose                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `site`                 | Canonical URL: `SITE_URL`, else the platform's production URL, else `siteConfig.url` (`config/site-url.ts`).    |
-| `adapter`              | Resolved by `config/adapter.ts` from `DEPLOY_TARGET`. See [Deploy](/docs/deploy/choosing-a-target).             |
-| `fonts`                | Self-hosted Inter and JetBrains Mono through Astro's Fonts API.                                                 |
-| `image`                | Responsive images enabled with the `constrained` layout by default.                                             |
-| `markdown.shikiConfig` | Light and dark Shiki themes.                                                                                    |
-| `security.csp`         | Content Security Policy directives. See [Security](/docs/guides/security).                                      |
-| `cache` / `routeRules` | Route cache provider per target (`config/cache.ts`) and the cached routes. See [Caching](/docs/guides/caching). |
-| `env.schema`           | Type-safe public environment variables.                                                                         |
-| `session`              | Disabled; Better Auth stores sessions in the database.                                                          |
+| Key                    | Purpose                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `site`                 | Canonical URL: `SITE_URL`, else the platform's production URL, else `siteConfig.url` (`config/site-url.ts`).        |
+| `adapter`              | Resolved by `config/adapter.ts` from `DEPLOY_TARGET`. See [Deploy](/docs/deploy/choosing-a-target).                 |
+| `trailingSlash`        | `'never'`: one address per page, `/about/` redirects to `/about`. See [SEO](/docs/guides/seo#one-address-per-page). |
+| `fonts`                | Self-hosted Inter and JetBrains Mono through Astro's Fonts API.                                                     |
+| `image`                | Responsive images enabled with the `constrained` layout by default.                                                 |
+| `markdown.shikiConfig` | Light and dark Shiki themes.                                                                                        |
+| `security.csp`         | Content Security Policy directives. See [Security](/docs/guides/security).                                          |
+| `cache` / `routeRules` | Route cache provider per target (`config/cache.ts`) and the cached routes. See [Caching](/docs/guides/caching).     |
+| `env.schema`           | Type-safe public environment variables.                                                                             |
+| `session`              | Disabled; Better Auth stores sessions in the database.                                                              |
 
 ## Environment variables
 

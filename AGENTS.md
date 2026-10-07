@@ -79,6 +79,8 @@ netlify`). Application code must not branch on the platform.
 - **Astro 7 compiler is strict.** Close every non-void tag; no block elements inside `<p>`;
   use `{' '}` between inline elements when a space matters (`compressHTML: 'jsx'`).
 - **Reserved files:** `src/fetch.ts` (advanced routing) and `src/middleware.ts`.
+- **One address per page:** `trailingSlash: 'never'`. Link to `/about`, never `/about/`; a slashed
+  request redirects (Astro for on-demand routes, the host for prerendered pages, Netlify excepted).
 - **Zod:** import `z` from `astro/zod` (Zod 4: `z.email()`, not `z.string().email()`).
 - **CSP:** never add `<script is:inline>` by hand (not hashed). Use processed `<script>` tags,
   `injectScript('head-inline', …)` from an integration, or list origins in `scriptDirective`.

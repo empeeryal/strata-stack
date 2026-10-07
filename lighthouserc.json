@@ -21,7 +21,7 @@
     "assert": {
       "assertMatrix": [
         {
-          "matchingUrlPattern": "^(?!.*/login$).*",
+          "matchingUrlPattern": "^(?!.*/(login|search(\\?.*)?)$).*",
           "aggregationMethod": "median-run",
           "assertions": {
             "categories:performance": [
@@ -51,7 +51,7 @@
           }
         },
         {
-          "matchingUrlPattern": "/login$",
+          "matchingUrlPattern": "/(login|search(\\?.*)?)$",
           "aggregationMethod": "median-run",
           "assertions": {
             "categories:performance": [

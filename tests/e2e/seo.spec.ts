@@ -43,12 +43,40 @@ test.describe('SEO and discovery endpoints', () => {
     for (const loc of locs) expect(loc, loc).toMatch(new RegExp(`^${siteConfig.url}(/|/.+[^/])$`));
     expect(locs).toContain(`${siteConfig.url}/about`);
     expect(locs).not.toContain(`${siteConfig.url}/login`);
+    // No content without JavaScript, so nothing for a crawler to index.
+    expect(locs).not.toContain(`${siteConfig.url}/search`);
 
     await page.goto('/about');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
       `${siteConfig.url}/about`,
     );
+  });
+
+  test('a trailing slash redirects to the canonical address', async ({ request }) => {
+    // Prerendered page: the static layer answers (the Node adapter here, the host elsewhere).
+    const page = await request.get('/about/', { maxRedirects: 0 });
+    expect(page.status()).toBe(301);
+    expect(page.headers()['location']).toBe('/about');
+
+    // On-demand route: Astro's own request handler answers, and the query string survives.
+    const onDemand = await request.get('/dashboard/?tab=sessions', { maxRedirects: 0 });
+    expect([301, 308]).toContain(onDemand.status());
+    expect(onDemand.headers()['location']).toBe('/dashboard?tab=sessions');
+
+    // The root keeps its slash and an unknown slashed path still ends in a 404, not a loop.
+    expect((await request.get('/', { maxRedirects: 0 })).status()).toBe(200);
+    const missing = await request.get('/no-such-page/', { maxRedirects: 0 });
+    expect([301, 404]).toContain(missing.status());
+    if (missing.status() === 301) {
+      expect((await request.get('/no-such-page', { maxRedirects: 0 })).status()).toBe(404);
+    }
+  });
+
+  test('the search page is served but not indexed', async ({ page }) => {
+    const response = await page.goto('/search');
+    expect(response?.status()).toBe(200);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   });
 
   test('pages carry canonical, Open Graph and structured data', async ({ page }) => {
