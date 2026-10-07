@@ -19,11 +19,18 @@ allowBuilds:
 overrides:
   fflate@0.7: ^0.7.5
   path-to-regexp@6: ^6.3.0
-  sharp: ^0.35.4
+  # GHSA-wq5f-xc86-pv6w (librsvg inside sharp's prebuilt binaries) is fixed in 0.35.5.
+  sharp: ^0.35.5
   # miniflare (Cloudflare's local emulator) pins 7.29.0; GHSA-3wwx-pv8p-q78v is fixed in 7.29.1.
   undici@7.29.0: ^7.29.1
   # Astro resolves 5.9.2; GHSA-mcm9-63f2-9j32 and GHSA-x5rw-q4pp-hg5g are fixed in 5.9.3.
   devalue@<5.9.3: ^5.9.4
+  # PostCSS, css-tree and magicast resolve 1.2.1; GHSA-68fv-2mgg-jv7q (an event-loop stall on a
+  # crafted indexed source map) is fixed in 1.2.2.
+  source-map-js: ^1.2.2
+  # launch-editor inside the Changesets CLI resolves 1.10.0; GHSA-pqg4-j6r4-53mv (command
+  # injection through `quote()`) is fixed in 1.11.0.
+  shell-quote: ^1.11.0
 
 # Advisories with no upstream fix in build-time tooling; reviewed on dependency upgrades
 # (see the CI guide, "Audit exceptions").

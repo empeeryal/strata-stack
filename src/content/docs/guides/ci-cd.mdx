@@ -44,9 +44,12 @@ measures compressed responses the way every deployment serves them.
 
 - `overrides` pins patchable transitive packages to a fixed version. Currently `fflate` inside
   the Open Graph image generator (Satori pins a version with a ZIP parsing flaw), `path-to-regexp`,
-  `sharp`, `undici` inside Cloudflare's local emulator (miniflare pins a release with a
-  WebSocket decompression flaw) and `devalue`, Astro's serializer for action results, moved to the
-  release that fixes two unhandled-rejection advisories.
+  `sharp` (a librsvg flaw in its prebuilt binaries, fixed in 0.35.5), `undici` inside
+  Cloudflare's local emulator (miniflare pins a release with a WebSocket decompression flaw),
+  `devalue`, Astro's serializer for action results, moved to the release that fixes two
+  unhandled-rejection advisories, `source-map-js` as resolved by PostCSS, css-tree and magicast
+  (an event-loop stall on a crafted indexed source map, fixed in 1.2.2) and `shell-quote` inside
+  the Changesets CLI's editor launcher (a command injection, fixed in 1.11.0).
 - `auditConfig.ignoreGhsas` lists advisories with no upstream fix in build-time tooling that never
   runs on the deployed site: two for `extract-zip` inside the Netlify adapter's development tooling
   (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3), one for the esbuild 0.18 that drizzle-kit's
