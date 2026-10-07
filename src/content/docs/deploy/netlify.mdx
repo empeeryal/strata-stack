@@ -2,7 +2,7 @@
 title: Deploy to Netlify
 description: Netlify Functions for on-demand routes, the Image CDN for images and static headers for prerendered pages.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-07
 sidebar:
   order: 4
 ---
@@ -46,6 +46,15 @@ netlify({ staticHeaders: true });
 
 Security headers for static assets come from `public/_headers`, which Netlify reads from the
 publish directory. On-demand responses get them from `src/middleware.ts`.
+
+## Trailing slashes
+
+The site has one address per page, without a trailing slash (`trailingSlash: 'never'`, see
+[SEO](/docs/guides/seo#one-address-per-page)). On-demand routes redirect the slashed form through
+Astro's request handler. For prerendered pages Netlify's CDN answers `/about` and `/about/` alike,
+so there the canonical tag points search engines at the right one. Leave **Pretty URLs** off in
+Site configuration → Build & deploy → Post processing: it rewrites directory indexes to the
+slashed form, the opposite of the canonical.
 
 ## Local development
 

@@ -2,7 +2,7 @@
 title: Deploy to Vercel
 description: Zero-configuration deployment to Vercel with Node 24 functions, static headers and image optimisation.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-07
 sidebar:
   order: 2
 ---
@@ -70,4 +70,8 @@ vercel({ imageService: true, staticHeaders: true });
 
 After adding a domain in Vercel, `VERCEL_PROJECT_PRODUCTION_URL` switches to it automatically.
 Update `BETTER_AUTH_URL` and `siteConfig.url` (or set `SITE_URL`), then redeploy so canonical
-links, the sitemap and OAuth callback URLs use the final host.
+links, the sitemap and OAuth callback URLs use the final host. The adapter also turns
+`trailingSlash: 'never'` into a redirect route in the build output, so Vercel answers `/about/`
+with a 308 to `/about`
+(see [SEO](/docs/guides/seo#one-address-per-page)); do not set `trailingSlash` in a `vercel.json`,
+the adapter refuses a conflicting value.

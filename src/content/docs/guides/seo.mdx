@@ -2,7 +2,7 @@
 title: SEO and discoverability
 description: Metadata, Open Graph images, structured data, sitemap, RSS, robots.txt, llms.txt and search.
 publishedDate: 2026-09-18
-updatedDate: 2026-09-29
+updatedDate: 2026-10-07
 sidebar:
   order: 8
 ---
@@ -48,17 +48,36 @@ without a hero image reuse them.
 
 ## Sitemap, RSS, robots and manifest
 
-| Endpoint                         | Source                                                                                             |
-| -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `/sitemap-index.xml`             | `@astrojs/sitemap`; excludes `/admin`, `/api`, `/dashboard`, the auth and account pages and `/500` |
-| `/rss.xml`                       | `src/pages/rss.xml.ts` with `@astrojs/rss`                                                         |
-| `/robots.txt`                    | `src/pages/robots.txt.ts`, points at the sitemap                                                   |
-| `/manifest.webmanifest`          | `src/pages/manifest.webmanifest.ts`, reads `siteConfig`                                            |
-| `/llms.txt` and `/llms-full.txt` | `src/pages/llms*.txt.ts`, an LLM-friendly map and full docs text                                   |
+| Endpoint                         | Source                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `/sitemap-index.xml`             | `@astrojs/sitemap`; excludes `/admin`, `/api`, `/dashboard`, `/search`, the auth and account pages and `/500` |
+| `/rss.xml`                       | `src/pages/rss.xml.ts` with `@astrojs/rss`                                                                    |
+| `/robots.txt`                    | `src/pages/robots.txt.ts`, points at the sitemap                                                              |
+| `/manifest.webmanifest`          | `src/pages/manifest.webmanifest.ts`, reads `siteConfig`                                                       |
+| `/llms.txt` and `/llms-full.txt` | `src/pages/llms*.txt.ts`, an LLM-friendly map and full docs text                                              |
 
 All of them read the canonical URL from `site` in `astro.config.ts`, which is resolved from
 `SITE_URL`, the platform's production URL or `siteConfig.url` (see
 [configuration](/docs/getting-started/configuration#astroconfigts)).
+
+### One address per page
+
+Every page has exactly one URL, without a trailing slash: `/about`, not `/about/`. The canonical
+tag, the Open Graph URL, the breadcrumbs, the sitemap and every internal link use that form, and
+`trailingSlash: 'never'` in `astro.config.ts` turns the other form into a redirect instead of a
+second copy of the page. A canonical tag is only a hint: when a host answers both forms with 200,
+a search engine may still pick the slashed one (Google did, for one blog post of this site). What
+redirects where:
+
+- **On-demand routes** (`/dashboard/`, `/login/`): Astro's request handler answers 301 (308 for
+  other methods) with the query string preserved, on every target.
+- **Prerendered pages**: the Node server answers 301; Vercel 308 (the adapter turns the
+  setting into a redirect route in the build output); Cloudflare 301 through `html_handling:
+"drop-trailing-slash"` in `wrangler.jsonc`. Netlify's CDN serves a prerendered page at both
+  addresses and the canonical tag has to do the work; see the
+  [Netlify guide](/docs/deploy/netlify#trailing-slashes).
+
+`tests/e2e/seo.spec.ts` checks the redirect and the sitemap form on the Node build.
 
 ## Search
 
@@ -73,7 +92,9 @@ The header opens the [command palette](/docs/components/command-palette), as doe
 <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>. It loads Pagefind's JavaScript API on the first query and mixes its
 results with pages, docs and actions. `/search` renders an inline results page with Pagefind's own
 components and understands `?q=`; it is also where the header trigger leads without JavaScript. The
-index is only produced by `pnpm build`; in development the last built index is served.
+page is `noindex` and left out of the sitemap: without JavaScript it has no results, so a crawler
+would index an empty page. The index is only produced by `pnpm build`; in development the last built
+index is served.
 
 ## Performance
 

@@ -65,12 +65,21 @@ const SITEMAP_EXCLUDE = [
   // noindex pages that only work with a token or a pending sign-in.
   /^\/two-factor(\/|$)/,
   /^\/newsletter\/(confirm|unsubscribe)(\/|$)/,
+  // The search page has no content without JavaScript (Pagefind renders the results); it is
+  // noindex and the command palette covers the same ground.
+  /^\/search(\/|$)/,
 ];
 
 // https://docs.astro.build/en/reference/configuration-reference/
 export default defineConfig({
   site,
   output: 'static',
+  // One address per page: `/about`, never `/about/`. Astro answers a slashed request to an
+  // on-demand route with a redirect, the Node adapter and Vercel do the same for prerendered
+  // pages, Cloudflare drops the slash through `html_handling` (wrangler.jsonc). Without this
+  // the hosts serve both forms with 200 and search engines pick one per page; Google chose the
+  // slashed form for a blog post despite the canonical tag (docs/guides/seo).
+  trailingSlash: 'never',
   redirects: {
     '/blog/introducing-astro-framework': '/blog/introducing-strata',
   },
@@ -102,14 +111,9 @@ export default defineConfig({
     react(),
     mdx(),
     sitemap({
+      // Lists the pages in their canonical form, without a trailing slash, because
+      // `trailingSlash` is 'never'; the e2e suite checks the form (tests/e2e/seo.spec.ts).
       filter: (page) => !SITEMAP_EXCLUDE.some((pattern) => pattern.test(new URL(page).pathname)),
-      // The integration appends a slash to every URL unless `trailingSlash` is 'never'. The
-      // pages' canonical and Open Graph URLs and the breadcrumbs carry none, and a sitemap that
-      // lists the other form hands search engines a duplicate of every page.
-      serialize: (item) => ({
-        ...item,
-        url: item.url.replace(/^(https?:\/\/[^/]+\/.+?)\/$/, '$1'),
-      }),
     }),
     icon(),
     pagefind(),
