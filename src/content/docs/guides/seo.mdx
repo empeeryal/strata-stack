@@ -71,8 +71,8 @@ redirects where:
 
 - **On-demand routes** (`/dashboard/`, `/login/`): Astro's request handler answers 301 (308 for
   other methods) with the query string preserved, on every target.
-- **Prerendered pages**: the Node server answers 301; Vercel 308 (the adapter writes
-  `trailingSlash: false` into the build output); Cloudflare 301 through `html_handling:
+- **Prerendered pages**: the Node server answers 301; Vercel 308 (the adapter turns the
+  setting into a redirect route in the build output); Cloudflare 301 through `html_handling:
 "drop-trailing-slash"` in `wrangler.jsonc`. Netlify's CDN serves a prerendered page at both
   addresses and the canonical tag has to do the work; see the
   [Netlify guide](/docs/deploy/netlify#trailing-slashes).
