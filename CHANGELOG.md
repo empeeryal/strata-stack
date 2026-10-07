@@ -1,5 +1,15 @@
 # strata-stack
 
+## 0.28.0
+
+### Minor Changes
+
+- 5c03a01: Fifth audit. Security: Better Auth's `/api/auth/admin/*` endpoints answer 404 over HTTP (they bypassed the last-admin rule, the audit log and the trusted-device cleanup the admin actions provide); the synthetic sign-up response normalises the name like a stored account, closing an enumeration oracle; `/delete-user` is limited to 3 requests per 10 seconds; passkey names are capped server-side; the newsletter and contact actions no longer return their outcome to the client; unexpected errors answer with a generic message instead of driver or provider details; `pnpm db:seed` refuses a remote database unless asked. Monitoring: the Sentry client drops the Release Health session and tracing integrations (no beacon per page view), console breadcrumbs are never sent, source maps are deleted from Netlify's publish directory too, and events and uploaded maps share one release name. Correctness: a resubscribe can no longer overwrite a confirmation that landed in between; removing a subscriber the provider refuses keeps the row as an opt-out for the retention job; server-rendered pages carry the refreshed session cookies and `private, no-store`; `__Secure-` cookies are deleted correctly behind https; a magic link creates accounts with a name; the analytics client is left out of the bundle when analytics is off; the Docker image runs Node under `tini`. Accessibility and UX: focus follows the dashboard forms that replace their buttons, passkey notices use the shared alert, change-email errors point at the right field, two-factor setup tells a rate limit from a wrong code, admin forms accept one submission per click, the changelog page has no duplicate ids, and the shared chrome strings (pagination, heading anchors, copy buttons) are translatable. Docs corrected throughout; more axe scans and assertions in the test suite.
+
+### Patch Changes
+
+- ed305a0: Dependency updates: Better Auth 1.7.7 with the matching passkey and Drizzle adapter packages and CLI, Sentry 11.3.0 (both packages), Motion 14, lucide-react 1.50, Resend 6.32, sharp 0.35.5 (GHSA-wq5f-xc86-pv6w), shiki 4.5, Vitest 5.0.3, typescript-eslint 8.71, `@types/node` 24.19, the Lucide and Simple Icons sets, and `pnpm/action-setup` 6.1.0 in the CI setup action. Two new transitive overrides close the advisories published this week in `source-map-js` (GHSA-68fv-2mgg-jv7q) and `shell-quote` (GHSA-pqg4-j6r4-53mv).
+
 ## 0.27.0
 
 ### Minor Changes
