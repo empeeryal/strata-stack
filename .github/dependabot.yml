@@ -53,6 +53,11 @@ updates:
       # The types follow the Node runtime pinned in `engines` and .nvmrc (24.x).
       - dependency-name: '@types/node'
         versions: ['>=25.0.0']
+      # satori 0.38+ bundles its own Yoga build and lays the Open Graph template out differently:
+      # the footer row disappears and right-aligned items are clipped. Held until the template is
+      # adapted and the rendered images checked by eye (src/pages/og/[...slug].png.ts).
+      - dependency-name: satori
+        versions: ['>=0.38.0']
   - package-ecosystem: github-actions
     directories: ['/', '/.github/actions/setup']
     schedule:
