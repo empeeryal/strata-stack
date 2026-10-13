@@ -36,9 +36,6 @@ overrides:
 # (see the CI guide, "Audit exceptions").
 auditConfig:
   ignoreGhsas:
-    # extract-zip inside the Netlify adapter's development tooling (symlink path traversal).
-    - GHSA-jmr9-qjv8-65gv
-    - GHSA-7pqw-9j4j-h8q3
     # esbuild 0.18 pinned by drizzle-kit's config loader; the flaw is in esbuild's dev server.
     - GHSA-67mh-4wv8-2f99
     # node-forge inside listhen, the local HTTPS dev server of the Netlify adapter's tooling

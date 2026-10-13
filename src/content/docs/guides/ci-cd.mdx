@@ -2,7 +2,7 @@
 title: CI and releases
 description: The GitHub Actions workflows, the build matrix for every deploy target, Dependabot with its cooldown, the pnpm audit exceptions (overrides, auditConfig.ignoreGhsas), Changesets releases and production database migrations.
 publishedDate: 2026-09-18
-updatedDate: 2026-10-07
+updatedDate: 2026-10-13
 sidebar:
   order: 14
 ---
@@ -53,15 +53,15 @@ and it handles the transitive advisories the template cannot upgrade directly:
   (an event-loop stall on a crafted indexed source map, fixed in 1.2.2) and `shell-quote` inside
   the Changesets CLI's editor launcher (a command injection, fixed in 1.11.0).
 - `auditConfig.ignoreGhsas` lists advisories with no upstream fix in build-time tooling that never
-  runs on the deployed site: two for `extract-zip` inside the Netlify adapter's development tooling
-  (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3), one for the esbuild 0.18 that drizzle-kit's
-  config loader pins (GHSA-67mh-4wv8-2f99, a flaw in esbuild's development server), two in the
-  same Netlify tooling for `node-forge` inside `listhen`, its local HTTPS development server
+  runs on the deployed site: one for the esbuild 0.18 that drizzle-kit's config loader pins
+  (GHSA-67mh-4wv8-2f99, a flaw in esbuild's development server), two in the Netlify adapter's
+  development tooling for `node-forge` inside `listhen`, its local HTTPS development server
   (GHSA-86w9-cpqp-85rv, an RSA signature verification flaw) and `braces` inside its function
   bundler's glob matcher (GHSA-vfj7-8cjw-p6xm, stack exhaustion on a crafted pattern), and one
   for `http-cache-semantics`, the cache policy Astro applies to assets it fetches at build time
   (GHSA-ch52-4w7c-c8xp, about a shared HTTP cache serving several users, which a build is not).
-  None of these has a patched release.
+  None of these has a patched release. (Two entries for `extract-zip` in the same Netlify tooling
+  were dropped once `@astrojs/netlify` 8.2.9 moved past them.)
 
 Review both lists when upgrading dependencies: drop an entry once the package has moved past the
 advisory, and check that a plain `pnpm audit` reports nothing.
