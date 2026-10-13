@@ -116,7 +116,7 @@
     "prettier-plugin-astro": "^1.1.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "reading-time": "^1.5.0",
-    "satori": "^0.33.5",
+    "satori": "^0.37.1",
     "schema-dts": "^2.1.0",
     "shiki": "^4.5.0",
     "tailwindcss": "^4.3.3",
