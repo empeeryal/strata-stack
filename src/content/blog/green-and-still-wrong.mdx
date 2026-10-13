@@ -1,0 +1,131 @@
+---
+title: 'Green and still wrong: a layout engine, a blind dependency graph and a trailing slash'
+description: 'Three things the checks never saw this month: Google picking the slashed URL over the canonical tag, a lockfile too big for the dependency graph, and an Open Graph layout a satori update broke.'
+pubDate: 2026-10-13
+author: empeeryal
+tags: [ci, testing, release]
+---
+
+The template's CI matrix is deliberately wide: types, lint, formatting, an audit, 359 unit
+tests, 130 end-to-end tests, Lighthouse on desktop and mobile, and a build for each of the four
+deploy targets. In the first two weeks of October it was green on every push, and three things
+were wrong anyway. None of them was a bug a test could have caught as written, which is the
+point of writing them down. Each one is a check that measured something adjacent to what
+mattered.
+
+## A slash Google preferred over the canonical tag
+
+The site went into Google's index at the end of September, and the first Search Console export
+arrived on 7 October. Most of it was what a new site looks like: 97 known URLs, 65 indexed, 22
+"discovered, currently not indexed", a handful of expected exclusions for the login page and the
+redirects. One row in the performance report did not fit. The blog post about the three islands
+was listed as `/blog/three-more-islands/`, with a trailing slash.
+
+Every page on the site has exactly one address, without a slash, and every page says so: the
+canonical tag, the Open Graph URL, the breadcrumbs and the sitemap all use that form. Google had
+read the canonical tag and chosen the other URL regardless. It was entitled to. A canonical tag
+is a hint, and on Vercel both `/about` and `/about/` answered 200 with identical content, so
+from the crawler's side there were two copies of every page and a suggestion about which one to
+prefer. Until the [fourth audit](/blog/fourth-audit) the sitemap had even listed the slashed
+form, so Google had seen both for weeks.
+
+The fix is to turn the suggestion into a rule. Astro's `trailingSlash: 'never'` does more than
+change what the sitemap emits: Astro's own request handler answers a slashed request to an
+on-demand route with a redirect, the Node adapter does the same for prerendered pages, the Vercel
+adapter turns the setting into a 308 redirect route in the build output, and Cloudflare already
+dropped the slash through `html_handling`. Netlify's CDN still serves a prerendered page at both
+addresses, so the [Netlify guide](/docs/deploy/netlify#trailing-slashes) says so and tells you
+to leave its Pretty URLs option off, which would rewrite to the slashed form. A workaround that
+stripped slashes from the sitemap went away, because the integration stops adding them once the
+setting is explicit.
+
+Two smaller things rode along. The search page is `noindex` and out of the sitemap: Pagefind
+renders its results in the browser, so to a crawler the page is a heading and an empty region,
+which is exactly the "crawled, currently not indexed" entry the report showed. And two
+descriptions were rewritten to say what people actually search for. The Dependabot post sat at
+position four for "dependabot pnpm 12" with no clicks, and its description mentioned neither
+pnpm 12 nor the cooldown. Google bolds the words that match; a description that avoids them is
+a snippet nobody reads.
+
+The next day the live site answered `/blog/three-more-islands/` with a 308 to the address
+without the slash. Google will take weeks to notice. The
+[SEO guide](/docs/guides/seo#one-address-per-page) describes what redirects where on each
+target.
+
+## A lockfile the dependency graph could not see
+
+GitHub can export a software bill of materials for a repository, built from its dependency graph.
+For this template the export contained pnpm, its platform binaries and four GitHub Actions.
+Not Astro, not Better Auth, not one of the thousand-odd packages in `pnpm-lock.yaml`.
+
+The lockfile is just over 500 KB. GitHub's dependency graph skips manifest and lock files above a size
+cap on plans other than Enterprise, and half a megabyte is the figure that fits what the export
+shows, though the limit is not one I could confirm from the documentation at hand. Whatever
+the exact number, the consequence is concrete: Dependabot's security alerts come from the
+dependency graph, and for this repository they cover pnpm itself and nothing the site actually
+runs. The Security tab would stay quiet through an advisory in Astro or libSQL.
+
+The template was never relying on those alerts alone. The `quality` job runs
+`pnpm audit --audit-level=high` on every push and pull request, and it is the reason the
+advisories for `sharp`, `source-map-js` and `shell-quote` in the first week of October turned
+the job red on the next push and were [pinned past](/docs/guides/ci-cd#audit-exceptions) within
+a day. What that job does not do is run on a quiet week. A repository that nobody pushes to for
+a month gets no audit for a month, and with the graph blind, no alert either. A scheduled weekly
+audit is the obvious complement and is next on the list.
+
+## Two dozen satori releases and a footer that disappeared
+
+The same week, Dependabot's Monday run did not appear, so the update round was assembled by
+hand: Astro 7.3.8 with its adapters, Sentry 11.6, Playwright 1.64 with its Chromium 156,
+wrangler, drizzle-orm, happy-dom 21, pnpm 12.11, and satori, the renderer behind the Open Graph
+images, which `pnpm outdated` listed at 0.33.5 against a latest of 0.47.1.
+
+That gap deserved a look before anything else. Vercel had published twenty-four satori versions
+since the start of October, eighteen of them between 8 and 12 October. Every one was published
+from the same GitHub Actions workflow with npm provenance pointing at the `vercel/satori`
+repository, and the dependency list lost exactly one entry across the whole run: `yoga-layout`,
+the layout engine, gone from 0.37 onwards. So the burst was legitimate, and the missing
+dependency was the clue. 0.37 still bundles Yoga and renders the template byte for byte as
+0.33.5 does; the commit that takes the package to 0.38.0 is titled "Replace Yoga with Taffy".
+
+With 0.47.1 installed, everything passed. The unit test for the Open Graph template passed,
+because it renders the React element and never looks at pixels. The end-to-end test for the
+image endpoint passed, because it checks for a 200 and a PNG. Lighthouse and all four builds
+passed, because the images are generated at build time and nothing downstream reads them. Then
+the rendered PNGs were put next to the previous build's and looked at. The footer row with the
+section name and the domain was gone. The "DOCS" label in the top right corner was clipped to
+its first letter. The title had drifted down the card. The template's outer container is a
+column with `justify-content: space-between`, which Yoga and Taffy evidently disagree about in
+this configuration.
+
+satori stayed at 0.33.5 for that release. Dependabot now ignores 0.38 and above, with the reason
+in the configuration and in the CI guide, and when it proposed 0.37.1 the next morning, the
+highest version its rule allowed, the images rendered with that version were byte-identical to
+the old ones and the update merged. Adapting the template to the new engine is a separate job,
+to be checked by eye on every page type, and the images will get a snapshot test so the next
+layout change fails in CI rather than in a social preview.
+
+One more thing from the same round, for completeness. The version pull request's Lighthouse job
+failed with `NO_NAVSTART`, Lighthouse's own error for a trace it could not record, on a change
+that touched only a version string and a changelog. The same code had passed Lighthouse on
+`main` minutes earlier and passed again on the refreshed branch. A failure that reproduces
+nowhere else is still worth reading the log for, because the log is the only way to tell that
+case from a budget that slipped.
+
+## What we took from it
+
+A canonical tag is advice; a redirect is a rule. When a host serves two forms of every page, the
+search engine decides, and it will not always decide the way the tag suggests.
+
+The absence of alerts is not the absence of advisories. A security signal has preconditions,
+and a lockfile a few kilobytes over a limit is enough to remove one without any notice.
+
+A green suite proves exactly what it asserts and nothing adjacent to it. The Open Graph tests
+asserted that an image exists and that the template renders; neither sentence mentions what the
+image looks like. For anything visual, the check that matters is a comparison against a known
+good output, and the cheapest version of that is a person looking at two pictures before a
+dependency jump.
+
+The trailing-slash change shipped as 0.28.2 and the update round as 0.28.3; the
+[changelog](/changelog) has the details. The follow-up on the tag pages that Google has not
+crawled yet is scheduled for November, once the index has had time to catch up.
