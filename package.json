@@ -83,7 +83,7 @@
     "@axe-core/playwright": "^4.13.0",
     "@changesets/cli": "^3.0.3",
     "@eslint/js": "^10.0.1",
-    "@iconify-json/lucide": "^1.2.142",
+    "@iconify-json/lucide": "^1.2.145",
     "@iconify-json/simple-icons": "^1.2.98",
     "@playwright/test": "^1.64.0",
     "@resvg/resvg-js": "^2.6.2",
