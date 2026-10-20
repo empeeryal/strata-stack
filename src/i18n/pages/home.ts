@@ -51,7 +51,7 @@ const featureLinks = {
 const en: HomeCopy = {
   tagline: siteConfig.tagline,
   description: siteConfig.description,
-  badge: 'Astro 7.3 · React 19 · Node 24',
+  badge: 'Astro 7.4 · React 19 · Node 24',
   headline: {
     before: 'Ship a complete website on ',
     highlight: 'Astro 7',
@@ -67,7 +67,7 @@ const en: HomeCopy = {
   features: [
     {
       icon: 'lucide:rocket',
-      title: 'Astro 7.3 at the core',
+      title: 'Astro 7.4 at the core',
       description:
         'Static-first pages with islands where you need them, Vite 8 and the Rust compiler for fast builds and stricter HTML.',
       href: featureLinks.intro,

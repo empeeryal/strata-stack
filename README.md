@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/empeeryal/strata-stack/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/empeeryal/strata-stack/actions/workflows/ci.yml/badge.svg" /></a>
-  <img alt="Astro 7.3" src="https://img.shields.io/badge/Astro-7.3-BC52EE?logo=astro&logoColor=white" />
+  <img alt="Astro 7.4" src="https://img.shields.io/badge/Astro-7.4-BC52EE?logo=astro&logoColor=white" />
   <img alt="Node 24" src="https://img.shields.io/badge/Node-24.x-5FA04E?logo=node.js&logoColor=white" />
   <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-blue" />
 </p>
@@ -34,7 +34,7 @@ which is built from this exact code.
 
 | Area          | What you get                                                                                                                                                                                                                        |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rendering** | Astro 7.3, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                                                                        |
+| **Rendering** | Astro 7.4, static-first output, on-demand routes where needed, route caching through the platform CDN, Vite 8, Rust compiler                                                                                                        |
 | **UI**        | React 19 islands, [Motion](https://motion.dev) animations, Tailwind CSS 4, OKLCH design tokens, flash-free dark mode, self-hosted variable fonts, i18n-ready routing and UI strings                                                 |
 | **Content**   | MDX docs and blog collections, tabs, callouts, steps, table of contents, tags, reading time, RSS, changelog rendered from `CHANGELOG.md`, double opt-in newsletter                                                                  |
 | **Auth**      | [Better Auth](https://better-auth.com): email/password, passkeys, GitHub, Google, magic links, two-factor authentication, breached-password check, verification, password reset, protected routes, rate limiting                    |
