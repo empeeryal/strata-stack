@@ -6,7 +6,10 @@ test.describe('command palette', () => {
   test('opens from the header, lists docs and returns search results', async ({ page }) => {
     await page.goto('/docs');
     await waitForPalette(page);
-    await page.getByRole('link', { name: 'Search the site' }).first().click();
+    await page
+      .getByRole('link', { name: /^search/i })
+      .first()
+      .click();
     const dialog = page.getByRole('dialog', { name: 'Command palette' });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('option', { name: 'Installation' })).toBeVisible();
@@ -40,7 +43,10 @@ test.describe('command palette', () => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto('/');
-    await page.getByRole('link', { name: 'Search the site' }).first().click();
+    await page
+      .getByRole('link', { name: /^search/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/search\/?$/);
     await context.close();
   });

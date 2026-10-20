@@ -51,13 +51,13 @@ const docs: PaletteLink[] = buildDocsTree(await getCollection('docs')).flatMap((
       buttonVariants({ variant: 'outline', size: 'sm' }),
       'hidden w-56 justify-between text-muted-foreground md:flex',
     )}
-    aria-label={t('search.label')}
   >
     <span class="flex items-center gap-2">
       <Icon name="lucide:search" aria-hidden="true" />
       {t('search.placeholder')}
     </span>
-    <span class="flex gap-1">
+    {/* The shortcut is a visual hint; the link's accessible name is its visible label. */}
+    <span class="flex gap-1" aria-hidden="true">
       <Kbd>
         <span data-modifier>Ctrl</span>
       </Kbd>

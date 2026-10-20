@@ -72,7 +72,10 @@ test.describe('interactive states', { tag: '@a11y' }, () => {
   test('the open command palette with results', async ({ page }) => {
     await page.goto('/docs');
     await waitForPalette(page);
-    await page.getByRole('link', { name: 'Search the site' }).first().click();
+    await page
+      .getByRole('link', { name: /^search/i })
+      .first()
+      .click();
     const dialog = page.getByRole('dialog', { name: 'Command palette' });
     await expect(dialog).toBeVisible();
     await page.keyboard.type('deploy');

@@ -35,8 +35,9 @@ through the list, <Kbd>Enter</Kbd> opens the selected entry and <Kbd>Esc</Kbd> c
 the island with `client:idle`, passing the page and docs links it computed at build time:
 
 ```astro title="src/components/site/Search.astro"
-<a href="/search" data-palette-trigger aria-label="Search the site">
+<a href="/search" data-palette-trigger>
   Search…
+  <span aria-hidden="true">Ctrl K</span>
 </a>
 
 <CommandPalette client:idle links={[...pages, ...docs]} />
@@ -44,6 +45,9 @@ the island with `client:idle`, passing the page and docs links it computed at bu
 
 On mount the island claims every `[data-palette-trigger]` on the page and the keyboard
 shortcut. Anything with that attribute opens the palette, which is how the link above works.
+Give a trigger an `aria-label` only when it has no visible text (the icon-only trigger on
+small screens): an accessible name that does not contain the visible label fails WCAG 2.5.3,
+which axe-core 4.14 checks, and the shortcut hint stays out of the name with `aria-hidden`.
 The Pagefind bundle is imported on the first search, not on page load, so the palette costs the
 page nothing until it is used.
 
