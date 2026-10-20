@@ -1,6 +1,6 @@
 # Working on this repository
 
-This is Strata (package `strata-stack`), an Astro 7.3 website template. The site documents
+This is Strata (package `strata-stack`), an Astro 7.4 website template. The site documents
 the template itself. Read this file
 before making changes; the full documentation lives in `src/content/docs`.
 
