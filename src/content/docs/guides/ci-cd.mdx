@@ -46,12 +46,17 @@ and it handles the transitive advisories the template cannot upgrade directly:
 
 - `overrides` pins patchable transitive packages to a fixed version. Currently `fflate` inside
   the Open Graph image generator (Satori pins a version with a ZIP parsing flaw), `path-to-regexp`,
-  `sharp` (a librsvg flaw in its prebuilt binaries, fixed in 0.35.5), `undici` inside
-  Cloudflare's local emulator (miniflare pins a release with a WebSocket decompression flaw),
-  `devalue`, Astro's serializer for action results, moved to the release that fixes two
-  unhandled-rejection advisories, `source-map-js` as resolved by PostCSS, css-tree and magicast
-  (an event-loop stall on a crafted indexed source map, fixed in 1.2.2) and `shell-quote` inside
-  the Changesets CLI's editor launcher (a command injection, fixed in 1.11.0).
+  `sharp` (a librsvg flaw in its prebuilt binaries, fixed in 0.35.5), `undici` in both of the
+  places it is resolved (7.x inside Cloudflare's local emulator and 8.x inside Astro's font
+  loader, four denial-of-service, cache poisoning and TLS validation advisories fixed in 7.30.1
+  and 8.12.2), `devalue`, Astro's serializer for action results, moved to the release that fixes
+  two unhandled-rejection advisories, `source-map-js` as resolved by PostCSS, css-tree and
+  magicast (an event-loop stall on a crafted indexed source map, fixed in 1.2.2), `shell-quote`
+  and `launch-editor` inside the Changesets CLI's editor launcher (a command injection fixed in
+  1.11.0 and a Windows path check bypass fixed in 2.14.2), `toml` inside the Netlify adapter's
+  function bundler (three quadratic-time parsing advisories, fixed in the 5.x line, which the
+  bundler only uses to read the `Cargo.toml` of Rust functions) and `zod` inside Astro's Vercel
+  tooling (memory exhaustion on oversized collections, fixed in 4.6.6).
 - `auditConfig.ignoreGhsas` lists advisories with no upstream fix in build-time tooling that never
   runs on the deployed site: one for the esbuild 0.18 that drizzle-kit's config loader pins
   (GHSA-67mh-4wv8-2f99, a flaw in esbuild's development server), two in the Netlify adapter's
