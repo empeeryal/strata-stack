@@ -21,8 +21,12 @@ overrides:
   path-to-regexp@6: ^6.3.0
   # GHSA-wq5f-xc86-pv6w (librsvg inside sharp's prebuilt binaries) is fixed in 0.35.5.
   sharp: ^0.35.5
-  # miniflare (Cloudflare's local emulator) pins 7.29.0; GHSA-3wwx-pv8p-q78v is fixed in 7.29.1.
-  undici@7.29.0: ^7.29.1
+  # undici is resolved twice: 7.x inside miniflare (Cloudflare's local emulator) and 8.x inside
+  # Astro's font loader (unifont). GHSA-xjj6-f33q-929c, GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx
+  # and GHSA-qrxm-fqhp-jwvm (denial of service, cache poisoning, TLS validation) are fixed in
+  # 7.30.1 and 8.12.2.
+  'undici@>=7.0.0 <7.30.1': ^7.30.1
+  'undici@>=8.0.0 <8.12.2': ^8.12.2
   # Astro resolves 5.9.2; GHSA-mcm9-63f2-9j32 and GHSA-x5rw-q4pp-hg5g are fixed in 5.9.3.
   devalue@<5.9.3: ^5.9.4
   # PostCSS, css-tree and magicast resolve 1.2.1; GHSA-68fv-2mgg-jv7q (an event-loop stall on a
@@ -31,6 +35,16 @@ overrides:
   # launch-editor inside the Changesets CLI resolves 1.10.0; GHSA-pqg4-j6r4-53mv (command
   # injection through `quote()`) is fixed in 1.11.0.
   shell-quote: ^1.11.0
+  # launch-editor (Changesets CLI's editor launcher) resolves 2.14.1; GHSA-587h-7wmj-h5pm (a
+  # Windows existence check bypass) is fixed in 2.14.2.
+  launch-editor: ^2.14.2
+  # toml inside the Netlify adapter's function bundler (zip-it-and-ship-it, which only reads
+  # Cargo.toml of Rust functions) resolves 4.3.0; GHSA-4qx8-w7c3-pj3p, GHSA-9j65-hcg3-gc64 and
+  # GHSA-9qmh-m7c6-f92p (quadratic parsing time) are fixed in 5.0.1.
+  toml: ^5.0.1
+  # @vercel/cli-config, deep inside Astro's Vercel tooling, resolves zod 4.1 and 4.6.5;
+  # GHSA-mrhx-c7xc-m3w5 (memory exhaustion on oversized collections) is fixed in 4.6.6.
+  'zod@<4.6.6': ^4.6.6
 
 # Advisories with no upstream fix in build-time tooling; reviewed on dependency upgrades
 # (see the CI guide, "Audit exceptions").
